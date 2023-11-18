@@ -180,6 +180,12 @@ namespace big
 				gm::call_global_function("instance_create_depth", std::to_array<RValue, 4>({mouse_x, mouse_y, -200.0, 324 /*wisp*/}));
 			}
 
+			if (GetAsyncKeyState(VK_F5) & 1)
+			{
+				const auto survivor_create = gm::call_global_function("asset_get_index", "survivor_create");
+				const auto res = gm::call_global_function("script_execute", std::to_array<RValue, 3>({survivor_create, "My", "Survivor"}));
+			}
+
 			for (size_t i = 0; i < gm::CInstances_active.size(); i++)
 			{
 				if (gm::CInstances_active[i]->object_name() == "oP")
