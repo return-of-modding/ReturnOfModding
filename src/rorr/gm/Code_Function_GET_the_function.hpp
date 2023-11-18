@@ -51,6 +51,10 @@ namespace gm
 			func_info.function_ptr(&res, self, other, arg_count, args);
 			return res;
 		}
+		else
+		{
+			LOG(WARNING) << name << " function not found!";
+		}
 
 		return {};
 	}
