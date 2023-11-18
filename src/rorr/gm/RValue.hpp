@@ -61,5 +61,15 @@ struct RValue
 		this->Flags  = 0;
 		this->String = RefString::Alloc(Value.c_str(), Value.length() + 1);
 	}
+
+	inline const char* get_string() const
+	{
+		return String->m_Thing;
+	}
+
+	inline void set_string(const char* new_value)
+	{
+		this->String = RefString::Alloc(new_value, strlen(new_value) + 1);
+	}
 };
 #pragma pack(pop)
