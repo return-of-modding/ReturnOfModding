@@ -16,6 +16,9 @@ namespace big
 		std::chrono::time_point<std::chrono::file_clock> m_last_write_time;
 
 	public:
+		std::vector<sol::protected_function> m_pre_code_execute_callbacks;
+		std::vector<sol::protected_function> m_post_code_execute_callbacks;
+
 		std::vector<std::unique_ptr<lua::gui::gui_element>> m_independent_gui;
 
 		std::vector<std::unique_ptr<lua_patch>> m_registered_patches;
