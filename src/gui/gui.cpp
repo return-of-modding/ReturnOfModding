@@ -140,9 +140,6 @@ namespace big
 
 			g_lua_manager->draw_independent_gui();
 
-				const auto nearest_instance = gm::call_global_function("instance_nearest", std::to_array<RValue, 1>({VAR_ALL}));
-			}
-
 			const auto mouse_x = gm::global_variable_get("mouse_x").result.Real;
 			const auto mouse_y = gm::global_variable_get("mouse_y").result.Real;
 			const auto nearest_instance = gm::call_global_function("instance_nearest", std::to_array<RValue, 3>({mouse_x, mouse_y, VAR_ALL}));
@@ -160,6 +157,16 @@ namespace big
 						break;
 					}
 				}
+			}
+
+			const auto current_room = gm::global_variable_get("room").result.Real;
+			const auto current_room_name = gm::call_global_function("room_get_name", current_room);
+			ImGui::Text("Current Room: %s (%f)", current_room_name.String->m_Thing, current_room);
+			static int new_room{};
+			ImGui::InputInt("New Room ID", &new_room);
+			if (ImGui::Button("Goto Room"))
+			{
+				gm::call_global_function("room_goto", new_room);
 			}
 
 			if (GetAsyncKeyState(VK_F4) & 1)
@@ -190,8 +197,6 @@ namespace big
 				instance->imgui_dump();
 				ImGui::Separator();
 			}
-
-			//view::root(); // frame bg
 
 			pop_theme_colors();
 		}
