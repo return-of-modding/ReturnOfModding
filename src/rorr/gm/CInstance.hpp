@@ -59,7 +59,7 @@ struct CInstance : YYObjectBase
 
 	void imgui_dump_instance_variables();
 
-	std::string object_name();
+	const char* object_name() const;
 
 	RValue get(const char* variable_name);
 

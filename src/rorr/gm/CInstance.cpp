@@ -4,23 +4,14 @@
 #include "Code_Function_GET_the_function.hpp"
 #include "RefThing.hpp"
 
-static std::unordered_map<int64_t, std::string> object_index_to_name;
 
 void CInstance::imgui_dump()
 {
-	if (!object_index_to_name.contains((int64_t)i_objectindex))
-	{
-		RValue object_index                          = i_objectindex;
-		const auto object_name                       = gm::call_global_function("object_get_name", object_index);
-		if (object_name.Kind == RVKind::VALUE_STRING)
-			object_index_to_name[(int64_t)i_objectindex] = object_name.String->m_Thing;
-	}
-
 	ImGui::Text("Instance ID: %d", i_id);
 	ImGui::Text("Position: %.2f, %.2f", i_x, i_y);
 	ImGui::Text("Gravity: %.2f (Direction: %.2f)", i_gravity, i_gravitydir);
 	ImGui::Text("Speed: %.2f", i_speed);
-	ImGui::Text("Object Name: %s (Index: %d) ", object_index_to_name[(int64_t)i_objectindex].c_str(), i_objectindex);
+	ImGui::Text("Object Name: %s (Index: %d) ", object_name(), i_objectindex);
 
 	RValue sprite_index    = i_spriteindex;
 	const auto sprite_name = gm::call_global_function("sprite_get_name", sprite_index);
@@ -58,11 +49,22 @@ void CInstance::imgui_dump_instance_variables()
 	}
 }
 
-std::string CInstance::object_name()
+static std::unordered_map<int64_t, std::string> object_index_to_name;
+const char* CInstance::object_name() const
 {
-	if (object_index_to_name.contains((int64_t)i_objectindex))
+	if (!object_index_to_name.contains((int64_t)i_objectindex))
 	{
-		return object_index_to_name[(int64_t)i_objectindex];
+		RValue object_index    = i_objectindex;
+		const auto object_name = gm::call_global_function("object_get_name", object_index);
+		if (object_name.Kind == RVKind::VALUE_STRING)
+		{
+			object_index_to_name[(int64_t)i_objectindex] = object_name.String->m_Thing;
+			return object_index_to_name[(int64_t)i_objectindex].c_str();
+		}
+	}
+	else
+	{
+		return object_index_to_name[(int64_t)i_objectindex].c_str();
 	}
 
 	return "";
