@@ -159,7 +159,7 @@ namespace big
 				}
 			}
 
-			const auto current_room = gm::global_variable_get("room").result.Real;
+			const auto current_room      = gm::global_variable_get("room").result.Real;
 			const auto current_room_name = gm::call_global_function("room_get_name", current_room);
 			ImGui::Text("Current Room: %s (%f)", current_room_name.String->m_Thing, current_room);
 			static int new_room{};
