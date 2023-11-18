@@ -4,6 +4,7 @@
 #include "gui/renderer.hpp"
 
 #include <input/is_key_pressed.hpp>
+#include <lua/lua_manager.hpp>
 #include <pointers.hpp>
 #include <rorr/gm/CDynamicArray.hpp>
 #include <rorr/gm/CInstance.hpp>
@@ -137,21 +138,7 @@ namespace big
 
 			ImGui::ShowDemoWindow();
 
-			if (ImGui::Button("Crash"))
-			{
-				*(int*)0x0 = 0xDEAD;
-			}
-
-			if (ImGui::Button("Crash2"))
-			{
-				LOG(WARNING) << "hi!";
-
-				*(int*)0x0 = 0xDEAD;
-			}
-
-			if (ImGui::Button("Crash3"))
-			{
-				LOG(WARNING) << "hi!!!!";
+			g_lua_manager->draw_independent_gui();
 
 				const auto nearest_instance = gm::call_global_function("instance_nearest", std::to_array<RValue, 1>({VAR_ALL}));
 			}
