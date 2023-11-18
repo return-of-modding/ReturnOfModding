@@ -1,8 +1,8 @@
 #pragma once
 
 #include "EJSRetValBool.hpp"
-#include "RValue.hpp"
 
+struct RValue;
 struct CWeakRef;
 struct CCode;
 

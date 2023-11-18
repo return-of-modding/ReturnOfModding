@@ -1,5 +1,6 @@
 #include "lua_module.hpp"
 
+#include "bindings/game_maker.hpp"
 #include "bindings/global_table.hpp"
 #include "bindings/gui.hpp"
 #include "bindings/imgui.hpp"
@@ -78,7 +79,6 @@ namespace big
 
 	lua_module::~lua_module()
 	{
-
 		for (auto memory : m_allocated_memory)
 			delete[] memory;
 	}
@@ -172,6 +172,7 @@ namespace big
 		lua::gui::bind(m_state);
 		lua::global_table::bind(m_state);
 		lua::imgui::bind(m_state, m_state.globals());
+		lua::game_maker::bind(m_state);
 	}
 
 	void lua_module::load_and_call_script()

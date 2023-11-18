@@ -1,5 +1,7 @@
 #pragma once
 #include "lua_module.hpp"
+#include <rorr/gm/RValue.hpp>
+#include <rorr/gm/CCode.hpp>
 
 namespace big
 {
@@ -31,6 +33,9 @@ namespace big
 		{
 			return m_scripts_folder;
 		}
+
+		void pre_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags);
+		void post_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags);
 
 		void draw_independent_gui();
 

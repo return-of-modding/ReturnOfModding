@@ -1,9 +1,9 @@
 #pragma once
 #include "RVKind.hpp"
 #include "RefThing.hpp"
+#include "CInstance.hpp"
 
 struct YYObjectBase;
-struct CInstance;
 
 template<typename T>
 struct CDynamicArrayRef;

@@ -27,6 +27,32 @@ namespace big
 		g_lua_manager = nullptr;
 	}
 
+	void lua_manager::pre_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags)
+	{
+		std::lock_guard guard(m_module_lock);
+
+		for (const auto& module : m_modules)
+		{
+			for (const auto& cb : module->m_pre_code_execute_callbacks)
+			{
+				cb(self, other, code, result, flags);
+			}
+		}
+	}
+
+	void lua_manager::post_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags)
+	{
+		std::lock_guard guard(m_module_lock);
+
+		for (const auto& module : m_modules)
+		{
+			for (const auto& cb : module->m_post_code_execute_callbacks)
+			{
+				cb(self, other, code, result, flags);
+			}
+		}
+	}
+
 	void lua_manager::draw_independent_gui()
 	{
 		std::lock_guard guard(m_module_lock);
@@ -80,30 +106,30 @@ namespace big
 	{
 		while (g_running)
 		{
-		if (m_wake_time_changed_scripts_check <= std::chrono::high_resolution_clock::now())
-		{
-			for (const auto& entry : std::filesystem::recursive_directory_iterator(m_scripts_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
+			if (m_wake_time_changed_scripts_check <= std::chrono::high_resolution_clock::now())
 			{
-				if (entry.is_regular_file())
+				for (const auto& entry : std::filesystem::recursive_directory_iterator(m_scripts_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
 				{
-					const auto& module_path    = entry.path();
-					const auto last_write_time = entry.last_write_time();
-
-					for (const auto& module : m_modules)
+					if (entry.is_regular_file())
 					{
-						if (module->module_path() == module_path && module->last_write_time() < last_write_time)
+						const auto& module_path    = entry.path();
+						const auto last_write_time = entry.last_write_time();
+
+						for (const auto& module : m_modules)
 						{
-							unload_module(module->module_name());
-							load_module(module_path);
-							break;
+							if (module->module_path() == module_path && module->last_write_time() < last_write_time)
+							{
+								unload_module(module->module_name());
+								load_module(module_path);
+								break;
+							}
 						}
 					}
 				}
-			}
 
-			m_wake_time_changed_scripts_check = std::chrono::high_resolution_clock::now() + m_delay_between_changed_scripts_check;
+				m_wake_time_changed_scripts_check = std::chrono::high_resolution_clock::now() + m_delay_between_changed_scripts_check;
+			}
 		}
-	}
 	}
 
 	std::weak_ptr<lua_module> lua_manager::get_module(const std::string& module_name)
