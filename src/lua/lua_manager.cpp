@@ -12,10 +12,16 @@ namespace big
 		g_lua_manager = this;
 
 		load_all_modules();
+
+		m_reload_watcher_thread = std::thread([&]() {
+			reload_changed_scripts();
+		});
 	}
 
 	lua_manager::~lua_manager()
 	{
+		m_reload_watcher_thread.join();
+
 		unload_all_modules();
 
 		g_lua_manager = nullptr;
@@ -72,6 +78,8 @@ namespace big
 
 	void lua_manager::reload_changed_scripts()
 	{
+		while (g_running)
+		{
 		if (m_wake_time_changed_scripts_check <= std::chrono::high_resolution_clock::now())
 		{
 			for (const auto& entry : std::filesystem::recursive_directory_iterator(m_scripts_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
@@ -95,6 +103,7 @@ namespace big
 
 			m_wake_time_changed_scripts_check = std::chrono::high_resolution_clock::now() + m_delay_between_changed_scripts_check;
 		}
+	}
 	}
 
 	std::weak_ptr<lua_module> lua_manager::get_module(const std::string& module_name)

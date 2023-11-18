@@ -9,6 +9,7 @@ namespace big
 		std::mutex m_module_lock;
 		std::vector<std::shared_ptr<lua_module>> m_modules;
 
+		std::thread m_reload_watcher_thread;
 		static constexpr std::chrono::seconds m_delay_between_changed_scripts_check = 3s;
 		std::chrono::high_resolution_clock::time_point m_wake_time_changed_scripts_check;
 
