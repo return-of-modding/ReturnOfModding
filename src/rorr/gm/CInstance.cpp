@@ -11,7 +11,7 @@ void CInstance::imgui_dump()
 	ImGui::Text("Position: %.2f, %.2f", i_x, i_y);
 	ImGui::Text("Gravity: %.2f (Direction: %.2f)", i_gravity, i_gravitydir);
 	ImGui::Text("Speed: %.2f", i_speed);
-	ImGui::Text("Object Name: %s (Index: %d) ", object_name(), i_objectindex);
+	ImGui::Text("Object Name: %s (Index: %d) ", object_name().c_str(), i_objectindex);
 
 	RValue sprite_index    = i_spriteindex;
 	const auto sprite_name = gm::call_global_function("sprite_get_name", sprite_index);
@@ -50,7 +50,8 @@ void CInstance::imgui_dump_instance_variables()
 }
 
 static std::unordered_map<int64_t, std::string> object_index_to_name;
-const char* CInstance::object_name() const
+static std::string dummy;
+const std::string& CInstance::object_name() const
 {
 	if (!object_index_to_name.contains((int64_t)i_objectindex))
 	{
@@ -59,15 +60,15 @@ const char* CInstance::object_name() const
 		if (object_name.Kind == RVKind::VALUE_STRING)
 		{
 			object_index_to_name[(int64_t)i_objectindex] = object_name.String->m_Thing;
-			return object_index_to_name[(int64_t)i_objectindex].c_str();
+			return object_index_to_name[(int64_t)i_objectindex];
 		}
 	}
 	else
 	{
-		return object_index_to_name[(int64_t)i_objectindex].c_str();
+		return object_index_to_name[(int64_t)i_objectindex];
 	}
 
-	return "";
+	return dummy;
 }
 
 RValue CInstance::get(const char* variable_name)
