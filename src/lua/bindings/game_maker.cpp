@@ -36,14 +36,14 @@ namespace lua::game_maker
 		mdl->m_post_code_execute_callbacks.push_back(cb);
 	}
 
-	static RValue lua_call_function(std::string_view name, CInstance* self, CInstance* other, sol::variadic_args args)
+	static RValue lua_gm_call(std::string_view name, CInstance* self, CInstance* other, sol::variadic_args args)
 	{
-		return gm::call_function(name, self, other, parse_variadic_args(args));
+		return gm::call(name, self, other, parse_variadic_args(args));
 	}
 
-	static RValue lua_call_global_function(std::string_view name, sol::variadic_args args)
+	static RValue lua_gm_call_global(std::string_view name, sol::variadic_args args)
 	{
-		return gm::call_global_function(name, parse_variadic_args(args));
+		return gm::call(name, parse_variadic_args(args));
 	}
 
 	void bind(sol::state& state)
@@ -126,7 +126,6 @@ namespace lua::game_maker
 		ns["pre_code_execute"]  = pre_code_execute;
 		ns["post_code_execute"] = post_code_execute;
 
-		ns["call_function"]        = lua_call_function;
-		ns["call_global_function"] = lua_call_global_function;
+		ns["call"] = sol::overload(lua_gm_call, lua_gm_call_global);
 	}
 }

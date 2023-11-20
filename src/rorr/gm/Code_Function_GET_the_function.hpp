@@ -19,6 +19,7 @@ namespace gm
 			return it->second;
 		}
 
+		// Builtin GML Functions
 		const auto size = *big::g_pointers->m_rorr.m_code_function_GET_the_function_function_count;
 		for (int i = 0; i < size; i++)
 		{
@@ -33,7 +34,6 @@ namespace gm
 			if (same_name)
 			{
 				code_function_cache[name.data()] = result;
-
 				return code_function_cache[name.data()];
 			}
 		}
@@ -41,11 +41,11 @@ namespace gm
 		return dummy;
 	}
 
-	inline RValue call_function(std::string_view name, CInstance* self, CInstance* other, RValue* args = nullptr, size_t arg_count = 0)
+	inline RValue call(std::string_view name, CInstance* self, CInstance* other, RValue* args = nullptr, size_t arg_count = 0)
 	{
 		const auto& func_info = get_code_function(name);
 
-		if (func_info.function_name)
+		if (func_info.function_ptr)
 		{
 			RValue res;
 			func_info.function_ptr(&res, self, other, arg_count, args);
@@ -66,7 +66,7 @@ namespace gm
 				for (size_t i = 0; i < arg_count; i++)
 				{
 					arranged_args[i + 1] = args[i];
-		}
+				}
 				const auto& script_execute = gm::get_code_function("script_execute");
 				RValue res;
 				script_execute.function_ptr(&res, self, other, arg_count + 1, arranged_args);
@@ -74,12 +74,13 @@ namespace gm
 			}
 		}
 
+		LOG(WARNING) << name << " function not found!";
 		return {};
 	}
 
-	inline RValue call_global_function(std::string_view name, RValue* args = nullptr, size_t arg_count = 0)
+	inline RValue call(std::string_view name, RValue* args = nullptr, size_t arg_count = 0)
 	{
-		return call_function(name, nullptr, nullptr, args, arg_count);
+		return call(name, nullptr, nullptr, args, arg_count);
 	}
 
 	template<typename T>
@@ -87,33 +88,33 @@ namespace gm
 
 	template<typename T>
 	    requires SpanCompatibleType<T>
-	inline RValue call_function(std::string_view name, CInstance* self, CInstance* other, T args)
+	inline RValue call(std::string_view name, CInstance* self, CInstance* other, T args)
 	{
-		return call_function(name, self, other, args.data(), args.size());
+		return call(name, self, other, args.data(), args.size());
 	}
 
 	template<typename T>
 	    requires SpanCompatibleType<T>
-	inline RValue call_global_function(std::string_view name, T args)
+	inline RValue call(std::string_view name, T args)
 	{
-		return call_function(name, nullptr, nullptr, args.data(), args.size());
+		return call(name, nullptr, nullptr, args.data(), args.size());
 	}
 
-	inline RValue call_function(std::string_view name, CInstance* self, CInstance* other, RValue& arg)
+	inline RValue call(std::string_view name, CInstance* self, CInstance* other, RValue& arg)
 	{
-		return call_function(name, self, other, &arg, 1);
+		return call(name, self, other, &arg, 1);
 	}
-	inline RValue call_function(std::string_view name, CInstance* self, CInstance* other, RValue&& arg)
+	inline RValue call(std::string_view name, CInstance* self, CInstance* other, RValue&& arg)
 	{
-		return call_function(name, self, other, arg);
+		return call(name, self, other, arg);
 	}
-	inline RValue call_global_function(std::string_view name, RValue& arg)
+	inline RValue call(std::string_view name, RValue& arg)
 	{
-		return call_function(name, nullptr, nullptr, arg);
+		return call(name, nullptr, nullptr, arg);
 	}
-	inline RValue call_global_function(std::string_view name, RValue&& arg)
+	inline RValue call(std::string_view name, RValue&& arg)
 	{
-		return call_function(name, nullptr, nullptr, arg);
+		return call(name, nullptr, nullptr, arg);
 	}
 
 	inline void print_all_code_functions()

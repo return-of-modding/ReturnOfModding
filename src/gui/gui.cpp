@@ -142,7 +142,7 @@ namespace big
 
 			const auto mouse_x = gm::global_variable_get("mouse_x").result.Real;
 			const auto mouse_y = gm::global_variable_get("mouse_y").result.Real;
-			const auto nearest_instance = gm::call_global_function("instance_nearest", std::to_array<RValue, 3>({mouse_x, mouse_y, VAR_ALL}));
+			const auto nearest_instance = gm::call("instance_nearest", std::to_array<RValue, 3>({mouse_x, mouse_y, VAR_ALL}));
 			ImGui::Text("Cursor (%.2f, %.2f)", mouse_x, mouse_y);
 			ImGui::Separator();
 			if (nearest_instance.Kind == RVKind::VALUE_REF)
@@ -160,24 +160,27 @@ namespace big
 			}
 
 			const auto current_room      = gm::global_variable_get("room").result.Real;
-			const auto current_room_name = gm::call_global_function("room_get_name", current_room);
+			const auto current_room_name = gm::call("room_get_name", current_room);
 			ImGui::Text("Current Room: %s (%f)", current_room_name.String->m_Thing, current_room);
 			static int new_room{};
 			ImGui::InputInt("New Room ID", &new_room);
 			if (ImGui::Button("Goto Room"))
 			{
-				gm::call_global_function("room_goto", new_room);
+				gm::call("room_goto", new_room);
 			}
 
 			if (GetAsyncKeyState(VK_F4) & 1)
 			{
-				gm::call_global_function("instance_create_depth", std::to_array<RValue, 4>({mouse_x, mouse_y, -200.0, 324 /*wisp*/}));
+				gm::call("instance_create_depth", std::to_array<RValue, 4>({mouse_x, mouse_y, -200.0, 324 /*wisp*/}));
+			}
+
+			if (ImGui::Button("Create Survivor"))
+			{
+				const auto res = gm::call("survivor_create", std::to_array<RValue, 2>({"My", "Survivor"}));
 			}
 
 			if (GetAsyncKeyState(VK_F5) & 1)
 			{
-				const auto survivor_create = gm::call_global_function("asset_get_index", "survivor_create");
-				const auto res = gm::call_global_function("script_execute", std::to_array<RValue, 3>({survivor_create, "My", "Survivor"}));
 			}
 
 			for (size_t i = 0; i < gm::CInstances_active.size(); i++)
