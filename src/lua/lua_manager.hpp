@@ -1,5 +1,6 @@
 #pragma once
 #include "lua_module.hpp"
+#include "module_info.hpp"
 #include <rorr/gm/RValue.hpp>
 #include <rorr/gm/CCode.hpp>
 
@@ -39,10 +40,10 @@ namespace big
 
 		void draw_independent_gui();
 
-		std::weak_ptr<lua_module> get_module(const std::string& module_name);
+		std::weak_ptr<lua_module> get_module(const std::string& module_guid);
 
-		void unload_module(const std::string& module_name);
-		void load_module(const std::filesystem::path& module_path);
+		void unload_module(const std::string& module_guid);
+		void load_module(const module_info& module_info);
 
 		void reload_changed_scripts();
 

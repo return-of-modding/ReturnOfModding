@@ -2,6 +2,8 @@
 #include "lua_patch.hpp"
 #include "sol.hpp"
 #include "lua/bindings/gui_element.hpp"
+#include "module_info.hpp"
+#include <thunderstore/v1/manifest.hpp>
 
 namespace big
 {
@@ -10,8 +12,8 @@ namespace big
 		sol::state m_state;
 
 		std::filesystem::path m_module_path;
-
-		std::string m_module_name;
+		ts::v1::manifest m_manifest;
+		std::string m_module_guid;
 
 		std::chrono::time_point<std::chrono::file_clock> m_last_write_time;
 
@@ -25,12 +27,13 @@ namespace big
 
 		std::vector<void*> m_allocated_memory;
 
-		lua_module(const std::filesystem::path& module_path, folder& scripts_folder);
+		lua_module(const module_info& module_info, folder& scripts_folder);
 		~lua_module();
 
 		const std::filesystem::path& module_path() const;
+		const ts::v1::manifest& manifest() const;
+		const std::string& module_guid() const;
 
-		const std::string& module_name() const;
 		const std::chrono::time_point<std::chrono::file_clock> last_write_time() const;
 
 		// used for sandboxing and limiting to only our custom search path for the lua require function

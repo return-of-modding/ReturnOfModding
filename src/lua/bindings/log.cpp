@@ -14,7 +14,7 @@ namespace lua::log
 	// Logs an informational message.
 	static void info(const std::string& data, sol::this_state state)
 	{
-		LOG(INFO) << sol::state_view(state)["!module_name"].get<std::string>() << ": " << data;
+		LOG(INFO) << sol::state_view(state)["!module_guid"].get<std::string>() << ": " << data;
 	}
 
 	// Lua API: Function
@@ -24,7 +24,7 @@ namespace lua::log
 	// Logs a warning message.
 	static void warning(const std::string& data, sol::this_state state)
 	{
-		LOG(WARNING) << sol::state_view(state)["!module_name"].get<std::string>() << ": " << data;
+		LOG(WARNING) << sol::state_view(state)["!module_guid"].get<std::string>() << ": " << data;
 	}
 
 	// Lua API: Function
@@ -34,7 +34,7 @@ namespace lua::log
 	// Logs a debug message.
 	static void debug(const std::string& data, sol::this_state state)
 	{
-		LOG(VERBOSE) << sol::state_view(state)["!module_name"].get<std::string>() << ": " << data;
+		LOG(VERBOSE) << sol::state_view(state)["!module_guid"].get<std::string>() << ": " << data;
 	}
 
 	void bind(sol::state& state)

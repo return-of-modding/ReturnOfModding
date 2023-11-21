@@ -47,10 +47,11 @@ namespace big
 		// When this function exits, Lua will exhibit default behavior and abort()
 	}
 
-	lua_module::lua_module(const std::filesystem::path& module_path, folder& scripts_folder) :
+	lua_module::lua_module(const module_info& module_info, folder& scripts_folder) :
 	    m_state(),
-	    m_module_path(module_path),
-	    m_module_name(module_path.filename().string())
+	    m_module_path(module_info.m_module_path),
+	    m_manifest(module_info.m_manifest),
+	    m_module_guid(module_info.m_module_guid)
 	{
 		// clang-format off
 		m_state.open_libraries(
@@ -68,7 +69,7 @@ namespace big
 
 		init_lua_api(scripts_folder);
 
-		m_state["!module_name"] = m_module_name;
+		m_state["!module_guid"] = m_module_guid;
 		m_state["!this"]        = this;
 
 		m_state.set_exception_handler(exception_handler);
@@ -83,14 +84,19 @@ namespace big
 			delete[] memory;
 	}
 
-	const std::string& lua_module::module_name() const
-	{
-		return m_module_name;
-	}
-
 	const std::filesystem::path& lua_module::module_path() const
 	{
 		return m_module_path;
+	}
+
+	const ts::v1::manifest& lua_module::manifest() const
+	{
+		return m_manifest;
+	}
+
+	const std::string& lua_module::module_guid() const
+	{
+		return m_module_guid;
 	}
 
 	const std::chrono::time_point<std::chrono::file_clock> lua_module::last_write_time() const
@@ -134,7 +140,7 @@ namespace big
 		return [function_name](sol::this_state state, sol::variadic_args args) {
 			big::lua_module* module = sol::state_view(state)["!this"];
 
-			LOG(FATAL) << module->module_name() << " tried calling a currently not supported lua function: " << function_name;
+			LOG(FATAL) << module->module_guid() << " tried calling a currently not supported lua function: " << function_name;
 			Logger::FlushQueue();
 		};
 	}
@@ -181,12 +187,12 @@ namespace big
 
 		if (!result.valid())
 		{
-			LOG(FATAL) << m_module_name << " failed to load: " << result.get<sol::error>().what();
+			LOG(FATAL) << m_module_guid << " failed to load: " << result.get<sol::error>().what();
 			Logger::FlushQueue();
 		}
 		else
 		{
-			LOG(INFO) << "Loaded " << m_module_name;
+			LOG(INFO) << "Loaded " << m_module_guid;
 		}
 	}
 }

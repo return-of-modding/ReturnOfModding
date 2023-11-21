@@ -7,6 +7,7 @@ set(SRC_DIR "${PROJECT_SOURCE_DIR}/src")
 # Fetch modules
 message("\nFetching modules")
 include(cmake_scripts/async-logger.cmake)
+include(cmake_scripts/cpp-semver.cmake)
 include(cmake_scripts/cxxopts.cmake)
 include(cmake_scripts/git.cmake)
 include(cmake_scripts/imgui.cmake)
@@ -49,6 +50,7 @@ target_include_directories(return_of_modding PRIVATE
     "${json_SOURCE_DIR}/single_include"
     "${imgui_SOURCE_DIR}"
     "${tomlplusplus_BINARY_DIR}/include"
+    "${cpp-semver_SOURCE_DIR}/include"
 )
 
 target_precompile_headers(return_of_modding PRIVATE "${SRC_DIR}/common.hpp")
