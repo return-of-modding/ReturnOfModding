@@ -7,6 +7,7 @@
 #include "pointers.hpp"
 #include "rorr/gm/CInstance_hooks.hpp"
 #include "rorr/gm/Code_Execute_hook.hpp"
+#include "rorr/gm/debug_console.hpp"
 
 #include <MinHook.h>
 
@@ -20,6 +21,8 @@ namespace big
 		{
 			detour_hook_helper.m_detour_hook->set_target_and_create_hook(detour_hook_helper.m_on_hooking_available());
 		}
+
+		detour_hook_helper::add<gm::hook_debug_console_output>("DCO", g_pointers->m_rorr.m_debug_console_output);
 
 		detour_hook_helper::add<gm::hook_Code_Execute>("CE", g_pointers->m_rorr.m_code_execute);
 

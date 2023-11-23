@@ -102,6 +102,16 @@ namespace big
             {
 				g_pointers->m_rorr.m_yysetstring = ptr.sub(0xA).as<YYSetStr>();
             }
+        },
+        // Debug Console Output
+        {
+            "DCO",
+            "48 8B 0D ? ? ? ? 48 8D 15 ? ? ? ? 48 8B 01 FF 50 ? 48 8B 74 24 ? 48 8B 5C 24 ? 48 8B 7C 24",
+            [](memory::handle ptr)
+            {
+                auto instance = ptr.add(3).rip().as<__int64**>();
+				g_pointers->m_rorr.m_debug_console_output = (*((void(__fastcall**)(void*, const char*, ...)) * instance[0] + 2));
+            }
         }
         >(); // don't leave a trailing comma at the end
 		// clang-format on

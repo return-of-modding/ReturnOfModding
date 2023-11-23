@@ -4,6 +4,7 @@
 #include "gm/RVariableRoutine.hpp"
 #include "gm/CRoom.hpp"
 #include "gm/CInstance_hooks.hpp"
+#include "gm/debug_console.hpp"
 
 #include <memory/handle.hpp>
 
@@ -32,6 +33,8 @@ namespace big
 		gm::CObjectGM_RemoveInstance m_cobjectgm_remove_instance;
 
 		YYSetStr m_yysetstring;
+
+		gm::debug_console_output_t m_debug_console_output;
 	};
 #pragma pack(pop)
 	static_assert(sizeof(rorr_pointers) % 8 == 0, "Pointers are not properly aligned");
