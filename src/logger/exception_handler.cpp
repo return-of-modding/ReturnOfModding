@@ -2,28 +2,26 @@
 
 #include "stack_trace.hpp"
 
-#include <Zydis/Zydis.h>
-
 namespace big
 {
 	inline auto hash_stack_trace(std::vector<uint64_t> stack_trace)
 	{
-		auto data = reinterpret_cast<const char*>(stack_trace.data());
+		auto data        = reinterpret_cast<const char*>(stack_trace.data());
 		std::size_t size = stack_trace.size() * sizeof(uint64_t);
 
-		return std::hash<std::string_view>()({ data, size });
+		return std::hash<std::string_view>()({data, size});
 	}
 
 	exception_handler::exception_handler()
 	{
-		m_old_error_mode = SetErrorMode(0);
-		m_exception_handler = SetUnhandledExceptionFilter(&vectored_exception_handler);
+		m_old_error_mode    = SetErrorMode(0);
+		m_exception_handler = AddVectoredExceptionHandler(1, vectored_exception_handler);
 	}
 
 	exception_handler::~exception_handler()
 	{
 		SetErrorMode(m_old_error_mode);
-		SetUnhandledExceptionFilter(reinterpret_cast<decltype(&vectored_exception_handler)>(m_exception_handler));
+		RemoveVectoredExceptionHandler(m_exception_handler);
 	}
 
 	inline static stack_trace trace;
@@ -45,12 +43,6 @@ namespace big
 			logged_exceptions.insert(trace_hash);
 		}
 
-		ZyanU64 opcode_address = exception_info->ContextRecord->Rip;
-		ZydisDisassembledInstruction instruction;
-		ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, opcode_address, reinterpret_cast<void*>(opcode_address), 32, &instruction);
-
-		exception_info->ContextRecord->Rip += instruction.info.length;
-
-		return EXCEPTION_CONTINUE_EXECUTION;
+		return EXCEPTION_CONTINUE_SEARCH;
 	}
 }

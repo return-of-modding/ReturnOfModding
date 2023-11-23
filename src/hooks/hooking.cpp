@@ -12,15 +12,6 @@
 
 namespace big
 {
-	static LPTOP_LEVEL_EXCEPTION_FILTER hook_SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter)
-	{
-		LOG(FATAL) << "incoming:" << HEX_TO_UPPER(lpTopLevelExceptionFilter);
-
-		//const auto previous = g_hooking->get_original<hook_SetUnhandledExceptionFilter>()(lpTopLevelExceptionFilter);
-
-		return nullptr;
-	}
-
 	hooking::hooking()
 	{
 		// The instances in that vector at this point should only be the "lazy" global variable hooks
@@ -29,8 +20,6 @@ namespace big
 		{
 			detour_hook_helper.m_detour_hook->set_target_and_create_hook(detour_hook_helper.m_on_hooking_available());
 		}
-
-		detour_hook_helper::add<hook_SetUnhandledExceptionFilter>("SUEF", &SetUnhandledExceptionFilter);
 
 		detour_hook_helper::add<gm::hook_Code_Execute>("CE", g_pointers->m_rorr.m_code_execute);
 

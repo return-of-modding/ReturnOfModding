@@ -91,9 +91,6 @@ namespace big
 	private:
 		bool m_enabled{};
 
-		// For some reason the one from main get trashed, adding one there as a bandaid fix.
-		exception_handler m_exception_handler;
-
 		minhook_keepalive m_minhook_keepalive;
 
 		static inline std::vector<detour_hook_helper> m_detour_hook_helpers;
