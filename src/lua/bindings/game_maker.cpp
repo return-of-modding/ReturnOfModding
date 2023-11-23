@@ -68,16 +68,8 @@ namespace lua::game_maker
 			BIND_USERTYPE(type, RefDynamicArrayOfRValue, m_Owner);
 			BIND_USERTYPE(type, RefDynamicArrayOfRValue, visited);
 			BIND_USERTYPE(type, RefDynamicArrayOfRValue, m_flags);
-			BIND_USERTYPE(type, RefDynamicArrayOfRValue, m_Array);
 
-			// For some reason these two cannot be instance member functions, memory get trashed/invalid??
-			ns["get_array_length"] = [](RefDynamicArrayOfRValue* inst) {
-				return inst->length;
-			};
-
-			ns["get_array"] = [](RefDynamicArrayOfRValue* inst) {
-				return std::span(inst->m_Array, inst->length);
-			};
+			type["array"] = sol::property(&RefDynamicArrayOfRValue::array);
 		}
 
 		// RValue

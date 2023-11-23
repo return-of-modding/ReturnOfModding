@@ -599,3 +599,8 @@ const RefDynamicArrayOfRValue* RValue::asArray() const
 
 	return nullptr;
 }
+
+std::span<RValue> RefDynamicArrayOfRValue::array()
+{
+	return std::span(this->m_Array, this->length);
+}

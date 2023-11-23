@@ -161,6 +161,8 @@ struct RefDynamicArrayOfRValue : YYObjectBase
 	void* m_Owner;
 	int visited;
 	int length;
+
+	std::span<RValue> array();
 };
 
 // 136
