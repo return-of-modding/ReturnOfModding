@@ -21,7 +21,9 @@ namespace gm
 		result.pop_back();
 		result.pop_back();
 
-		LOG(INFO) << result;
+		// bandaid fix cause current debug gui code trigger it through getting layer names
+		if (result != "layer_get_all_elements() - can't find specified layer")
+			LOG(INFO) << result;
 
 		va_start(args, fmt);
 		big::g_hooking->get_original<hook_debug_console_output>()(this_, fmt, args);
