@@ -4,14 +4,15 @@
 #include "logger/exception_handler.hpp"
 #include "lua/lua_manager.hpp"
 #include "memory/byte_patch_manager.hpp"
+#include "paths/root_folder.hpp"
 #include "pointers.hpp"
 #include "threads/thread_pool.hpp"
+#include "threads/util.hpp"
 #include "version.hpp"
-#include "paths/root_folder.hpp"
 
 BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 {
-//#include "debug/debug.hpp"
+	//#include "debug/debug.hpp"
 	//big::wait_until_debugger();
 
 	using namespace big;
@@ -23,11 +24,9 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		    nullptr,
 		    0,
 		    [](PVOID) -> DWORD {
-			    auto handler = exception_handler();
+			    big::threads::suspend_all_but_one();
 
-			    HWND target_window{};
-			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
-				    std::this_thread::sleep_for(10ms);
+			    auto handler = exception_handler();
 
 			    std::filesystem::path root_folder = paths::get_project_root_folder();
 			    g_file_manager.init(root_folder);
@@ -58,6 +57,14 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    auto hooking_instance = std::make_unique<hooking>();
 			    LOG(INFO) << "Hooking initialized.";
 
+				auto lua_manager_instance = std::make_unique<lua_manager>(g_file_manager.get_project_folder("scripts"));
+			    LOG(INFO) << "Lua manager initialized.";
+
+			    big::threads::resume_all();
+
+			    HWND target_window{};
+			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
+				    std::this_thread::sleep_for(10ms);
 			    auto renderer_instance = std::make_unique<renderer>(target_window);
 			    LOG(INFO) << "Renderer initialized.";
 			    auto gui_instance = std::make_unique<gui>();
@@ -67,9 +74,6 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 				    g_hooking->enable();
 				    LOG(INFO) << "Hooking enabled.";
 			    }
-
-			    auto lua_manager_instance = std::make_unique<lua_manager>(g_file_manager.get_project_folder("scripts"));
-			    LOG(INFO) << "Lua manager initialized.";
 
 			    g_running = true;
 
