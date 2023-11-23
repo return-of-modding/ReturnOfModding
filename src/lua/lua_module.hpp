@@ -1,6 +1,5 @@
 #pragma once
 #include "lua_patch.hpp"
-#include "sol.hpp"
 #include "lua/bindings/gui_element.hpp"
 #include "module_info.hpp"
 #include <thunderstore/v1/manifest.hpp>

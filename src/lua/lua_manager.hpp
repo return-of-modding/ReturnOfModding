@@ -3,13 +3,14 @@
 #include "module_info.hpp"
 #include <rorr/gm/RValue.hpp>
 #include <rorr/gm/CCode.hpp>
+#include <rorr/gm/CInstance.hpp>
 
 namespace big
 {
 	class lua_manager
 	{
 	private:
-		std::mutex m_module_lock;
+		std::recursive_mutex m_module_lock;
 		std::vector<std::shared_ptr<lua_module>> m_modules;
 
 		std::thread m_reload_watcher_thread;
