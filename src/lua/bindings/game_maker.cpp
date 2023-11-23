@@ -1,6 +1,7 @@
 #include "game_maker.hpp"
-//#include "lua_module.hpp"
+
 #include "rorr/gm/Code_Function_GET_the_function.hpp"
+#include "rorr/gm/EVariableType.hpp"
 #include "rorr/gm/Variable_BuiltIn.hpp"
 
 #define BIND_USERTYPE(lua_variable, type_name, field_name) lua_variable[#field_name] = &type_name::field_name;
@@ -52,15 +53,68 @@ namespace lua::game_maker
 
 		// RValue
 		{
-			sol::usertype<RValue> type = state.new_usertype<RValue>("RValue", sol::constructors<RValue(), RValue(double), RValue(const char*)>());
+			sol::usertype<RValue> type = state.new_usertype<RValue>("RValue", sol::constructors<RValue(), RValue(bool), RValue(double), RValue(const char*)>());
+
+			BIND_USERTYPE(type, RValue, kind);
+
+			BIND_USERTYPE(type, RValue, real);
+			BIND_USERTYPE(type, RValue, v32);
+			BIND_USERTYPE(type, RValue, v64);
+
+			BIND_USERTYPE(type, RValue, pRefArray);
+
+			type["new_int"] = [](int value) {
+				return RValue(value);
+			};
+
+			type["string"] = sol::property([](RValue& inst) {
+				return inst.pRefString->m_thing;
+			});
+
+			type["string_ref_count"] = sol::property([](RValue& inst) {
+				return inst.pRefString->m_refCount;
+			});
 
 			BIND_USERTYPE(type, RValue, Kind);
 
-			BIND_USERTYPE(type, RValue, Real);
-			BIND_USERTYPE(type, RValue, I32);
-			BIND_USERTYPE(type, RValue, I64);
+		// RValue Kind
+		{
+			state.new_enum<RValueType>("RValueType",
+			    {
+			        {"REAL", RValueType::REAL},
+			        {"STRING", RValueType::STRING},
+			        {"ARRAY", RValueType::ARRAY},
+			        {"PTR", RValueType::PTR},
+			        {"VEC3", RValueType::VEC3},
+			        {"UNDEFINED", RValueType::UNDEFINED},
+			        {"OBJECT", RValueType::OBJECT},
+			        {"INT32", RValueType::_INT32},
+			        {"VEC4", RValueType::VEC4},
+			        {"MATRIX", RValueType::MATRIX},
+			        {"INT64", RValueType::_INT64},
+			        {"ACCESSOR", RValueType::ACCESSOR},
+			        {"JSNULL", RValueType::JSNULL},
+			        {"BOOL", RValueType::_BOOL},
+			        {"ITERATOR", RValueType::ITERATOR},
+			        {"REF", RValueType::REF},
+			        {"UNSET", RValueType::UNSET},
+			    });
+		}
 
-			type["string"] = sol::property(&RValue::get_string, &RValue::set_string);
+		// EVariableType
+		{
+			state.new_enum<EVariableType>("EVariableType",
+			    {
+			        {"SELF", EVariableType::SELF},
+			        {"OTHER", EVariableType::OTHER},
+			        {"ALL", EVariableType::ALL},
+			        {"NOONE", EVariableType::NOONE},
+			        {"GLOBAL", EVariableType::GLOBAL},
+			        {"BUILTIN", EVariableType::BUILTIN},
+			        {"LOCAL", EVariableType::LOCAL},
+			        {"STACKTOP", EVariableType::STACKTOP},
+			        {"ARGUMENT", EVariableType::ARGUMENT},
+			    });
 		}
 
 		// CInstance

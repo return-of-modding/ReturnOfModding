@@ -1,5 +1,6 @@
 #pragma once
 #include "CCode.hpp"
+#include "CInstance.hpp"
 
 namespace gm
 {

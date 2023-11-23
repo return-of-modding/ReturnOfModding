@@ -30,6 +30,8 @@ namespace big
 
 		gm::CObjectGM_AddInstance m_cobjectgm_add_instance;
 		gm::CObjectGM_RemoveInstance m_cobjectgm_remove_instance;
+
+		YYSetStr m_yysetstring;
 	};
 #pragma pack(pop)
 	static_assert(sizeof(rorr_pointers) % 8 == 0, "Pointers are not properly aligned");

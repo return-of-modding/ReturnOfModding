@@ -1,7 +1,5 @@
 #pragma once
-#include "CDynamicArray.hpp"
 #include "Code_Function_GET_the_function.hpp"
-#include "RefThing.hpp"
 #include <string/string.hpp>
 #include <lua/lua_manager.hpp>
 

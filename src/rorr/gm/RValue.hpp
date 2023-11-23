@@ -1,75 +1,262 @@
 #pragma once
-#include "RVKind.hpp"
-#include "RefThing.hpp"
-#include "CInstance.hpp"
 
-struct YYObjectBase;
+#include "YYObjectBase.hpp"
+
+#include <string>
+
+struct vec3
+{
+	float x, y, z;
+};
+
+struct vec4
+{
+	float x, y, z, w;
+};
+
+struct matrix44
+{
+	vec4 m[4];
+};
+
+constexpr int MASK_KIND_RVALUE = 0x0ffffff;
+enum RValueType : int
+{
+	REAL      = 0,
+	STRING    = 1,
+	ARRAY     = 2,
+	PTR       = 3,
+	VEC3      = 4,
+	UNDEFINED = 5,
+	OBJECT    = 6,
+	_INT32    = 7,
+	VEC4      = 8,
+	MATRIX    = 9,
+	_INT64    = 10,
+	ACCESSOR  = 11,
+	JSNULL    = 12,
+	_BOOL     = 13,
+	ITERATOR  = 14,
+	REF       = 15,
+	UNSET     = MASK_KIND_RVALUE
+};
+
+typedef YYObjectBase* (*GetCtxStackTop)(void);
+typedef void (*DetPotRoot)(YYObjectBase* _pContainer, YYObjectBase* _pObject);
+//extern GetCtxStackTop GetContextStackTop;
+//extern DetPotRoot DeterminePotentialRoot;
+
+struct RValue;
+typedef void (*FREE_RVal_Pre)(RValue* p);
+typedef void (*YYSetStr)(RValue* _pVal, const char* _pS);
+typedef void (*YYCreStr)(RValue* _pVal, const char* _pS);
+typedef char* (*YYDupStr)(const char* _pStr);
+typedef RValue* (*ARRAYLVal)(RValue* _pV, int _index);
+
+#define YYC_DELETE(a) delete a
+
+class YYObjectBase;
+template<typename T>
+struct _RefFactory
+{
+	static T Alloc(T _thing, int _size)
+	{
+		return _thing;
+	}
+	static T Create(T _thing, int& _size)
+	{
+		_size = 0;
+		return _thing;
+	}
+	static T Destroy(T _thing)
+	{
+		return _thing;
+	}
+};
 
 template<typename T>
-struct CDynamicArrayRef;
-struct RefDynamicArrayOfRValue;
+struct _RefThing
+{
+	T m_thing;
+	int m_refCount;
+	int m_size;
+
+	_RefThing(T _thing)
+	{
+		// this needs to have some sort of factory based on the type to do a duplicate
+		m_thing    = _RefFactory<T>::Create(_thing, m_size);
+		m_refCount = 0;
+		inc();
+	}
+
+	_RefThing(int _maxSize)
+	{
+		// this needs to have some sort of factory based on the type to do a duplicate
+		m_thing    = _RefFactory<T>::Alloc(m_thing, _maxSize);
+		m_size     = _maxSize;
+		m_refCount = 0;
+		inc();
+	}
+
+	~_RefThing()
+	{
+		dec();
+	}
+
+	void inc()
+	{
+		++m_refCount;
+	}
+
+	void dec()
+	{
+		--m_refCount;
+		if (m_refCount == 0)
+		{
+			// use the factory to clean it up and give us a default thing to use
+			m_thing = _RefFactory<T>::Destroy(m_thing);
+			m_size  = 0;
+
+			YYC_DELETE(this);
+		}
+	}
+
+	T get() const
+	{
+		return m_thing;
+	}
+
+	int size() const
+	{
+		return m_size;
+	}
+
+	static _RefThing<T>* assign(_RefThing<T>* _other)
+	{
+		if (_other != nullptr)
+		{
+			_other->inc();
+		}
+
+		return _other;
+	}
+	static _RefThing<T>* remove(_RefThing<T>* _other)
+	{
+		if (_other != nullptr)
+		{
+			_other->dec();
+		}
+
+		return nullptr;
+	}
+};
+
+typedef _RefThing<const char*> RefString;
+
+struct RefDynamicArrayOfRValue : YYObjectBase
+{
+	int m_refCount;
+	int m_flags; // flag set = is readonly for example
+	RValue* m_Array;
+	void* m_Owner;
+	int visited;
+	int length;
+};
+
+// 136
+static constexpr auto RefDynamicArrayOfRValue_offset_ref_count = offsetof(RefDynamicArrayOfRValue, m_refCount);
+// 144
+static constexpr auto RefDynamicArrayOfRValue_offset_array = offsetof(RefDynamicArrayOfRValue, m_Array);
+// 152
+static constexpr auto RefDynamicArrayOfRValue_offset_owner = offsetof(RefDynamicArrayOfRValue, m_Owner);
+// 164
+static constexpr auto RefDynamicArrayOfRValue_offset_length = offsetof(RefDynamicArrayOfRValue, length);
 
 #pragma pack(push, 4)
-// Base class with no overloading, just a pure RValue.
 struct RValue
 {
 	union {
-		double Real;
-		int I32;
-		long long I64;
+		// values.
+		int v32;
+		long long v64;
+		double real;
 
-		// Pointers
-		union {
-			YYObjectBase* Object;
-			CInstance* Instance;
-			RefString* String;
-			CDynamicArrayRef<RValue>* EmbeddedArray;
-			RefDynamicArrayOfRValue* RefArray;
-			void* Pointer;
-		};
+		// pointers.
+		void* ptr;
+		RefString* pRefString;
+		RefDynamicArrayOfRValue* pRefArray;
+		YYObjectBase* pObj;
+		vec4* pVec4;
+		matrix44* pMatrix44;
 	};
+	// use for flags (Hijack for Enumerable and Configurable bits in JavaScript)
+	int flags;
+	// kind of value
+	RValueType kind;
 
-	int Flags;
-	RVKind Kind;
+	void __localFree(void);
+	void __localCopy(const RValue& v);
 
-	inline RValue() noexcept(true)
-	{
-		// Just set it to unset and zero out the whole 8-byte space.
-		// Check it on https://godbolt.org/, it's true!
-		this->Kind  = VALUE_UNSET;
-		this->Flags = 0;
-		this->Real  = 0.0;
-	}
+	~RValue();
 
-	inline RValue(const double& Value) noexcept(true)
-	{
-		this->Kind  = VALUE_REAL;
-		this->Flags = 0;
-		this->Real  = Value;
-	}
+	RValue();
+	RValue(const RValue& v);
 
-	inline RValue(const char* Value) noexcept(true)
-	{
-		this->Kind   = VALUE_STRING;
-		this->Flags  = 0;
-		this->String = RefString::Alloc(Value, strlen(Value) + 1);
-	}
+	RValue(double v);
+	RValue(float v);
+	RValue(int v);
+	RValue(long long v);
+	RValue(bool v);
+	RValue(std::nullptr_t);
+	RValue(std::nullptr_t, bool undefined);
+	RValue(void* v);
+	RValue(const char* v);
+	RValue(std::string v);
+	RValue(std::wstring v);
 
-	inline RValue(const std::string& Value) noexcept(true)
-	{
-		this->Kind   = VALUE_STRING;
-		this->Flags  = 0;
-		this->String = RefString::Alloc(Value.c_str(), Value.length() + 1);
-	}
+	RValue operator-();
+	RValue operator+();
 
-	inline const char* get_string() const
-	{
-		return String->m_Thing;
-	}
+	RValue& operator=(const RValue& v);
+	RValue& operator=(double v);
+	RValue& operator=(float v);
+	RValue& operator=(int v);
+	RValue& operator=(long long v);
+	RValue& operator=(void* v);
+	RValue& operator=(bool v);
+	RValue& operator=(const char* v);
+	RValue& operator=(std::string v);
+	RValue& operator=(std::wstring v);
 
-	inline void set_string(const char* new_value)
-	{
-		this->String = RefString::Alloc(new_value, strlen(new_value) + 1);
-	}
+	RValue& operator++();
+	RValue operator++(int);
+
+	RValue& operator--();
+	RValue operator--(int);
+
+	bool operator==(const RValue& rhs) const;
+	bool operator!=(const RValue& rhs) const;
+
+	RValue* DoArrayIndex(const int _index);
+	RValue* operator[](const int _index);
+
+	std::string asString();
+	double asReal() const;
+	int asInt32() const;
+	bool asBoolean() const;
+	long long asInt64() const;
+	void* asPointer() const;
+	const RefDynamicArrayOfRValue* asArray() const;
+	bool isNumber() const;
+	bool isUnset() const;
+	bool isArray() const;
+
+	operator double() const;
+	operator int() const;
+	operator long long() const;
+	operator bool() const;
+	operator std::string();
+	operator void*() const;
 };
+
 #pragma pack(pop)

@@ -6,13 +6,10 @@
 #include <input/is_key_pressed.hpp>
 #include <lua/lua_manager.hpp>
 #include <pointers.hpp>
-#include <rorr/gm/CDynamicArray.hpp>
 #include <rorr/gm/CInstance.hpp>
 #include <rorr/gm/Code_Function_GET_the_function.hpp>
 #include <rorr/gm/EVariableType.hpp>
-#include <rorr/gm/RVKind.hpp>
 #include <rorr/gm/RValue.hpp>
-#include <rorr/gm/RefThing.hpp>
 #include <rorr/gm/Variable_BuiltIn.hpp>
 #include <rorr/gm/YYObjectBase.hpp>
 
@@ -140,65 +137,64 @@ namespace big
 
 			g_lua_manager->draw_independent_gui();
 
-			const auto mouse_x = gm::global_variable_get("mouse_x").result.Real;
-			const auto mouse_y = gm::global_variable_get("mouse_y").result.Real;
-			const auto nearest_instance = gm::call("instance_nearest", std::to_array<RValue, 3>({mouse_x, mouse_y, VAR_ALL}));
-			ImGui::Text("Cursor (%.2f, %.2f)", mouse_x, mouse_y);
-			ImGui::Separator();
-			if (nearest_instance.Kind == RVKind::VALUE_REF)
+			//if (0)
 			{
-				for (const auto& instance : gm::CInstances_active)
+				const auto mouse_x = gm::global_variable_get("mouse_x").result.real;
+				const auto mouse_y = gm::global_variable_get("mouse_y").result.real;
+				const auto nearest_instance = gm::call("instance_nearest", std::to_array<RValue, 3>({mouse_x, mouse_y, EVariableType::ALL}));
+				ImGui::Text("Cursor (%.2f, %.2f)", mouse_x, mouse_y);
+				ImGui::Separator();
+				if (nearest_instance.kind == RValueType::REF)
 				{
-					if (instance->i_id == nearest_instance.I32)
+					for (const auto& instance : gm::CInstances_active)
 					{
-						instance->imgui_dump();
+						if (instance->i_id == nearest_instance.v32)
+						{
+							instance->imgui_dump();
+							ImGui::Separator();
+
+							break;
+						}
+					}
+				}
+
+				const auto current_room      = gm::global_variable_get("room").result.real;
+				const auto current_room_name = gm::call("room_get_name", current_room);
+				ImGui::Text("Current Room: %s (%f)", current_room_name.pRefString->m_thing, current_room);
+				static int new_room{};
+				ImGui::InputInt("New Room ID", &new_room);
+				if (ImGui::Button("Goto Room"))
+				{
+					gm::call("room_goto", new_room);
+				}
+
+				if (GetAsyncKeyState(VK_F4) & 1)
+				{
+					gm::call("instance_create_depth", std::to_array<RValue, 4>({mouse_x, mouse_y, -200.0, 324 /*wisp*/}));
+				}
+
+				if (ImGui::Button("Create Survivor"))
+				{
+					const auto res = gm::call("survivor_create", std::to_array<RValue, 2>({"My", "Survivor"}));
+				}
+
+				for (size_t i = 0; i < gm::CInstances_active.size(); i++)
+				{
+					if (gm::CInstances_active[i]->object_name() == "oP")
+					{
+						gm::CInstances_active[i]->imgui_dump();
+						gm::CInstances_active[i]->imgui_dump_instance_variables();
 						ImGui::Separator();
 
 						break;
 					}
 				}
-			}
 
-			const auto current_room      = gm::global_variable_get("room").result.Real;
-			const auto current_room_name = gm::call("room_get_name", current_room);
-			ImGui::Text("Current Room: %s (%f)", current_room_name.String->m_Thing, current_room);
-			static int new_room{};
-			ImGui::InputInt("New Room ID", &new_room);
-			if (ImGui::Button("Goto Room"))
-			{
-				gm::call("room_goto", new_room);
-			}
-
-			if (GetAsyncKeyState(VK_F4) & 1)
-			{
-				gm::call("instance_create_depth", std::to_array<RValue, 4>({mouse_x, mouse_y, -200.0, 324 /*wisp*/}));
-			}
-
-			if (ImGui::Button("Create Survivor"))
-			{
-				const auto res = gm::call("survivor_create", std::to_array<RValue, 2>({"My", "Survivor"}));
-			}
-
-			if (GetAsyncKeyState(VK_F5) & 1)
-			{
-			}
-
-			for (size_t i = 0; i < gm::CInstances_active.size(); i++)
-			{
-				if (gm::CInstances_active[i]->object_name() == "oP")
+				for (const auto& instance : gm::CInstances_active)
 				{
-					gm::CInstances_active[i]->imgui_dump();
-					gm::CInstances_active[i]->imgui_dump_instance_variables();
+					instance->imgui_dump();
 					ImGui::Separator();
-
-					break;
 				}
-			}
-
-			for (const auto& instance : gm::CInstances_active)
-			{
-				instance->imgui_dump();
-				ImGui::Separator();
 			}
 
 			pop_theme_colors();

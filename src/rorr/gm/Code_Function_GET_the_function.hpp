@@ -59,7 +59,7 @@ namespace gm
 			RValue script_function_name{name.data()};
 			RValue script_function_index;
 			asset_get_index.function_ptr(&script_function_index, nullptr, nullptr, 1, &script_function_name);
-			if (script_function_index.Kind == RVKind::VALUE_REAL)
+			if (script_function_index.kind == RValueType::REAL)
 			{
 				RValue* arranged_args = (RValue*)alloca(sizeof(RValue) * (arg_count + 1));
 				arranged_args[0]      = script_function_index;

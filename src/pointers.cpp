@@ -93,9 +93,17 @@ namespace big
             {
 				g_pointers->m_rorr.m_cobjectgm_remove_instance = ptr.sub(0x19).as<gm::CObjectGM_RemoveInstance>();
             }
+        },
+        // YYSetString
+        {
+            "YYSS",
+            "48 8B FA 48 8B D9 B9 10 00 00 00",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_yysetstring = ptr.sub(0xA).as<YYSetStr>();
+            }
         }
         >(); // don't leave a trailing comma at the end
-
 		// clang-format on
 		return batch_and_hash;
 	}
