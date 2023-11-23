@@ -59,6 +59,27 @@ namespace lua::game_maker
 	{
 		auto ns = state["gm"].get_or_create<sol::table>();
 
+		// RefDynamicArrayOfRValue
+		{
+			sol::usertype<RefDynamicArrayOfRValue> type = state.new_usertype<RefDynamicArrayOfRValue>("RefDynamicArrayOfRValue");
+
+			BIND_USERTYPE(type, RefDynamicArrayOfRValue, length);
+			BIND_USERTYPE(type, RefDynamicArrayOfRValue, m_refCount);
+			BIND_USERTYPE(type, RefDynamicArrayOfRValue, m_Owner);
+			BIND_USERTYPE(type, RefDynamicArrayOfRValue, visited);
+			BIND_USERTYPE(type, RefDynamicArrayOfRValue, m_flags);
+			BIND_USERTYPE(type, RefDynamicArrayOfRValue, m_Array);
+
+			// For some reason these two cannot be instance member functions, memory get trashed/invalid??
+			ns["get_array_length"] = [](RefDynamicArrayOfRValue* inst) {
+				return inst->length;
+			};
+
+			ns["get_array"] = [](RefDynamicArrayOfRValue* inst) {
+				return std::span(inst->m_Array, inst->length);
+			};
+		}
+
 		// RValue
 		{
 			sol::usertype<RValue> type = state.new_usertype<RValue>("RValue", sol::constructors<RValue(), RValue(bool), RValue(double), RValue(const char*)>());
