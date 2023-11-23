@@ -276,8 +276,10 @@ namespace big
 
 	void lua_manager::load_all_modules()
 	{
+		// Map for lexicographical ordering.
 		std::map<std::string, module_info> module_guid_to_module_info{};
 
+		// Get all the modules from the folder.
 		for (const auto& entry : std::filesystem::recursive_directory_iterator(m_scripts_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
 		{
 			if (entry.is_regular_file() && entry.path().extension() == ".lua")
@@ -287,12 +289,14 @@ namespace big
 			}
 		}
 
+		// Get all the guids to prepare for sorting depending on their dependencies.
 		std::vector<std::string> module_guids;
 		for (const auto& [guid, info] : module_guid_to_module_info)
 		{
 			module_guids.push_back(guid);
 		}
 
+		// Sort depending on module dependencies.
 		const auto sorted_modules = topological_sort(module_guids, [&](const std::string& guid) {
 			if (module_guid_to_module_info.contains(guid))
 			{
