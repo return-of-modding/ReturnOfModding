@@ -39,6 +39,12 @@ namespace lua::game_maker
 		mdl->m_post_code_execute_callbacks.push_back(cb);
 	}
 
+	static RValue lua_gm_global_variable_get(std::string_view name)
+	{
+		const auto res = gm::global_variable_get(name);
+		return res.result;
+	}
+
 	static RValue lua_gm_call(std::string_view name, CInstance* self, CInstance* other, sol::variadic_args args)
 	{
 		return gm::call(name, self, other, parse_variadic_args(args));
@@ -183,5 +189,8 @@ namespace lua::game_maker
 		ns["post_code_execute"] = post_code_execute;
 
 		ns["call"] = sol::overload(lua_gm_call, lua_gm_call_global);
+
+		ns["global_variable_get"] = lua_gm_global_variable_get;
+		ns["global_variable_set"] = gm::global_variable_set;
 	}
 }
