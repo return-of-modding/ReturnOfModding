@@ -62,6 +62,12 @@ struct CInstance : YYObjectBase
 	const std::string& object_name() const;
 
 	RValue get(const char* variable_name);
+	bool get_bool(const char* variable_name);
+	double get_double(const char* variable_name);
+	std::string get_string(const char* variable_name);
 
 	void set(const char* variable_name, RValue& new_value);
+	void set_bool(const char* variable_name, bool new_value);
+	void set_double(const char* variable_name, double new_value);
+	void set_string(const char* variable_name, const char* new_value);
 };

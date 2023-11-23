@@ -104,7 +104,10 @@ namespace lua::game_maker
 				return inst.pRefString->m_refCount;
 			});
 
-			BIND_USERTYPE(type, RValue, Kind);
+			type["string_size"] = sol::property([](RValue& inst) {
+				return inst.pRefString->m_size;
+			});
+		}
 
 		// RValue Kind
 		{
@@ -192,11 +195,17 @@ namespace lua::game_maker
 
 			type["object_name"] = sol::property(&CInstance::object_name);
 
+			type["get"]        = &CInstance::get;
+			type["get_bool"]   = &CInstance::get_bool;
+			type["get_double"] = &CInstance::get_double;
+			type["get_string"] = &CInstance::get_string;
+
+			type["set"] = sol::overload(&CInstance::set, &CInstance::set_bool, &CInstance::set_double, &CInstance::set_string);
+
 			auto CInstance_table                = ns["CInstance"].get_or_create<sol::table>();
 			CInstance_table["instances_all"]    = &gm::CInstances_all;
 			CInstance_table["instances_active"] = &gm::CInstances_active;
 		}
-
 
 		// CCode
 		{

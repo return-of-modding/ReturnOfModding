@@ -26,8 +26,11 @@ void CInstance::imgui_dump()
 void CInstance::imgui_dump_instance_variables()
 {
 	RValue instance_variable_names = gm::call("variable_instance_get_names", i_id);
-
-	for (int i = 0; i < instance_variable_names.RefArray->length; i++)
+	ImGui::Text("Var Count: %d", instance_variable_names.pRefArray->length);
+	ImGui::Text("Ref Count: %d", instance_variable_names.pRefArray->m_refCount);
+	ImGui::Text("Flags: %d", instance_variable_names.pRefArray->m_flags);
+	ImGui::Text("Owner: %d", instance_variable_names.pRefArray->m_Owner);
+	ImGui::Text("Visited: %d", instance_variable_names.pRefArray->visited);
 	for (int i = 0; i < instance_variable_names.pRefArray->length; i++)
 	{
 		if (instance_variable_names.pRefArray->m_Array[i].kind == RValueType::STRING)
@@ -69,11 +72,74 @@ const std::string& CInstance::object_name() const
 	return dummy;
 }
 
+template <typename T>
+static T variable_instance_get(int instance_id, const char* variable_name)
+{
+	RValue res = gm::call("variable_instance_get", std::to_array<RValue, 2>({instance_id, variable_name}));
+	if constexpr (std::is_same_v<T, RValue>)
+	{
+		return res;
+	}
+
+	if constexpr (std::is_same_v<T, double>)
+	{
+		return res.asReal();
+	}
+
+	if constexpr (std::is_same_v<T, bool>)
+	{
+		return res.asBoolean();
+	}
+
+	if constexpr (std::is_same_v<T, std::string>)
+	{
+		return res.asString();
+	}
+}
+
 RValue CInstance::get(const char* variable_name)
 {
-	return {};
+	auto r = variable_instance_get<RValue>(i_id, variable_name);
+	return variable_instance_get<RValue>(i_id, variable_name);
+}
+
+bool CInstance::get_bool(const char* variable_name)
+{
+	return variable_instance_get<bool>(i_id, variable_name);
+}
+
+double CInstance::get_double(const char* variable_name)
+{
+	return variable_instance_get<double>(i_id, variable_name);
+}
+
+std::string CInstance::get_string(const char* variable_name)
+{
+	return variable_instance_get<std::string>(i_id, variable_name);
+}
+
+template<typename T>
+static void variable_instance_set(int instance_id, const char* variable_name, T& new_value)
+{
+	gm::call("variable_instance_set", std::to_array<RValue, 3>({instance_id, variable_name, new_value}));
 }
 
 void CInstance::set(const char* variable_name, RValue& new_value)
 {
+	variable_instance_set(i_id, variable_name, new_value);
+}
+
+void CInstance::set_bool(const char* variable_name, bool new_value)
+{
+	variable_instance_set(i_id, variable_name, new_value);
+}
+
+void CInstance::set_double(const char* variable_name, double new_value)
+{
+	variable_instance_set(i_id, variable_name, new_value);
+}
+
+void CInstance::set_string(const char* variable_name, const char* new_value)
+{
+	variable_instance_set(i_id, variable_name, new_value);
 }
