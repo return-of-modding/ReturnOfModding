@@ -166,14 +166,23 @@ namespace big
 		}
 	}
 
-	constexpr DWORD msvc_exception_code = 0xe06d7363;
+	// Raised by SetThreadName to notify the debugger thread names
+	constexpr DWORD SetThreadName_exception_code = 0x406D1388;
+
+	// Raised by MSVC C++ Exceptions
+	constexpr DWORD msvc_exception_code = 0xE06D7363;
 	void stack_trace::dump_cpp_exception()
 	{
 		if (m_exception_info->ExceptionRecord->ExceptionCode == msvc_exception_code)
 		{
 			m_dump
-			    << "\nC++ Exception: "
+			    << "\n\nC++ Exception: "
 			    << reinterpret_cast<const std::exception*>(m_exception_info->ExceptionRecord->ExceptionInformation[1])->what() << '\n';
+		}
+		else if (m_exception_info->ExceptionRecord->ExceptionCode == SetThreadName_exception_code)
+		{
+			m_dump = {};
+			m_dump << "SetThreadName Exception raised\n";
 		}
 	}
 
@@ -225,6 +234,11 @@ namespace big
 		if (code == msvc_exception_code)
 		{
 			return "C++ MSVC Exception";
+		}
+
+		if (code == SetThreadName_exception_code)
+		{
+			return "SetThreadName Exception";
 		}
 
 		return "UNKNOWN_EXCEPTION: CODE: " + std::to_string(code);
