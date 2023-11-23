@@ -17,6 +17,8 @@ namespace lua::game_maker
 				vec_args.push_back(arg.as<double>());
 			else if (arg.get_type() == sol::type::string)
 				vec_args.push_back(arg.as<std::string>());
+			else if (arg.get_type() == sol::type::boolean)
+				vec_args.push_back(arg.as<bool>());
 			else if (arg.get_type() == sol::type::userdata)
 				vec_args.push_back(arg.as<RValue>());
 		}
