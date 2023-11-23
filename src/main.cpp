@@ -11,6 +11,9 @@
 
 BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 {
+//#include "debug/debug.hpp"
+	//big::wait_until_debugger();
+
 	using namespace big;
 	if (reason == DLL_PROCESS_ATTACH)
 	{

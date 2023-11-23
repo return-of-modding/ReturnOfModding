@@ -137,26 +137,42 @@ namespace big
 					continue;
 				}
 				const auto module_info = get_module_by_address(addr);
-
-				if (module_info->m_base == (uint64_t)GetModuleHandle(0))
-					m_dump << module_info->m_path.filename().string() << " " << std::string_view(symbol->Name, symbol->NameLen) << " ("
-					       << module_info->m_path.filename().string() << "+" << HEX_TO_UPPER(addr - module_info->m_base) << ")";
+				if (module_info)
+				{
+					if (module_info->m_base == (uint64_t)GetModuleHandle(0))
+						m_dump << module_info->m_path.filename().string() << " "
+						       << std::string_view(symbol->Name, symbol->NameLen) << " ("
+						       << module_info->m_path.filename().string() << "+" << HEX_TO_UPPER(addr - module_info->m_base) << ")";
+					else
+						m_dump << module_info->m_path.filename().string() << " "
+						       << std::string_view(symbol->Name, symbol->NameLen);
+				}
 				else
-					m_dump << module_info->m_path.filename().string() << " " << std::string_view(symbol->Name, symbol->NameLen);
+				{
+					m_dump << "No module found for address " << HEX_TO_UPPER(addr);
+				}
 
 				continue;
 			}
 			const auto module_info = get_module_by_address(addr);
-			m_dump << module_info->m_path.filename().string() << "+" << HEX_TO_UPPER(addr - module_info->m_base) << " " << HEX_TO_UPPER(addr);
+			if (module_info)
+			{
+				m_dump << module_info->m_path.filename().string() << "+" << HEX_TO_UPPER(addr - module_info->m_base) << " " << HEX_TO_UPPER(addr);
+			}
+			else
+			{
+				m_dump << "No module found for address " << HEX_TO_UPPER(addr);
+			}
 		}
 	}
 
+	constexpr DWORD msvc_exception_code = 0xe06d7363;
 	void stack_trace::dump_cpp_exception()
 	{
-		constexpr DWORD msvc_exception_code = 0xe06d7363;
 		if (m_exception_info->ExceptionRecord->ExceptionCode == msvc_exception_code)
 		{
 			m_dump
+			    << "\nC++ Exception: "
 			    << reinterpret_cast<const std::exception*>(m_exception_info->ExceptionRecord->ExceptionInformation[1])->what() << '\n';
 		}
 	}
@@ -195,16 +211,21 @@ namespace big
 		return nullptr;
 	}
 
-	std::string stack_trace::exception_code_to_string(const DWORD code)
-	{
 #define MAP_PAIR_STRINGIFY(x) \
 	{                         \
 		x, #x                 \
 	}
-		static const std::map<DWORD, std::string> exceptions = {MAP_PAIR_STRINGIFY(EXCEPTION_ACCESS_VIOLATION), MAP_PAIR_STRINGIFY(EXCEPTION_ARRAY_BOUNDS_EXCEEDED), MAP_PAIR_STRINGIFY(EXCEPTION_DATATYPE_MISALIGNMENT), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_DENORMAL_OPERAND), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_DIVIDE_BY_ZERO), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_INEXACT_RESULT), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_INEXACT_RESULT), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_INVALID_OPERATION), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_OVERFLOW), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_STACK_CHECK), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_UNDERFLOW), MAP_PAIR_STRINGIFY(EXCEPTION_ILLEGAL_INSTRUCTION), MAP_PAIR_STRINGIFY(EXCEPTION_IN_PAGE_ERROR), MAP_PAIR_STRINGIFY(EXCEPTION_INT_DIVIDE_BY_ZERO), MAP_PAIR_STRINGIFY(EXCEPTION_INT_OVERFLOW), MAP_PAIR_STRINGIFY(EXCEPTION_INVALID_DISPOSITION), MAP_PAIR_STRINGIFY(EXCEPTION_NONCONTINUABLE_EXCEPTION), MAP_PAIR_STRINGIFY(EXCEPTION_PRIV_INSTRUCTION), MAP_PAIR_STRINGIFY(EXCEPTION_STACK_OVERFLOW), MAP_PAIR_STRINGIFY(EXCEPTION_BREAKPOINT), MAP_PAIR_STRINGIFY(EXCEPTION_SINGLE_STEP)};
+	static const std::map<DWORD, std::string> exceptions = {MAP_PAIR_STRINGIFY(EXCEPTION_ACCESS_VIOLATION), MAP_PAIR_STRINGIFY(EXCEPTION_ARRAY_BOUNDS_EXCEEDED), MAP_PAIR_STRINGIFY(EXCEPTION_DATATYPE_MISALIGNMENT), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_DENORMAL_OPERAND), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_DIVIDE_BY_ZERO), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_INEXACT_RESULT), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_INEXACT_RESULT), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_INVALID_OPERATION), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_OVERFLOW), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_STACK_CHECK), MAP_PAIR_STRINGIFY(EXCEPTION_FLT_UNDERFLOW), MAP_PAIR_STRINGIFY(EXCEPTION_ILLEGAL_INSTRUCTION), MAP_PAIR_STRINGIFY(EXCEPTION_IN_PAGE_ERROR), MAP_PAIR_STRINGIFY(EXCEPTION_INT_DIVIDE_BY_ZERO), MAP_PAIR_STRINGIFY(EXCEPTION_INT_OVERFLOW), MAP_PAIR_STRINGIFY(EXCEPTION_INVALID_DISPOSITION), MAP_PAIR_STRINGIFY(EXCEPTION_NONCONTINUABLE_EXCEPTION), MAP_PAIR_STRINGIFY(EXCEPTION_PRIV_INSTRUCTION), MAP_PAIR_STRINGIFY(EXCEPTION_STACK_OVERFLOW), MAP_PAIR_STRINGIFY(EXCEPTION_BREAKPOINT), MAP_PAIR_STRINGIFY(EXCEPTION_SINGLE_STEP)};
 
+	std::string stack_trace::exception_code_to_string(const DWORD code)
+	{
 		if (const auto& it = exceptions.find(code); it != exceptions.end())
 			return it->second;
+
+		if (code == msvc_exception_code)
+		{
+			return "C++ MSVC Exception";
+		}
 
 		return "UNKNOWN_EXCEPTION: CODE: " + std::to_string(code);
 	}
