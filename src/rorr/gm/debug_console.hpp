@@ -7,6 +7,16 @@ namespace gm
     inline void hook_debug_console_output(void* this_, const char* fmt, ...)
 	{
 		va_list args;
+
+		// bandaid fix cause current debug gui code trigger it through getting layer names
+		if (!strcmp("layer_get_all_elements() - can't find specified layer", fmt))
+		{
+			va_start(args, fmt);
+			big::g_hooking->get_original<hook_debug_console_output>()(this_, fmt, args);
+			va_end(args);
+			return;
+		}
+
 		va_start(args, fmt);
 		int size = vsnprintf(nullptr, 0, fmt, args);
 		va_end(args);
@@ -21,9 +31,7 @@ namespace gm
 		result.pop_back();
 		result.pop_back();
 
-		// bandaid fix cause current debug gui code trigger it through getting layer names
-		if (result != "layer_get_all_elements() - can't find specified layer")
-			LOG(INFO) << result;
+		LOG(INFO) << result;
 
 		va_start(args, fmt);
 		big::g_hooking->get_original<hook_debug_console_output>()(this_, fmt, args);
