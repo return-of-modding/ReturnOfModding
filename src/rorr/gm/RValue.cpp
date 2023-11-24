@@ -39,7 +39,7 @@ void RValue::__localCopy(const RValue& v)
 
 		if (this->pObj != nullptr)
 		{
-			LOG(FATAL) << "unhandled;";
+			//LOG(FATAL) << "unhandled;";
 			//YYObjectBase* pContainer = GetContextStackTop();
 			//DeterminePotentialRoot(pContainer, v.pObj);
 		}
@@ -93,7 +93,7 @@ RValue::RValue(int v)
 {
 	flags = 0;
 	kind  = _INT32;
-	v32  = v;
+	v32   = v;
 }
 
 RValue::RValue(long long v)
@@ -214,7 +214,7 @@ RValue& RValue::operator=(int v)
 {
 	__localFree();
 	kind = _INT32;
-	v32 = v;
+	v32  = v;
 	return *this;
 }
 
@@ -343,16 +343,7 @@ RValue* RValue::DoArrayIndex(const int _index)
 {
 	if ((kind & MASK_KIND_RVALUE) == ARRAY && (pRefArray != nullptr) && _index < pRefArray->length)
 	{
-		if (pRefArray->m_Owner == nullptr)
-		{
-			pRefArray->m_Owner = this;
-
-			return &pRefArray->m_Array[_index];
-		}
-		else
-		{
-			LOG(FATAL) << "unhandled";
-		}
+		return &pRefArray->m_Array[_index];
 	}
 	else
 	{
@@ -376,15 +367,12 @@ std::string RValue::asString()
 	case _INT64: return std::to_string(v64);
 	case PTR:
 	{
-		char buf[32] = {'\0'};
-		memset(buf, 0, sizeof(buf));
-		std::snprintf(buf, sizeof(buf), "%p", ptr);
-		return std::string(buf);
+		std::stringstream ss;
+		ss << HEX_TO_UPPER(ptr);
+		return ss.str();
 	}
 	case ARRAY:
 	{
-		// WARNING: A VERY VERY VERY HORRIBLE IMPLEMENTATION!!
-
 		if (this->pRefArray->m_Array == nullptr)
 			return "{ <empty array pointer> }";
 		int arrlen = this->pRefArray->length;
@@ -397,14 +385,17 @@ std::string RValue::asString()
 		for (int i = 0; i < arrlen; i++)
 		{
 			auto* elem = DoArrayIndex(i);
-			ss << '"' << i << "\": ";
-			if ((elem->kind & MASK_KIND_RVALUE) == STRING)
-				ss << '"';
-			ss << elem->asString();
-			if ((elem->kind & MASK_KIND_RVALUE) == STRING)
-				ss << '"';
-			if (i < arrlen - 1)
-				ss << ", ";
+			if (elem)
+			{
+				ss << '"' << i << "\": ";
+				if ((elem->kind & MASK_KIND_RVALUE) == STRING)
+					ss << '"';
+				ss << elem->asString();
+				if ((elem->kind & MASK_KIND_RVALUE) == STRING)
+					ss << '"';
+				if (i < arrlen - 1)
+					ss << ", ";
+			}
 		}
 		ss << " }";
 
@@ -414,7 +405,7 @@ std::string RValue::asString()
 	case UNSET: return "<unset>"; // ??????????
 	case UNDEFINED: return "<undefined>";
 	case STRING: return pRefString->get();
-	default: LOG(FATAL) << "unhandled";
+	default: return "<UNHANDLED TYPE TO STRING!>";
 	}
 
 	return "";

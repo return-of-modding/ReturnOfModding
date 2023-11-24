@@ -84,6 +84,10 @@ namespace lua::game_maker
 
 			BIND_USERTYPE(type, RValue, pRefArray);
 
+			type["tostring"] = sol::property([](RValue& inst) {
+				return inst.asString();
+			});
+
 			type["new_int"] = [](int value) {
 				return RValue(value);
 			};
