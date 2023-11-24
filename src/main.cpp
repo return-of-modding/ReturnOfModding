@@ -36,7 +36,7 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    std::srand(std::chrono::system_clock::now().time_since_epoch().count());
 
 			    LOG(INFO) << g_project_name;
-			    LOGF(INFO, "{}", version::GIT_SHA1);
+			    LOGF(INFO, "Build (GIT SHA1): {}", version::GIT_SHA1);
 
 			    auto thread_pool_instance = std::make_unique<thread_pool>();
 			    LOG(INFO) << "Thread pool initialized.";
