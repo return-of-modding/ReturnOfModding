@@ -139,7 +139,7 @@ namespace big
 
 			//if (0)
 			{
-				if (ImGui::Begin("return_of_modding"))
+				if (ImGui::Begin("Return Of Modding"))
 				{
 					const auto mouse_x = gm::global_variable_get("mouse_x").result.real;
 					const auto mouse_y = gm::global_variable_get("mouse_y").result.real;
