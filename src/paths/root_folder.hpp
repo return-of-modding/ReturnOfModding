@@ -96,6 +96,8 @@ namespace big::paths
 		{
 			root_folder = env_root_folder;
 			root_folder /= g_project_name;
+			LOG(INFO) << "Root folder set through env variable: "
+			          << reinterpret_cast<const char*>(root_folder.u8string().c_str());
 			if (!std::filesystem::exists(root_folder))
 			{
 				std::filesystem::create_directories(root_folder);
@@ -119,6 +121,8 @@ namespace big::paths
 				{
 					root_folder = result[root_folder_arg_name].as<std::string>();
 					root_folder /= g_project_name;
+					LOG(INFO) << "Root folder set through command line args: "
+					          << reinterpret_cast<const char*>(root_folder.u8string().c_str());
 					if (!std::filesystem::exists(root_folder))
 					{
 						std::filesystem::create_directories(root_folder);
@@ -139,6 +143,8 @@ namespace big::paths
 			const auto path_size = GetModuleFileNameA(nullptr, module_file_path, MAX_PATH);
 			root_folder          = std::string(module_file_path, path_size);
 			root_folder          = root_folder.parent_path() / g_project_name;
+			LOG(INFO) << "Root folder set through default (game folder): "
+			          << reinterpret_cast<const char*>(root_folder.u8string().c_str());
 			if (!std::filesystem::exists(root_folder))
 			{
 				std::filesystem::create_directories(root_folder);
