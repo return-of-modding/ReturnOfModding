@@ -9,12 +9,10 @@
 #include "threads/thread_pool.hpp"
 #include "threads/util.hpp"
 #include "version.hpp"
+//#include "debug/debug.hpp"
 
 BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 {
-	//#include "debug/debug.hpp"
-	//big::wait_until_debugger();
-
 	using namespace big;
 	if (reason == DLL_PROCESS_ATTACH)
 	{
@@ -24,7 +22,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		    nullptr,
 		    0,
 		    [](PVOID) -> DWORD {
-			    big::threads::suspend_all_but_one();
+			    threads::suspend_all_but_one();
+			    //debug::wait_until_debugger();
 
 			    auto handler = exception_handler();
 
@@ -57,9 +56,6 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    auto hooking_instance = std::make_unique<hooking>();
 			    LOG(INFO) << "Hooking initialized.";
 
-				auto lua_manager_instance = std::make_unique<lua_manager>(g_file_manager.get_project_folder("scripts"));
-			    LOG(INFO) << "Lua manager initialized.";
-
 			    big::threads::resume_all();
 
 			    HWND target_window{};
@@ -76,6 +72,9 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    }
 
 			    g_running = true;
+
+			    auto lua_manager_instance = std::make_unique<lua_manager>(g_file_manager.get_project_folder("scripts"));
+			    LOG(INFO) << "Lua manager initialized.";
 
 			    if (g_abort)
 			    {

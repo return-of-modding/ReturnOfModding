@@ -1,6 +1,6 @@
 #pragma once
 
-namespace big
+namespace big::debug
 {
 	inline void wait_until_debugger()
 	{
