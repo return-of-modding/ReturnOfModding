@@ -22,7 +22,14 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		    nullptr,
 		    0,
 		    [](PVOID) -> DWORD {
-			    threads::suspend_all_but_one();
+
+				HWND target_window{};
+			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
+				    std::this_thread::sleep_for(10ms);
+
+				std::this_thread::sleep_for(3000ms);
+
+			    //threads::suspend_all_but_one();
 			    //debug::wait_until_debugger();
 
 			    auto handler = exception_handler();
@@ -56,11 +63,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    auto hooking_instance = std::make_unique<hooking>();
 			    LOG(INFO) << "Hooking initialized.";
 
-			    big::threads::resume_all();
+			    //big::threads::resume_all();
 
-			    HWND target_window{};
-			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
-				    std::this_thread::sleep_for(10ms);
 			    auto renderer_instance = std::make_unique<renderer>(target_window);
 			    LOG(INFO) << "Renderer initialized.";
 			    auto gui_instance = std::make_unique<gui>();
