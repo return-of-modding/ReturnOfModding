@@ -1,7 +1,6 @@
 #include "lua_module.hpp"
 
 #include "bindings/game_maker.hpp"
-#include "bindings/global_table.hpp"
 #include "bindings/gui.hpp"
 #include "bindings/imgui.hpp"
 #include "bindings/log.hpp"
@@ -176,7 +175,6 @@ namespace big
 		lua::log::bind(m_state);
 		lua::memory::bind(m_state);
 		lua::gui::bind(m_state);
-		lua::global_table::bind(m_state);
 		lua::imgui::bind(m_state, m_state.globals());
 		lua::game_maker::bind(m_state);
 	}
