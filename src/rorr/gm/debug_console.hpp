@@ -9,7 +9,7 @@ namespace gm
 		va_list args;
 
 		// bandaid fix cause current debug gui code trigger it through getting layer names
-		if (!strcmp("layer_get_all_elements() - can't find specified layer", fmt))
+		if (!strcmp("layer_get_all_elements() - can't find specified layer\n", fmt))
 		{
 			va_start(args, fmt);
 			big::g_hooking->get_original<hook_debug_console_output>()(this_, fmt, args);
