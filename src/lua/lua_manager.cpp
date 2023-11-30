@@ -282,7 +282,7 @@ namespace big
 		// Get all the modules from the folder.
 		for (const auto& entry : std::filesystem::recursive_directory_iterator(m_scripts_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
 		{
-			if (entry.is_regular_file() && entry.path().filename() == "main" && entry.path().extension() == ".lua")
+			if (entry.is_regular_file() && entry.path().filename() == "main.lua")
 			{
 				const auto module_info = get_module_info(entry.path());
 				module_guid_to_module_info.insert({module_info.m_module_guid, module_info});
