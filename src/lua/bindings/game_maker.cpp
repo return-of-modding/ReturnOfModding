@@ -78,9 +78,17 @@ namespace lua::game_maker
 
 			BIND_USERTYPE(type, RValue, kind);
 
-			BIND_USERTYPE(type, RValue, real);
-			BIND_USERTYPE(type, RValue, v32);
-			BIND_USERTYPE(type, RValue, v64);
+			type["real"] = sol::property([](RValue& inst) {
+				return inst.asReal();
+			});
+
+			type["v32"] = sol::property([](RValue& inst) {
+				return inst.asInt32();
+			});
+
+			type["v64"] = sol::property([](RValue& inst) {
+				return inst.asInt64();
+			});
 
 			BIND_USERTYPE(type, RValue, pRefArray);
 

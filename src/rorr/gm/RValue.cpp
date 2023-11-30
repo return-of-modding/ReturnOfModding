@@ -325,6 +325,8 @@ bool RValue::operator==(const RValue& rhs) const
 	case _BOOL: rhsD = rhs.real; break;
 	case _INT32: rhsD = static_cast<double>(rhs.v32); break;
 	case _INT64: rhsD = static_cast<double>(rhs.v64); break;
+	case ARRAY:
+	case REF:
 	case PTR: rhsD = static_cast<double>(reinterpret_cast<uintptr_t>(ptr)); break;
 	case UNSET:
 	case UNDEFINED: rhsD = std::nan(""); break;
@@ -365,6 +367,7 @@ std::string RValue::asString()
 	case REAL: return std::to_string(real);
 	case _INT32: return std::to_string(v32);
 	case _INT64: return std::to_string(v64);
+	case REF:
 	case PTR:
 	{
 		std::stringstream ss;
@@ -421,6 +424,8 @@ double RValue::asReal() const
 	case UNSET: return std::nan("");
 	case _INT32: return static_cast<double>(v32);
 	case _INT64: return static_cast<double>(v64);
+	case ARRAY:
+	case REF:
 	case PTR: return static_cast<double>(reinterpret_cast<uintptr_t>(ptr));
 	case STRING:
 	{
@@ -447,6 +452,8 @@ int RValue::asInt32() const
 	case _BOOL: return static_cast<int>(std::floor(real));
 	case _INT32: return v32;
 	case _INT64: return static_cast<int>(v64);
+	case ARRAY: 
+	case REF: 
 	case PTR: return static_cast<int>(reinterpret_cast<intptr_t>(ptr));
 	case STRING:
 	{
@@ -473,6 +480,8 @@ bool RValue::asBoolean() const
 	case _BOOL: return real > 0.5 ? true : false;
 	case _INT32: return v32 > 0 ? true : false;
 	case _INT64: return v64 > 0L ? true : false;
+	case ARRAY: 
+	case REF: 
 	case PTR: return ptr != nullptr ? true : false;
 	case STRING:
 	{
@@ -504,6 +513,8 @@ long long RValue::asInt64() const
 	case _BOOL: return static_cast<long long>(std::floor(real));
 	case _INT32: return static_cast<long long>(v32);
 	case _INT64: return v64;
+	case ARRAY:
+	case REF:
 	case PTR: return static_cast<long long>(reinterpret_cast<uintptr_t>(ptr));
 	case STRING:
 	{
@@ -571,9 +582,13 @@ void* RValue::asPointer() const
 	case _BOOL: return reinterpret_cast<void*>(static_cast<uintptr_t>(std::floor(real)));
 	case _INT32: return reinterpret_cast<void*>(static_cast<uintptr_t>(v32));
 	case _INT64: return reinterpret_cast<void*>(static_cast<uintptr_t>(v64));
+	case ARRAY:
+	case REF:
 	case PTR: return ptr;
-	default: abort();
+	default: LOG(FATAL) << "unhandled";
 	}
+
+	return nullptr;
 }
 
 RValue::operator void*() const
