@@ -4,6 +4,11 @@ namespace gm
 {
     using debug_console_output_t = void(*)(void* this_, const char* fmt, ...);
 
+	static bool starts_with(const char* pre, const char* str)
+	{
+		return strncmp(pre, str, strlen(pre)) == 0;
+	}
+
     inline void hook_debug_console_output(void* this_, const char* fmt, ...)
 	{
 		va_list args;
@@ -31,7 +36,15 @@ namespace gm
 		result.pop_back();
 		result.pop_back();
 
-		LOG(INFO) << result;
+		if (starts_with("ERROR!!!", result.c_str()))
+		{
+			LOG(FATAL) << result;
+			Logger::FlushQueue();
+		}
+		else
+		{
+			LOG(INFO) << result;
+		}
 
 		va_start(args, fmt);
 		big::g_hooking->get_original<hook_debug_console_output>()(this_, fmt, args);
