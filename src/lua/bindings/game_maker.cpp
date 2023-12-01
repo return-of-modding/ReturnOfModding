@@ -55,6 +55,7 @@ namespace lua::game_maker
 		return gm::call(name, parse_variadic_args(args));
 	}
 
+	static std::span<RValue, 0> dummy_rvalue_array{};
 	void bind(sol::state& state)
 	{
 		auto ns = state["gm"].get_or_create<sol::table>();
@@ -76,40 +77,20 @@ namespace lua::game_maker
 		{
 			sol::usertype<RValue> type = state.new_usertype<RValue>("RValue", sol::constructors<RValue(), RValue(bool), RValue(double), RValue(const char*)>());
 
-			BIND_USERTYPE(type, RValue, kind);
+			BIND_USERTYPE(type, RValue, type);
 
-			type["real"] = sol::property([](RValue& inst) {
+			type["value"] = sol::property([](RValue& inst) {
 				return inst.asReal();
 			});
 
-			type["v32"] = sol::property([](RValue& inst) {
-				return inst.asInt32();
-			});
-
-			type["v64"] = sol::property([](RValue& inst) {
-				return inst.asInt64();
+			type["array"] = sol::property([](RValue& inst) {
+				return inst.ref_array ? inst.ref_array->array() : dummy_rvalue_array;
 			});
 
 			BIND_USERTYPE(type, RValue, pRefArray);
 
 			type["tostring"] = sol::property([](RValue& inst) {
 				return inst.asString();
-			});
-
-			type["new_int"] = [](int value) {
-				return RValue(value);
-			};
-
-			type["string"] = sol::property([](RValue& inst) {
-				return inst.pRefString->m_thing;
-			});
-
-			type["string_ref_count"] = sol::property([](RValue& inst) {
-				return inst.pRefString->m_refCount;
-			});
-
-			type["string_size"] = sol::property([](RValue& inst) {
-				return inst.pRefString->m_size;
 			});
 		}
 

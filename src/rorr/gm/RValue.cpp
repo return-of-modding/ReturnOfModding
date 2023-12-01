@@ -6,7 +6,7 @@
 
 void RValue::__localFree()
 {
-	if (((kind - 1) & (MASK_KIND_RVALUE & (~PTR))) == 0)
+	if (((type - 1) & (MASK_TYPE_RVALUE & (~PTR))) == 0)
 	{
 		//big::g_pointers->m_rorr.m_free_rvalue_pre(this);
 	}
@@ -14,37 +14,37 @@ void RValue::__localFree()
 
 void RValue::__localCopy(const RValue& v)
 {
-	this->kind  = v.kind;
+	this->type  = v.type;
 	this->flags = v.flags;
 
-	switch (v.kind & MASK_KIND_RVALUE)
+	switch (v.type & MASK_TYPE_RVALUE)
 	{
 	case _BOOL:
-	case REAL: this->real = v.real; break;
-	case _INT32: this->v32 = v.v32; break;
-	case _INT64: this->v64 = v.v64; break;
+	case REAL: this->value = v.value; break;
+	case _INT32: this->i32 = v.i32; break;
+	case _INT64: this->i64 = v.i64; break;
 	case PTR:
 	case ITERATOR: this->ptr = v.ptr; break;
 	case ARRAY:
-		this->pRefArray = v.pRefArray;
-		if (this->pRefArray != nullptr)
+		this->ref_array = v.ref_array;
+		if (this->ref_array != nullptr)
 		{
-			//++this->pRefArray->m_refCount;
-			//this->pRefArray->m_Owner = this;
+			//++this->ref_array->m_refCount;
+			//this->ref_array->m_Owner = this;
 		}
 		break;
-	case STRING: this->pRefString = RefString::assign(v.pRefString); break;
+	case STRING: this->ref_string = RefString::assign(v.ref_string); break;
 	case OBJECT:
-		this->pObj = v.pObj;
+		this->yy_object_base = v.yy_object_base;
 
-		if (this->pObj != nullptr)
+		if (this->yy_object_base != nullptr)
 		{
 			//LOG(FATAL) << "unhandled;";
 			//YYObjectBase* pContainer = GetContextStackTop();
-			//DeterminePotentialRoot(pContainer, v.pObj);
+			//DeterminePotentialRoot(pContainer, v.yy_object_base);
 		}
 		break;
-	case REF: this->v64 = v.v64; break;
+	case REF: this->i64 = v.i64; break;
 	}
 }
 
@@ -52,22 +52,22 @@ RValue::~RValue()
 {
 	__localFree();
 	flags = 0;
-	kind  = UNSET;
-	v64   = 0L;
+	type  = UNSET;
+	i64   = 0L;
 }
 
 RValue::RValue()
 {
 	flags = 0;
-	kind  = UNSET;
-	v64   = 0L;
+	type  = UNSET;
+	i64   = 0L;
 }
 
 RValue::RValue(std::nullptr_t, bool undefined)
 {
 	flags = 0;
-	kind  = UNDEFINED;
-	v64   = 0L;
+	type  = UNDEFINED;
+	i64   = 0L;
 }
 
 RValue::RValue(const RValue& v)
@@ -78,49 +78,49 @@ RValue::RValue(const RValue& v)
 RValue::RValue(double v)
 {
 	flags = 0;
-	kind  = REAL;
-	real  = v;
+	type  = REAL;
+	value  = v;
 }
 
 RValue::RValue(float v)
 {
 	flags = 0;
-	kind  = REAL;
-	real  = v;
+	type  = REAL;
+	value = v;
 }
 
 RValue::RValue(int v)
 {
 	flags = 0;
-	kind  = _INT32;
-	v32   = v;
+	type  = _INT32;
+	i32   = v;
 }
 
 RValue::RValue(long long v)
 {
 	flags = 0;
-	kind  = _INT64;
-	v64   = v;
+	type  = _INT64;
+	i64   = v;
 }
 
 RValue::RValue(bool v)
 {
 	flags = 0;
-	kind  = REAL;
-	real  = v ? 1.0 : 0.0;
+	type  = REAL;
+	value = v ? 1.0 : 0.0;
 }
 
 RValue::RValue(std::nullptr_t)
 {
 	flags = 0;
-	kind  = PTR;
+	type  = PTR;
 	ptr   = nullptr;
 }
 
 RValue::RValue(void* v)
 {
 	flags = 0;
-	kind  = PTR;
+	type  = PTR;
 	ptr   = v;
 }
 
@@ -152,14 +152,14 @@ RValue::RValue(std::wstring v)
 RValue RValue::operator-()
 {
 	RValue ret;
-	ret.kind  = kind;
+	ret.type  = type;
 	ret.flags = flags;
-	switch ((kind & MASK_KIND_RVALUE))
+	switch ((type & MASK_TYPE_RVALUE))
 	{
 	case _BOOL:
-	case REAL: ret.real = -real; break;
-	case _INT32: ret.v32 = -v32; break;
-	case _INT64: ret.v64 = -v64; break;
+	case REAL: ret.value = -value; break;
+	case _INT32: ret.i32 = -i32; break;
+	case _INT64: ret.i64 = -i64; break;
 	default: LOG(FATAL) << "unhandled";
 	}
 
@@ -179,14 +179,14 @@ RValue& RValue::operator=(const RValue& v)
 		RValue temp;
 		memcpy(&temp, &v, sizeof(RValue));
 
-		bool is_array = (temp.kind & MASK_KIND_RVALUE) == ARRAY;
+		bool is_array = (temp.type & MASK_TYPE_RVALUE) == ARRAY;
 		if (is_array)
-			++(temp.pRefArray->m_refCount);
+			++(temp.ref_array->m_refCount);
 
 		__localFree();
 
 		if (is_array)
-			--(temp.pRefArray->m_refCount);
+			--(temp.ref_array->m_refCount);
 
 		__localCopy(temp);
 	}
@@ -197,39 +197,39 @@ RValue& RValue::operator=(const RValue& v)
 RValue& RValue::operator=(double v)
 {
 	__localFree();
-	kind = REAL;
-	real = v;
+	type = REAL;
+	value =v;
 	return *this;
 }
 
 RValue& RValue::operator=(float v)
 {
 	__localFree();
-	kind = REAL;
-	real = v;
+	type = REAL;
+	value =v;
 	return *this;
 }
 
 RValue& RValue::operator=(int v)
 {
 	__localFree();
-	kind = _INT32;
-	v32  = v;
+	type = _INT32;
+	i32  = v;
 	return *this;
 }
 
 RValue& RValue::operator=(long long v)
 {
 	__localFree();
-	kind = _INT64;
-	v64  = v;
+	type = _INT64;
+	i64  = v;
 	return *this;
 }
 
 RValue& RValue::operator=(void* v)
 {
 	__localFree();
-	kind = PTR;
+	type = PTR;
 	ptr  = v;
 	return *this;
 }
@@ -237,8 +237,8 @@ RValue& RValue::operator=(void* v)
 RValue& RValue::operator=(bool v)
 {
 	__localFree();
-	kind = REAL;
-	real = v ? 1.0 : 0.0;
+	type = REAL;
+	value =v ? 1.0 : 0.0;
 	return *this;
 }
 
@@ -269,12 +269,12 @@ RValue& RValue::operator=(std::wstring v)
 
 RValue& RValue::operator++()
 {
-	switch (kind & MASK_KIND_RVALUE)
+	switch (type & MASK_TYPE_RVALUE)
 	{
 	case _BOOL:
-	case REAL: ++real; break;
-	case _INT32: ++v32; break;
-	case _INT64: ++v64; break;
+	case REAL: ++value; break;
+	case _INT32: ++i32; break;
+	case _INT64: ++i64; break;
 	case PTR: ptr = reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) + 1); break;
 	default: LOG(FATAL) << "unhandled";
 	}
@@ -290,12 +290,12 @@ RValue RValue::operator++(int)
 
 RValue& RValue::operator--()
 {
-	switch (kind & MASK_KIND_RVALUE)
+	switch (type & MASK_TYPE_RVALUE)
 	{
 	case _BOOL:
-	case REAL: --real; break;
-	case _INT32: --v32; break;
-	case _INT64: --v64; break;
+	case REAL: --value; break;
+	case _INT32: --i32; break;
+	case _INT64: --i64; break;
 	case PTR: ptr = reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) - 1); break;
 	default: LOG(FATAL) << "unhandled";
 	}
@@ -311,20 +311,20 @@ RValue RValue::operator--(int)
 
 bool RValue::operator==(const RValue& rhs) const
 {
-	int lhsType = kind & MASK_KIND_RVALUE;
-	int rhsType = rhs.kind & MASK_KIND_RVALUE;
+	int lhsType = type & MASK_TYPE_RVALUE;
+	int rhsType = rhs.type & MASK_TYPE_RVALUE;
 
 	if (lhsType == STRING && rhsType == STRING)
-		return strcmp(pRefString->get(), rhs.pRefString->get()) == 0;
+		return strcmp(ref_string->get(), rhs.ref_string->get()) == 0;
 
 	double lhsD = this->asReal();
 	double rhsD = 0.0;
 	switch (rhsType)
 	{
 	case REAL:
-	case _BOOL: rhsD = rhs.real; break;
-	case _INT32: rhsD = static_cast<double>(rhs.v32); break;
-	case _INT64: rhsD = static_cast<double>(rhs.v64); break;
+	case _BOOL: rhsD = rhs.value; break;
+	case _INT32: rhsD = static_cast<double>(rhs.i32); break;
+	case _INT64: rhsD = static_cast<double>(rhs.i64); break;
 	case ARRAY:
 	case REF:
 	case PTR: rhsD = static_cast<double>(reinterpret_cast<uintptr_t>(ptr)); break;
@@ -343,9 +343,9 @@ bool RValue::operator!=(const RValue& rhs) const
 
 RValue* RValue::DoArrayIndex(const int _index)
 {
-	if ((kind & MASK_KIND_RVALUE) == ARRAY && (pRefArray != nullptr) && _index < pRefArray->length)
+	if ((type & MASK_TYPE_RVALUE) == ARRAY && (ref_array != nullptr) && _index < ref_array->length)
 	{
-		return &pRefArray->m_Array[_index];
+		return &ref_array->m_Array[_index];
 	}
 	else
 	{
@@ -362,11 +362,11 @@ RValue* RValue::operator[](const int _index)
 
 std::string RValue::asString()
 {
-	switch (kind & MASK_KIND_RVALUE)
+	switch (type & MASK_TYPE_RVALUE)
 	{
-	case REAL: return std::to_string(real);
-	case _INT32: return std::to_string(v32);
-	case _INT64: return std::to_string(v64);
+	case REAL: return std::to_string(value);
+	case _INT32: return std::to_string(i32);
+	case _INT64: return std::to_string(i64);
 	case REF:
 	case PTR:
 	{
@@ -376,9 +376,9 @@ std::string RValue::asString()
 	}
 	case ARRAY:
 	{
-		if (this->pRefArray->m_Array == nullptr)
+		if (this->ref_array->m_Array == nullptr)
 			return "{ <empty array pointer> }";
-		int arrlen = this->pRefArray->length;
+		int arrlen = this->ref_array->length;
 		if (arrlen <= 0)
 			return "{ <empty array> }";
 
@@ -391,10 +391,10 @@ std::string RValue::asString()
 			if (elem)
 			{
 				ss << '"' << i << "\": ";
-				if ((elem->kind & MASK_KIND_RVALUE) == STRING)
+				if ((elem->type & MASK_TYPE_RVALUE) == STRING)
 					ss << '"';
 				ss << elem->asString();
-				if ((elem->kind & MASK_KIND_RVALUE) == STRING)
+				if ((elem->type & MASK_TYPE_RVALUE) == STRING)
 					ss << '"';
 				if (i < arrlen - 1)
 					ss << ", ";
@@ -404,10 +404,10 @@ std::string RValue::asString()
 
 		return ss.str();
 	}
-	case _BOOL: return (real > 0.5) ? "true" : "false";
+	case _BOOL: return (value > 0.5) ? "true" : "false";
 	case UNSET: return "<unset>"; // ??????????
 	case UNDEFINED: return "<undefined>";
-	case STRING: return pRefString->get();
+	case STRING: return ref_string->get();
 	default: return "<UNHANDLED TYPE TO STRING!>";
 	}
 
@@ -416,22 +416,22 @@ std::string RValue::asString()
 
 double RValue::asReal() const
 {
-	switch (kind & MASK_KIND_RVALUE)
+	switch (type & MASK_TYPE_RVALUE)
 	{
 	case REAL:
-	case _BOOL: return real;
+	case _BOOL: return value;
 	case UNDEFINED:
 	case UNSET: return std::nan("");
-	case _INT32: return static_cast<double>(v32);
-	case _INT64: return static_cast<double>(v64);
+	case _INT32: return static_cast<double>(i32);
+	case _INT64: return static_cast<double>(i64);
+	case REF: return (double)i32;
 	case ARRAY:
-	case REF:
 	case PTR: return static_cast<double>(reinterpret_cast<uintptr_t>(ptr));
 	case STRING:
 	{
 		try
 		{
-			return std::stod(pRefString->get());
+			return std::stod(ref_string->get());
 		}
 		catch (...)
 		{
@@ -446,20 +446,20 @@ double RValue::asReal() const
 
 int RValue::asInt32() const
 {
-	switch (kind & MASK_KIND_RVALUE)
+	switch (type & MASK_TYPE_RVALUE)
 	{
 	case REAL:
-	case _BOOL: return static_cast<int>(std::floor(real));
-	case _INT32: return v32;
-	case _INT64: return static_cast<int>(v64);
+	case _BOOL: return static_cast<int>(std::floor(value));
+	case _INT32: return i32;
+	case _INT64: return static_cast<int>(i64);
+	case REF: return i32;
 	case ARRAY: 
-	case REF: 
 	case PTR: return static_cast<int>(reinterpret_cast<intptr_t>(ptr));
 	case STRING:
 	{
 		try
 		{
-			return std::stoi(pRefString->get());
+			return std::stoi(ref_string->get());
 		}
 		catch (...)
 		{
@@ -474,20 +474,20 @@ int RValue::asInt32() const
 
 bool RValue::asBoolean() const
 {
-	switch (kind & MASK_KIND_RVALUE)
+	switch (type & MASK_TYPE_RVALUE)
 	{
 	case REAL:
-	case _BOOL: return real > 0.5 ? true : false;
-	case _INT32: return v32 > 0 ? true : false;
-	case _INT64: return v64 > 0L ? true : false;
+	case _BOOL: return value > 0.5 ? true : false;
+	case _INT32: return i32 > 0 ? true : false;
+	case _INT64: return i64 > 0L ? true : false;
+	case REF: return i32 > 0 ? true : false;
 	case ARRAY: 
-	case REF: 
 	case PTR: return ptr != nullptr ? true : false;
 	case STRING:
 	{
 		try
 		{
-			const std::string v = pRefString->get();
+			const std::string v = ref_string->get();
 			if (v == "true" || v == "True")
 				return true;
 			else if (v == "false" || v == "False")
@@ -507,20 +507,20 @@ bool RValue::asBoolean() const
 
 long long RValue::asInt64() const
 {
-	switch (kind & MASK_KIND_RVALUE)
+	switch (type & MASK_TYPE_RVALUE)
 	{
 	case REAL:
-	case _BOOL: return static_cast<long long>(std::floor(real));
-	case _INT32: return static_cast<long long>(v32);
-	case _INT64: return v64;
+	case _BOOL: return static_cast<long long>(std::floor(value));
+	case _INT32: return static_cast<long long>(i32);
+	case _INT64: return i64;
+	case REF: return static_cast<long long>(i32);
 	case ARRAY:
-	case REF:
 	case PTR: return static_cast<long long>(reinterpret_cast<uintptr_t>(ptr));
 	case STRING:
 	{
 		try
 		{
-			return std::stoll(pRefString->get());
+			return std::stoll(ref_string->get());
 		}
 		catch (...)
 		{
@@ -535,18 +535,18 @@ long long RValue::asInt64() const
 
 bool RValue::isNumber() const
 {
-	int mKind = kind & MASK_KIND_RVALUE;
-	return (mKind == REAL || mKind == _INT32 || mKind == _INT64 || mKind == _BOOL);
+	int mtype = type & MASK_TYPE_RVALUE;
+	return (mtype == REAL || mtype == _INT32 || mtype == _INT64 || mtype == _BOOL);
 }
 
 bool RValue::isUnset() const
 {
-	return kind == UNSET;
+	return type == UNSET;
 }
 
 bool RValue::isArray() const
 {
-	return (kind & MASK_KIND_RVALUE) == ARRAY;
+	return (type & MASK_TYPE_RVALUE) == ARRAY;
 }
 
 RValue::operator bool() const
@@ -576,12 +576,12 @@ RValue::operator std::string()
 
 void* RValue::asPointer() const
 {
-	switch (kind & MASK_KIND_RVALUE)
+	switch (type & MASK_TYPE_RVALUE)
 	{
 	case REAL:
-	case _BOOL: return reinterpret_cast<void*>(static_cast<uintptr_t>(std::floor(real)));
-	case _INT32: return reinterpret_cast<void*>(static_cast<uintptr_t>(v32));
-	case _INT64: return reinterpret_cast<void*>(static_cast<uintptr_t>(v64));
+	case _BOOL: return reinterpret_cast<void*>(static_cast<uintptr_t>(std::floor(value)));
+	case _INT32: return reinterpret_cast<void*>(static_cast<uintptr_t>(i32));
+	case _INT64: return reinterpret_cast<void*>(static_cast<uintptr_t>(i64));
 	case ARRAY:
 	case REF:
 	case PTR: return ptr;
@@ -598,8 +598,8 @@ RValue::operator void*() const
 
 const RefDynamicArrayOfRValue* RValue::asArray() const
 {
-	if ((kind & MASK_KIND_RVALUE) == ARRAY)
-		return pRefArray;
+	if ((type & MASK_TYPE_RVALUE) == ARRAY)
+		return ref_array;
 	else
 		LOG(FATAL) << "unhandled";
 

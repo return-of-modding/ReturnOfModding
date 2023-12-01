@@ -141,16 +141,16 @@ namespace big
 			{
 				if (ImGui::Begin("Return Of Modding"))
 				{
-					const auto mouse_x = gm::global_variable_get("mouse_x").result.real;
-					const auto mouse_y = gm::global_variable_get("mouse_y").result.real;
+					const auto mouse_x = gm::global_variable_get("mouse_x").result.value;
+					const auto mouse_y = gm::global_variable_get("mouse_y").result.value;
 					const auto nearest_instance = gm::call("instance_nearest", std::to_array<RValue, 3>({mouse_x, mouse_y, EVariableType::ALL}));
 					ImGui::Text("Cursor (%.2f, %.2f)", mouse_x, mouse_y);
 					ImGui::Separator();
-					if (nearest_instance.kind == RValueType::REF)
+					if (nearest_instance.type == RValueType::REF)
 					{
 						for (const auto& instance : gm::CInstances_active)
 						{
-							if (instance->i_id == nearest_instance.v32)
+							if (instance->i_id == nearest_instance.i32)
 							{
 								instance->imgui_dump();
 								ImGui::Separator();
@@ -160,9 +160,9 @@ namespace big
 						}
 					}
 
-					const auto current_room      = gm::global_variable_get("room").result.real;
+					const auto current_room      = gm::global_variable_get("room").result.value;
 					const auto current_room_name = gm::call("room_get_name", current_room);
-					ImGui::Text("Current Room: %s (%f)", current_room_name.pRefString->m_thing, current_room);
+					ImGui::Text("Current Room: %s (%f)", current_room_name.ref_string->m_thing, current_room);
 					static int new_room{};
 					ImGui::InputInt("New Room ID", &new_room);
 					if (ImGui::Button("Goto Room"))

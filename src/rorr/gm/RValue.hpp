@@ -19,7 +19,7 @@ struct matrix44
 	vec4 m[4];
 };
 
-constexpr int MASK_KIND_RVALUE = 0x0ffffff;
+constexpr int MASK_TYPE_RVALUE = 0x0ffffff;
 enum RValueType : int
 {
 	REAL      = 0,
@@ -38,11 +38,11 @@ enum RValueType : int
 	_BOOL     = 13,
 	ITERATOR  = 14,
 	REF       = 15,
-	UNSET     = MASK_KIND_RVALUE
+	UNSET     = MASK_TYPE_RVALUE
 };
 
 typedef YYObjectBase* (*GetCtxStackTop)(void);
-typedef void (*DetPotRoot)(YYObjectBase* _pContainer, YYObjectBase* _pObject);
+typedef void (*DetPotRoot)(YYObjectBase* _pContainer, YYObjectBase* _yy_object_baseect);
 //extern GetCtxStackTop GetContextStackTop;
 //extern DetPotRoot DeterminePotentialRoot;
 
@@ -179,22 +179,22 @@ struct RValue
 {
 	union {
 		// values.
-		int v32;
-		long long v64;
-		double real;
+		int i32;
+		long long i64;
+		double value;
 
 		// pointers.
 		void* ptr;
-		RefString* pRefString;
-		RefDynamicArrayOfRValue* pRefArray;
-		YYObjectBase* pObj;
-		vec4* pVec4;
-		matrix44* pMatrix44;
+		RefString* ref_string;
+		RefDynamicArrayOfRValue* ref_array;
+		YYObjectBase* yy_object_base;
+		vec4* vec4;
+		matrix44* matrix44;
 	};
 	// use for flags (Hijack for Enumerable and Configurable bits in JavaScript)
 	int flags;
 	// kind of value
-	RValueType kind;
+	RValueType type;
 
 	void __localFree(void);
 	void __localCopy(const RValue& v);
