@@ -1,4 +1,5 @@
 #pragma once
+#include "load_module_result.hpp"
 #include "lua/bindings/gui_element.hpp"
 #include "lua_patch.hpp"
 #include "module_info.hpp"
@@ -34,7 +35,7 @@ namespace big
 
 		const std::chrono::time_point<std::chrono::file_clock> last_write_time() const;
 
-		void load_and_call_script(sol::state& state);
+		load_module_result load_and_call_script(sol::state& state);
 
 		static std::string guid_from(sol::this_environment this_env);
 		static big::lua_module* this_from(sol::this_environment this_env);

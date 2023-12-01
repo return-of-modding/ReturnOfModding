@@ -222,13 +222,11 @@ namespace big
 		});
 	}
 
-	void lua_manager::load_module(const module_info& module_info)
+	load_module_result lua_manager::load_module(const module_info& module_info)
 	{
 		if (!std::filesystem::exists(module_info.m_path))
 		{
-			LOG(WARNING) << module_info.m_guid_with_version
-			             << " (file path: " << reinterpret_cast<const char*>(module_info.m_path.u8string().c_str()) << " does not exist in the filesystem.Not loading it.";
-			return;
+			return load_module_result::FILE_MISSING;
 		}
 
 		std::lock_guard guard(m_module_lock);
@@ -237,14 +235,18 @@ namespace big
 			if (module->guid() == module_info.m_guid)
 			{
 				LOG(WARNING) << "Module with the guid " << module_info.m_guid << " already loaded.";
-				return;
+				return load_module_result::ALREADY_LOADED;
 			}
 		}
 
-		const auto module = std::make_shared<lua_module>(module_info, m_scripts_folder, m_state);
-		module->load_and_call_script(m_state);
+		const auto module      = std::make_shared<lua_module>(module_info, m_scripts_folder, m_state);
+		const auto load_result = module->load_and_call_script(m_state);
+		if (load_result == load_module_result::SUCCESS)
+		{
+			m_modules.push_back(module);
+		}
 
-		m_modules.push_back(module);
+		return load_result;
 	}
 
 	static module_info get_module_info(const std::filesystem::path& module_path)
@@ -310,10 +312,10 @@ namespace big
 
 		const std::string guid = reinterpret_cast<const char*>(current_folder.filename().u8string().c_str());
 		return {
-		    .m_path = module_path,
-		    .m_guid = guid,
+		    .m_path              = module_path,
+		    .m_guid              = guid,
 		    .m_guid_with_version = guid + "-" + manifest.version_number,
-		    .m_manifest = manifest,
+		    .m_manifest          = manifest,
 		};
 	}
 
@@ -336,7 +338,7 @@ namespace big
 							{
 								unload_module(module->guid());
 								const auto module_info = get_module_info(module_path);
-								load_module(module_info);
+								const auto load_result = load_module(module_info);
 								break;
 							}
 						}
@@ -444,13 +446,41 @@ namespace big
 			return std::vector<std::string>();
 		});
 
+		std::unordered_set<std::string> missing_modules;
 		for (const auto& guid : sorted_modules)
 		{
-			LOG(INFO) << "guid: " << guid << " | " << module_guid_to_module_info[guid].m_manifest.name << " | "
-			          << module_guid_to_module_info[guid].m_path << " | " << module_guid_to_module_info[guid].m_guid << " | "
-			          << module_guid_to_module_info[guid].m_manifest.description;
+			bool not_missing_dependency = true;
+			for (const auto& dependency : module_guid_to_module_info[guid].m_manifest.dependencies)
+			{
+				constexpr auto mod_loader_name = "ReturnOfModding-ReturnOfModding-";
 
-			load_module(module_guid_to_module_info[guid]);
+				// The mod loader is not a lua module,
+				// but might be put as a dependency in the mod manifest,
+				// don't mark the mod as unloadable because of that.
+				if (dependency.contains(mod_loader_name))
+				{
+					continue;
+				}
+
+				if (missing_modules.contains(dependency))
+				{
+					LOG(WARNING) << "Can't load " << guid << " because it's missing " << dependency;
+					not_missing_dependency = false;
+				}
+			}
+
+			if (not_missing_dependency)
+			{
+				const auto& module_info = module_guid_to_module_info[guid];
+				const auto load_result  = load_module(module_info);
+				if (load_result == load_module_result::FILE_MISSING)
+				{
+					LOG(WARNING) << (module_info.m_guid_with_version.size() ? module_info.m_guid_with_version : guid)
+					             << " (file path: " << reinterpret_cast<const char*>(module_info.m_path.u8string().c_str()) << " does not exist in the filesystem. Not loading it.";
+
+					missing_modules.insert(guid);
+				}
+			}
 		}
 	}
 	void lua_manager::unload_all_modules()

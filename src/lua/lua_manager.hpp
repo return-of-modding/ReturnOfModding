@@ -1,4 +1,5 @@
 #pragma once
+#include "load_module_result.hpp"
 #include "lua_module.hpp"
 #include "module_info.hpp"
 
@@ -54,7 +55,7 @@ namespace big
 		std::weak_ptr<lua_module> get_module(const std::string& module_guid);
 
 		void unload_module(const std::string& module_guid);
-		void load_module(const module_info& module_info);
+		load_module_result load_module(const module_info& module_info);
 
 		void reload_changed_scripts();
 

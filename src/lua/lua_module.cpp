@@ -39,7 +39,7 @@ namespace big
 		return m_last_write_time;
 	}
 
-	void lua_module::load_and_call_script(sol::state& state)
+	load_module_result lua_module::load_and_call_script(sol::state& state)
 	{
 		auto result = state.safe_script_file(m_info.m_path.string(), m_env, &sol::script_pass_on_error, sol::load_mode::text);
 
@@ -47,6 +47,8 @@ namespace big
 		{
 			LOG(FATAL) << m_info.m_guid << " failed to load: " << result.get<sol::error>().what();
 			Logger::FlushQueue();
+
+			return load_module_result::FAILED_TO_LOAD;
 		}
 		else
 		{
@@ -54,12 +56,14 @@ namespace big
 
 			state.traverse_set("mods", m_info.m_guid, m_env);
 		}
+
+		return load_module_result::SUCCESS;
 	}
 
-	static std::string dummy_guid = "No guid (require module?)";
+	static std::string dummy_guid = "No guid (issue with a required module?)";
 	std::string lua_module::guid_from(sol::this_environment this_env)
 	{
-		sol::environment& env = this_env;
+		sol::environment& env            = this_env;
 		sol::optional<std::string> _guid = env["!guid"];
 		if (_guid)
 			return _guid.value();
@@ -68,7 +72,7 @@ namespace big
 
 	big::lua_module* lua_module::this_from(sol::this_environment this_env)
 	{
-		sol::environment& env = this_env;
+		sol::environment& env                 = this_env;
 		sol::optional<big::lua_module*> _this = env["!this"];
 		if (_this)
 			return _this.value();
