@@ -175,9 +175,11 @@ namespace big
 	{
 		if (m_exception_info->ExceptionRecord->ExceptionCode == msvc_exception_code)
 		{
-			m_dump
+			// TODO: This is disabled for now because it's not always a std::exeception in that array??
+			// Atleast this completly fail when a YY Code Error happens.
+			/*m_dump
 			    << "\n\nC++ Exception: "
-			    << reinterpret_cast<const std::exception*>(m_exception_info->ExceptionRecord->ExceptionInformation[1])->what() << '\n';
+			    << reinterpret_cast<const std::exception*>(m_exception_info->ExceptionRecord->ExceptionInformation[1])->what() << '\n';*/
 		}
 		else if (m_exception_info->ExceptionRecord->ExceptionCode == SetThreadName_exception_code)
 		{
