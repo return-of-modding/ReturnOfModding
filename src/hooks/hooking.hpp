@@ -5,7 +5,6 @@
 #include "vmt_hook.hpp"
 #include "vtable_hook.hpp"
 #include "call_hook.hpp"
-#include <logger/exception_handler.hpp>
 
 namespace big
 {
