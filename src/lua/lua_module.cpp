@@ -10,7 +10,7 @@
 namespace big
 {
 	// https://sol2.readthedocs.io/en/latest/exceptions.html
-	int exception_handler(lua_State* L, sol::optional<const std::exception&> maybe_exception, sol::string_view description)
+	    m_info(module_info),
 	{
 		// L is the lua state, which you can wrap in a state_view if necessary
 		// maybe_exception will contain exception, if it exists
@@ -83,19 +83,19 @@ namespace big
 			delete[] memory;
 	}
 
-	const std::filesystem::path& lua_module::module_path() const
+	const std::filesystem::path& lua_module::path() const
 	{
-		return m_module_path;
+		return m_info.m_path;
 	}
 
 	const ts::v1::manifest& lua_module::manifest() const
 	{
-		return m_manifest;
+		return m_info.m_manifest;
 	}
 
-	const std::string& lua_module::module_guid() const
+	const std::string& lua_module::guid() const
 	{
-		return m_module_guid;
+		return m_info.m_guid;
 	}
 
 	const std::chrono::time_point<std::chrono::file_clock> lua_module::last_write_time() const
@@ -109,10 +109,8 @@ namespace big
 
 		for (const auto& entry : std::filesystem::recursive_directory_iterator(scripts_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
 		{
-			if (!entry.is_directory())
-				continue;
-
-			scripts_search_path += entry.path().string() + "/?.lua;";
+			LOG(FATAL) << m_info.m_guid << " failed to load: " << result.get<sol::error>().what();
+			Logger::FlushQueue();
 		}
 		// Remove final ';'
 		scripts_search_path.pop_back();
@@ -136,12 +134,7 @@ namespace big
 	template<size_t N>
 	static constexpr auto not_supported_lua_function(const char (&function_name)[N])
 	{
-		return [function_name](sol::this_state state, sol::variadic_args args) {
-			big::lua_module* module = sol::state_view(state)["!this"];
-
-			LOG(FATAL) << module->module_guid() << " tried calling a currently not supported lua function: " << function_name;
-			Logger::FlushQueue();
-		};
+			LOG(INFO) << "Loaded " << m_info.m_guid;
 	}
 
 	void lua_module::sandbox_lua_loads(folder& scripts_folder)

@@ -8,7 +8,7 @@ namespace big
 {
 	class lua_module
 	{
-		sol::state m_state;
+		module_info m_info;
 
 		std::filesystem::path m_module_path;
 		ts::v1::manifest m_manifest;
