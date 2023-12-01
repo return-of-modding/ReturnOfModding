@@ -1,7 +1,8 @@
 #pragma once
-#include "lua_patch.hpp"
 #include "lua/bindings/gui_element.hpp"
+#include "lua_patch.hpp"
 #include "module_info.hpp"
+
 #include <thunderstore/v1/manifest.hpp>
 
 namespace big
@@ -10,11 +11,9 @@ namespace big
 	{
 		module_info m_info;
 
-		std::filesystem::path m_module_path;
-		ts::v1::manifest m_manifest;
-		std::string m_module_guid;
-
 		std::chrono::time_point<std::chrono::file_clock> m_last_write_time;
+
+		sol::environment m_env;
 
 	public:
 		std::vector<sol::protected_function> m_pre_code_execute_callbacks;
@@ -26,23 +25,18 @@ namespace big
 
 		std::vector<void*> m_allocated_memory;
 
-		lua_module(const module_info& module_info, folder& scripts_folder);
+		lua_module(const module_info& module_info, folder& scripts_folder, sol::state& state);
 		~lua_module();
 
-		const std::filesystem::path& module_path() const;
+		const std::filesystem::path& path() const;
 		const ts::v1::manifest& manifest() const;
-		const std::string& module_guid() const;
+		const std::string& guid() const;
 
 		const std::chrono::time_point<std::chrono::file_clock> last_write_time() const;
 
-		// used for sandboxing and limiting to only our custom search path for the lua require function
-		void set_folder_for_lua_require(folder& scripts_folder);
+		void load_and_call_script(sol::state& state);
 
-		void sandbox_lua_os_library();
-		void sandbox_lua_loads(folder& scripts_folder);
-
-		void init_lua_api(folder& scripts_folder);
-
-		void load_and_call_script();
+		static std::string guid_from(sol::this_environment this_env);
+		static big::lua_module* this_from(sol::this_environment this_env);
 	};
 }

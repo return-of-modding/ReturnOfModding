@@ -25,18 +25,18 @@ namespace lua::game_maker
 		return vec_args;
 	}
 
-	static void pre_code_execute(sol::protected_function cb, sol::this_state state)
+	static void pre_code_execute(sol::protected_function cb, sol::this_environment env)
 	{
-		big::lua_module* mdl = sol::state_view(state)["!this"];
-
-		mdl->m_pre_code_execute_callbacks.push_back(cb);
+		big::lua_module* mdl  = big::lua_module::this_from(env);
+		if (mdl)
+			mdl->m_pre_code_execute_callbacks.push_back(cb);
 	}
 
-	static void post_code_execute(sol::protected_function cb, sol::this_state state)
+	static void post_code_execute(sol::protected_function cb, sol::this_environment env)
 	{
-		big::lua_module* mdl = sol::state_view(state)["!this"];
-
-		mdl->m_post_code_execute_callbacks.push_back(cb);
+		big::lua_module* mdl = big::lua_module::this_from(env);
+		if (mdl)
+			mdl->m_post_code_execute_callbacks.push_back(cb);
 	}
 
 	static RValue lua_gm_global_variable_get(std::string_view name)
@@ -65,10 +65,6 @@ namespace lua::game_maker
 			sol::usertype<RefDynamicArrayOfRValue> type = state.new_usertype<RefDynamicArrayOfRValue>("RefDynamicArrayOfRValue");
 
 			BIND_USERTYPE(type, RefDynamicArrayOfRValue, length);
-			BIND_USERTYPE(type, RefDynamicArrayOfRValue, m_refCount);
-			BIND_USERTYPE(type, RefDynamicArrayOfRValue, m_Owner);
-			BIND_USERTYPE(type, RefDynamicArrayOfRValue, visited);
-			BIND_USERTYPE(type, RefDynamicArrayOfRValue, m_flags);
 
 			type["array"] = sol::property(&RefDynamicArrayOfRValue::array);
 		}
@@ -86,8 +82,6 @@ namespace lua::game_maker
 			type["array"] = sol::property([](RValue& inst) {
 				return inst.ref_array ? inst.ref_array->array() : dummy_rvalue_array;
 			});
-
-			BIND_USERTYPE(type, RValue, pRefArray);
 
 			type["tostring"] = sol::property([](RValue& inst) {
 				return inst.asString();

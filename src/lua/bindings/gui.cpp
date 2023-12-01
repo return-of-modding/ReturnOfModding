@@ -6,11 +6,11 @@
 
 namespace lua::gui
 {
-	static void add_independent_element(lua_State* state, std::unique_ptr<lua::gui::gui_element> element)
+	static void add_independent_element(sol::this_environment& env, std::unique_ptr<lua::gui::gui_element> element)
 	{
-		big::lua_module* module = sol::state_view(state)["!this"];
-
-		module->m_independent_gui.push_back(std::move(element));
+		big::lua_module* module = big::lua_module::this_from(env);
+		if (module)
+			module->m_independent_gui.push_back(std::move(element));
 	}
 
 	// Lua API: Function
@@ -41,7 +41,7 @@ namespace lua::gui
 	//   end
 	// end)
 	// ```
-	static lua::gui::raw_imgui_callback* add_imgui(sol::protected_function imgui_rendering, sol::this_state state)
+	static lua::gui::raw_imgui_callback* add_imgui(sol::protected_function imgui_rendering, sol::this_environment state)
 	{
 		auto element = std::make_unique<lua::gui::raw_imgui_callback>(imgui_rendering);
 		auto el_ptr  = element.get();

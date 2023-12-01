@@ -1,15 +1,18 @@
 #pragma once
 #include "lua_module.hpp"
 #include "module_info.hpp"
-#include <rorr/gm/RValue.hpp>
+
 #include <rorr/gm/CCode.hpp>
 #include <rorr/gm/CInstance.hpp>
+#include <rorr/gm/RValue.hpp>
 
 namespace big
 {
 	class lua_manager
 	{
 	private:
+		sol::state m_state;
+
 		std::recursive_mutex m_module_lock;
 		std::vector<std::shared_ptr<lua_module>> m_modules;
 
@@ -22,6 +25,13 @@ namespace big
 	public:
 		lua_manager(folder scripts_folder);
 		~lua_manager();
+
+		void init_lua_state();
+		// used for sandboxing and limiting to only our custom search path for the lua require function
+		void set_folder_for_lua_require();
+		void sandbox_lua_os_library();
+		void sandbox_lua_loads();
+		void init_lua_api();
 
 		void load_all_modules();
 		void unload_all_modules();
@@ -47,8 +57,6 @@ namespace big
 		void load_module(const module_info& module_info);
 
 		void reload_changed_scripts();
-
-		void handle_error(const sol::error& error, const sol::state_view& state);
 
 		inline void for_each_module(auto func)
 		{

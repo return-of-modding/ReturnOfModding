@@ -177,13 +177,17 @@ namespace lua::memory
 		// The original value is restored when you call the restore function on the lua_patch object.
 
 		template<typename T>
-		big::lua_patch* patch(T value, sol::this_state state)
+		big::lua_patch* patch(T value, sol::this_environment env)
 		{
-			big::lua_module* module = sol::state_view(state)["!this"];
-
 			auto patch = std::make_unique<big::lua_patch>(::memory::byte_patch::make((T*)m_address, value).get());
 			auto raw   = patch.get();
-			module->m_registered_patches.push_back(std::move(patch));
+
+			big::lua_module* module = big::lua_module::this_from(env);
+			if (module)
+			{
+				module->m_registered_patches.push_back(std::move(patch));
+			}
+
 			return raw;
 		}
 
