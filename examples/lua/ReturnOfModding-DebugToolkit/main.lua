@@ -1,4 +1,27 @@
+-- Load the module
+demo = require "./lib_debug"
+
 log.info("Initializing")
+
+demo.hello()
+
+-- for n in pairs(_G) do
+--     if n ~= nil then
+--         s = tostring(n)
+--         if s ~= nil then
+--             log.info(s)
+--         end
+--     end
+-- end
+
+-- for n in pairs(mods["ReturnOfModding-DebugToolkit"]) do
+--     if n ~= nil then
+--         s = tostring(n)
+--         if s ~= nil then
+--             log.info(s)
+--         end
+--     end
+-- end
 
 local new_room = 0
 local show_debug_overlay = true
@@ -12,15 +35,11 @@ function imgui_dump(cinstance)
 
     local sprite_index = cinstance.i_spriteindex
     local sprite_name = gm.call("sprite_get_name", sprite_index)
-    if sprite_name.kind == RValueType.STRING then
-        ImGui.Text("Sprite Name: " .. sprite_name.string .. " (Index: " .. cinstance.i_spriteindex .. ")")
-    end
+    ImGui.Text("Sprite Name: " .. sprite_name.tostring .. " (Index: " .. cinstance.i_spriteindex .. ")")
 
     local layer_id = cinstance.m_nLayerID
     local layer_name = gm.call("layer_get_name", layer_id)
-    if layer_name.kind == RValueType.STRING then
-        ImGui.Text("Layer Name: " .. layer_name.string .. " (Index: " .. cinstance.m_nLayerID .. ")")
-    end
+        ImGui.Text("Layer Name: " .. layer_name.tostring .. " (Index: " .. cinstance.m_nLayerID .. ")")
 
     ImGui.Text("Depth: " .. cinstance.i_depth .. " | " .. cinstance.i_currentdepth)
 end
@@ -29,13 +48,12 @@ local instance_var_to_input = {}
 function imgui_dump_instance_variables(cinstance)
     local instance_variable_names = gm.call("variable_instance_get_names", cinstance.i_id)
 
-    if instance_variable_names ~= nil and instance_variable_names.kind == RValueType.ARRAY and instance_variable_names.pRefArray ~= nil then
-        local ref_array = instance_variable_names.pRefArray
-        ImGui.Text("Instance Variable Count: " .. ref_array.length)
+    if instance_variable_names.type == RValueType.ARRAY then
+        local arr = instance_variable_names.array
+        ImGui.Text("Instance Variable Count: " .. #arr)
 
-        local the_array = ref_array.array
-        for i = 1, #the_array do
-            local variable_name = the_array[i].string
+        for i = 1, #arr do
+            local variable_name = arr[i].tostring
             local variable_identifier = variable_name .. cinstance.i_id
 
             if instance_var_to_input[variable_identifier] == nil then
@@ -56,15 +74,15 @@ function imgui_dump_instance_variables(cinstance)
 end
 
 gui.add_imgui(function()
-    local mouse_x = gm.global_variable_get("mouse_x").real
-    local mouse_y = gm.global_variable_get("mouse_y").real
+    local mouse_x = gm.global_variable_get("mouse_x").value
+    local mouse_y = gm.global_variable_get("mouse_y").value
     if ImGui.Begin("Instance Under Cursor") then
         local instance_nearest = gm.call("instance_nearest", mouse_x, mouse_y, EVariableType.ALL)
         ImGui.Text("Cursor (" .. mouse_x .. ", " .. mouse_y .. ")")
         ImGui.Separator()
-        if instance_nearest.kind == RValueType.REF then
+        if instance_nearest.type == RValueType.REF then
             for i = 1, #gm.CInstance.instances_active do
-                if gm.CInstance.instances_active[i].i_id == instance_nearest.v32 then
+                if gm.CInstance.instances_active[i].i_id == instance_nearest.value then
                     imgui_dump(gm.CInstance.instances_active[i])
                     ImGui.Separator()
 
@@ -76,9 +94,9 @@ gui.add_imgui(function()
     ImGui.End()
 
     if ImGui.Begin("Room") then
-        local current_room = gm.global_variable_get("room").real
+        local current_room = gm.global_variable_get("room").value
         local current_room_name = gm.call("room_get_name", current_room)
-        ImGui.Text("Current Room: " .. current_room_name.string .. "(" .. current_room .. ")")
+        ImGui.Text("Current Room: " .. current_room_name.tostring .. "(" .. current_room .. ")")
         local input_new_room, b = ImGui.InputInt("New Room ID", new_room)
         new_room = input_new_room
         if ImGui.Button("Goto Room (Can Crash You)") then
@@ -111,6 +129,12 @@ gui.add_imgui(function()
 
         if ImGui.Button("Create Survivor Entry") then
             gm.call("survivor_create", "My", "SurvivorName")
+        end
+		
+		if ImGui.Button("Test Array") then
+            local myArray = gm.call("array_create", 1, 1)
+			gm.call("array_push", myArray, 2)
+			log.info(myArray.tostring)
         end
     end
     ImGui.End()
