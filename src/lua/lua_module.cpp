@@ -39,6 +39,11 @@ namespace big
 		return m_last_write_time;
 	}
 
+	sol::environment& lua_module::env()
+	{
+		return m_env;
+	}
+
 	load_module_result lua_module::load_and_call_script(sol::state& state)
 	{
 		auto result = state.safe_script_file(m_info.m_path.string(), m_env, &sol::script_pass_on_error, sol::load_mode::text);

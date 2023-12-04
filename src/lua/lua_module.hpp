@@ -37,6 +37,8 @@ namespace big
 
 		load_module_result load_and_call_script(sol::state& state);
 
+		sol::environment& env();
+
 		static std::string guid_from(sol::this_environment this_env);
 		static big::lua_module* this_from(sol::this_environment this_env);
 	};

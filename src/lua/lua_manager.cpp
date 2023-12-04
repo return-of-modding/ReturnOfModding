@@ -115,11 +115,82 @@ namespace big
 		};
 	}
 
+	static std::optional<module_info> get_module_info(const std::filesystem::path& module_path)
+	{
+		constexpr auto thunderstore_manifest_json_file_name = "manifest.json";
+		std::filesystem::path manifest_path;
+		std::filesystem::path current_folder = module_path.parent_path();
+		std::filesystem::path root_folder    = g_file_manager.get_base_dir();
+		while (true)
+		{
+			if (current_folder == root_folder)
+			{
+				break;
+			}
+
+			const auto potential_manifest_path = current_folder / thunderstore_manifest_json_file_name;
+			if (std::filesystem::exists(potential_manifest_path))
+			{
+				manifest_path = potential_manifest_path;
+				break;
+			}
+
+			if (current_folder.has_parent_path())
+			{
+				current_folder = current_folder.parent_path();
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		if (!std::filesystem::exists(manifest_path))
+		{
+			LOG(WARNING) << "No manifest path, can't load " << reinterpret_cast<const char*>(module_path.u8string().c_str());
+			return {};
+		}
+
+		std::ifstream manifest_file(manifest_path);
+		nlohmann::json manifest_json = nlohmann::json::parse(manifest_file, nullptr, false, true);
+
+		ts::v1::manifest manifest = manifest_json.get<ts::v1::manifest>();
+
+		manifest.version = semver::version::parse(manifest.version_number);
+
+		for (const auto& dep : manifest.dependencies)
+		{
+			const auto splitted = big::string::split(dep, '-');
+			if (splitted.size() == 3)
+			{
+				// clang-format off
+				manifest.dependency_objects.push_back(
+					ts::v1::dependency
+					{
+						.team_name = splitted[0],
+						.name = splitted[1],
+						.version = semver::version::parse(splitted[2])
+					}
+				);
+				// clang-format on
+			}
+		}
+
+		const std::string guid = reinterpret_cast<const char*>(current_folder.filename().u8string().c_str());
+		return {{
+		    .m_path              = module_path,
+		    .m_guid              = guid,
+		    .m_guid_with_version = guid + "-" + manifest.version_number,
+		    .m_manifest          = manifest,
+		}};
+	}
+
 	void lua_manager::sandbox_lua_loads()
 	{
 		// That's from lua base lib, luaB
 		m_state["load"]       = not_supported_lua_function("load");
 		m_state["loadstring"] = not_supported_lua_function("loadstring");
+		m_loadfile            = m_state["loadfile"];
 		m_state["loadfile"]   = not_supported_lua_function("loadfile");
 		m_state["dofile"]     = not_supported_lua_function("dofile");
 
@@ -132,6 +203,94 @@ namespace big
 		// {searcher_preload, searcher_Lua, searcher_C, searcher_Croot, NULL};
 		m_state["package"]["searchers"][3] = not_supported_lua_function("package.searcher C");
 		m_state["package"]["searchers"][4] = not_supported_lua_function("package.searcher Croot");
+
+		// Custom require for setting environment on required modules, the setenv is based on
+		// which folder (and so ultimately package/mod) contains the required module file.
+		// If no match is found with the folder path then we just set the same env as the require caller.
+		// TODO: This is hacked together, need to be cleaned up at some point.
+		// TODO: sub folders are not supported currently.
+		m_state["require"] = [&](std::string path, sol::this_environment this_env) -> sol::object {
+			sol::environment& env = this_env;
+
+
+			// Example of a non local require (mod is requiring a file from another mod/package):
+			// require "ReturnOfModding-DebugToolkit/lib_debug"
+			const auto is_non_local_require = !path.starts_with("./") && path.contains('-') && path.contains('/');
+			std::string required_module_guid{};
+			if (is_non_local_require)
+			{
+				LOG(INFO) << "Non Local require: " << path;
+				required_module_guid = string::split(path, '/')[0];
+				if (std::ranges::count(path, '/') > 1)
+				{
+					LOG(WARNING) << "Require with sub folders are currently not supported";
+				}
+			}
+			else
+			{
+				LOG(INFO) << "Local require: " << path;
+				if (path.starts_with("./"))
+				{
+					path.erase(0, 2);
+				}
+				if (path.contains('/'))
+				{
+					LOG(WARNING) << "Require with sub folders are currently not supported";
+				}
+				required_module_guid = lua_module::guid_from(this_env);
+			}
+
+			for (const auto& entry : std::filesystem::recursive_directory_iterator(m_scripts_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
+			{
+				if (entry.path().extension() == ".lua")
+				{
+					if (entry.path().stem() == path)
+					{
+						const auto full_path_ = entry.path().u8string();
+						const auto full_path  = (char*)full_path_.c_str();
+
+						if (!strstr(full_path, required_module_guid.c_str()))
+						{
+							LOG(WARNING) << "Skipping " << full_path << " because the required module guid was not in the path " << required_module_guid;
+							continue;
+						}
+
+						const auto guid_from_path = get_module_info(full_path);
+						if (!guid_from_path)
+						{
+							LOG(WARNING) << "Couldnt get module info from path " << full_path;
+							break;
+						}
+
+						auto result = m_loadfile(full_path);
+						if (!result.valid())
+						{
+							LOG(FATAL) << "failed require: " << result.get<sol::error>().what();
+							Logger::FlushQueue();
+						}
+						else
+						{
+							for (const auto& mod : m_modules)
+							{
+								if (guid_from_path.value().m_guid == mod->guid())
+								{
+									env = mod->env();
+
+									break;
+								}
+							}
+
+							env.set_on(result);
+							return result.get<sol::protected_function>()();
+						}
+
+						break;
+					}
+				}
+			}
+
+			return {};
+		};
 
 		set_folder_for_lua_require();
 	}
@@ -249,76 +408,6 @@ namespace big
 		return load_result;
 	}
 
-	static module_info get_module_info(const std::filesystem::path& module_path)
-	{
-		constexpr auto thunderstore_manifest_json_file_name = "manifest.json";
-		std::filesystem::path manifest_path;
-		std::filesystem::path current_folder = module_path.parent_path();
-		std::filesystem::path root_folder    = g_file_manager.get_base_dir();
-		while (true)
-		{
-			if (current_folder == root_folder)
-			{
-				break;
-			}
-
-			const auto potential_manifest_path = current_folder / thunderstore_manifest_json_file_name;
-			if (std::filesystem::exists(potential_manifest_path))
-			{
-				manifest_path = potential_manifest_path;
-				break;
-			}
-
-			if (current_folder.has_parent_path())
-			{
-				current_folder = current_folder.parent_path();
-			}
-			else
-			{
-				break;
-			}
-		}
-
-		if (!std::filesystem::exists(manifest_path))
-		{
-			LOG(WARNING) << "No manifest path, can't load " << reinterpret_cast<const char*>(module_path.u8string().c_str());
-			return {};
-		}
-
-		std::ifstream manifest_file(manifest_path);
-		nlohmann::json manifest_json = nlohmann::json::parse(manifest_file, nullptr, false, true);
-
-		ts::v1::manifest manifest = manifest_json.get<ts::v1::manifest>();
-
-		manifest.version = semver::version::parse(manifest.version_number);
-
-		for (const auto& dep : manifest.dependencies)
-		{
-			const auto splitted = big::string::split(dep, '-');
-			if (splitted.size() == 3)
-			{
-				// clang-format off
-				manifest.dependency_objects.push_back(
-					ts::v1::dependency
-					{
-						.team_name = splitted[0],
-						.name = splitted[1],
-						.version = semver::version::parse(splitted[2])
-					}
-				);
-				// clang-format on
-			}
-		}
-
-		const std::string guid = reinterpret_cast<const char*>(current_folder.filename().u8string().c_str());
-		return {
-		    .m_path              = module_path,
-		    .m_guid              = guid,
-		    .m_guid_with_version = guid + "-" + manifest.version_number,
-		    .m_manifest          = manifest,
-		};
-	}
-
 	void lua_manager::reload_changed_scripts()
 	{
 		while (g_running)
@@ -338,7 +427,8 @@ namespace big
 							{
 								unload_module(module->guid());
 								const auto module_info = get_module_info(module_path);
-								const auto load_result = load_module(module_info);
+								if (module_info)
+									const auto load_result = load_module(module_info.value());
 								break;
 							}
 						}
@@ -426,7 +516,8 @@ namespace big
 			if (entry.is_regular_file() && entry.path().filename() == "main.lua")
 			{
 				const auto module_info = get_module_info(entry.path());
-				module_guid_to_module_info.insert({module_info.m_guid_with_version, module_info});
+				if (module_info)
+					module_guid_to_module_info.insert({module_info.value().m_guid_with_version, module_info.value()});
 			}
 		}
 

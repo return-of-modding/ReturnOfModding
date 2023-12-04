@@ -13,6 +13,7 @@ namespace big
 	{
 	private:
 		sol::state m_state;
+		sol::protected_function m_loadfile;
 
 		std::recursive_mutex m_module_lock;
 		std::vector<std::shared_ptr<lua_module>> m_modules;
