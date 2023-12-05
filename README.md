@@ -29,7 +29,7 @@ Return Of Modding is a modding plugin / framework for Risk of Rain Returns.
 
 If you'd like to integrate Return Of Modding into your mod manager, here are the specifications:
 
-Return Of Modding is injected into the game process using DLL hijacking (more precisely, it hijacks the Windows dynamic linked library `version.dll`), which is the same technique used by other bootstrappers such as [UnityDoorstop] (https://github.com/NeighTools/UnityDoorstop).
+Return Of Modding is injected into the game process using DLL hijacking (more precisely, it hijacks the Windows dynamic linked library `version.dll`), which is the same technique used by other bootstrappers such as [UnityDoorstop](https://github.com/NeighTools/UnityDoorstop).
 
 The root folder used by Return Of Modding (which will then be used to load mods from this folder) can be defined in several ways:
 
