@@ -51,7 +51,7 @@ jobs:
         with:
           name: binary
           path: |
-            **/version.dll
+            build/version.dll
           
       - name: Generate Build Info
         id: var
