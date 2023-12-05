@@ -33,7 +33,7 @@ jobs:
           mkdir build
           cd build
           export PATH=$(pwd)/../msvc/bin/x64:$PATH
-          CC=cl CXX=cl cmake .. \
+          CC=cl CXX=cl RC=rc cmake .. \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=$(pwd)/../install \
