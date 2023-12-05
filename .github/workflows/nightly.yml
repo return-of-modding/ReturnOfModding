@@ -24,26 +24,29 @@ jobs:
       - name: Setup MSVC environment
         run: |
           git clone --depth 1 https://github.com/mstorsjo/msvc-wine
-          cd msvc-wine
-          ./vsdownload.py --accept-license --dest $(pwd)/../msvc
-          ./install.sh $(pwd)/../msvc
+          ./msvc-wine/vsdownload.py --accept-license --dest $(pwd)/msvc
+          ./msvc-wine/install.sh $(pwd)/msvc
           
       - name: CMake Build
         run: |
-          mkdir build
-          cd build
-          export PATH=$(pwd)/../msvc/bin/x64:$PATH
-          CC=cl CXX=cl RC=rc cmake .. \
+          cmake \
             -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=$(pwd)/../install \
-            -DCMAKE_SYSTEM_NAME=Windows \
-            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
-            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
-            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
-            -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY \
-            -DCMAKE_FIND_ROOT_PATH=$(pwd)/../msvc
-          ninja
+            -B build \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D CMAKE_SYSTEM_NAME=Windows \
+            -D CMAKE_C_COMPILER=$(pwd)/msvc/bin/x64/cl \
+            -D CMAKE_CXX_COMPILER=$(pwd)/msvc/bin/x64/cl \
+            -D CMAKE_FIND_ROOT_PATH=$(pwd)/msvc/cmake/find_root/x64 \
+            -D CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+            -D CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+            -D CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+            -D CMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY \
+            -D CMAKE_C_COMPILER_WORKS=1 \
+            -D CMAKE_CXX_COMPILER_WORKS=1 \
+            -D DCMAKE_CROSSCOMPILING_EMULATOR=/usr/bin/wine \
+            
+          cmake --build ./build --config Release --target ReturnOfModding --
+          
           ls -al
 
       - name: Upload Artifact
