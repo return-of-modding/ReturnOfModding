@@ -162,5 +162,5 @@ gui.add_imgui(function()
 end)
 
 gm.pre_code_execute(function(self, other, code, result, flags)
-    -- log.info("GML Script: " .. code.i_pName .. " (" .. code.i_CodeIndex .. ")")
+    -- log.info("GML Script: " .. code.name .. " (" .. code.index .. ")")
 end)

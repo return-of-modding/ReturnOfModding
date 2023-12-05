@@ -32,13 +32,11 @@ namespace lua::gui
 	// gui.add_imgui(function()
 	//   if ImGui.Begin("My Custom Window") then
 	//       if ImGui.Button("Label") then
-	//         script.run_in_fiber(function(script)
-	//           -- call natives in there
-	//         end)
+	//         log.info("hi")
 	//       end
 	//
-	//       ImGui.End()
 	//   end
+	//   ImGui.End()
 	// end)
 	// ```
 	static lua::gui::raw_imgui_callback* add_imgui(sol::protected_function imgui_rendering, sol::this_environment state)

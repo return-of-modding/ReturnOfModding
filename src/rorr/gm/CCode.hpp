@@ -17,8 +17,8 @@ struct CCode
 	VMBuffer* i_pVM;
 	VMBuffer* i_pVMDebugInfo;
 	char* i_pCode;
-	const char* i_pName;
-	int i_CodeIndex;
+	const char* name;
+	int index;
 	YYGMLFuncs* i_pFunc;
 	bool i_watch;
 	int i_offset;

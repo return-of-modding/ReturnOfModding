@@ -187,7 +187,7 @@ end
 
 gm.pre_code_execute(function(self, other, code, result, flags)
     -- wait for startmenu_step_2 to be called to init to be safe..
-    if hooks[code.i_pName] then
-        hooks[code.i_pName](self)
+    if hooks[code.name] then
+        hooks[code.name](self)
     end
 end)
