@@ -38,3 +38,9 @@ The root folder used by Return Of Modding (which will then be used to load mods 
 - Command line argument when launching the game executable: `--return_of_modding_root_folder <CUSTOM_PATH>`
 
 - If the process environment variable is not defined, the command line arguments are checked. If neither is defined, the ReturnOfModding folder is placed in the game folder, next to the game executable.
+
+## Credits
+
+This project wouldn't have been possible without
+
+- [Archie-osu](https://github.com/Archie-osu) [with their YYToolkit project](https://github.com/AurieFramework/YYToolkit)
