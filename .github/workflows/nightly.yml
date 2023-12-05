@@ -41,6 +41,7 @@ jobs:
             -D CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
             -D CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
             -D CMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY \
+            -D CMAKE_RC_COMPILER=$(pwd)/msvc/bin/x64/rc \
             -D CMAKE_C_COMPILER_WORKS=1 \
             -D CMAKE_CXX_COMPILER_WORKS=1 \
             -D DCMAKE_CROSSCOMPILING_EMULATOR=/usr/bin/wine \
