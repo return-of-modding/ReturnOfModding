@@ -2,42 +2,54 @@
 
 Table containing functions for printing to console / log file.
 
-## Functions (3)
+## Functions (4)
 
-### `info(data)`
+### `info(args)`
 
 Logs an informational message.
 
 - **Parameters:**
-  - `data` (string)
+  - `args` (any)
 
 **Example Usage:**
 ```lua
-log.info(data)
+log.info(args)
 ```
 
-### `warning(data)`
+### `warning(args)`
 
 Logs a warning message.
 
 - **Parameters:**
-  - `data` (string)
+  - `args` (any)
 
 **Example Usage:**
 ```lua
-log.warning(data)
+log.warning(args)
 ```
 
-### `debug(data)`
+### `debug(args)`
 
 Logs a debug message.
 
 - **Parameters:**
-  - `data` (string)
+  - `args` (any)
 
 **Example Usage:**
 ```lua
-log.debug(data)
+log.debug(args)
+```
+
+### `error(args)`
+
+Logs an error message.
+
+- **Parameters:**
+  - `args` (any)
+
+**Example Usage:**
+```lua
+log.error(args)
 ```
 
 
