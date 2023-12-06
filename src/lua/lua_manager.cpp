@@ -209,7 +209,7 @@ namespace big
 		// If no match is found with the folder path then we just set the same env as the require caller.
 		// TODO: This is hacked together, need to be cleaned up at some point.
 		// TODO: sub folders are not supported currently.
-		m_state["require"] = [&](std::string path, sol::this_environment this_env) -> sol::object {
+		m_state["require"] = [&](std::string path, sol::variadic_args args, sol::this_environment this_env) -> sol::object {
 			sol::environment& env = this_env;
 
 
@@ -281,7 +281,8 @@ namespace big
 							}
 
 							env.set_on(result);
-							return result.get<sol::protected_function>()();
+
+							return result.get<sol::protected_function>()(args);
 						}
 
 						break;
