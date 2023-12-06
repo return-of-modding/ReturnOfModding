@@ -1,26 +1,20 @@
 -- Load the module
-demo = require "./lib_debug"
+demo = require("./lib_debug", 5, 2)
 
-log.info("Initializing")
+error("Initializing", nil, 5, "", 5.00000)
 
-demo.hello()
+if demo == nil then
+	log.info("lib_debug.lua is missing")
+else
+	demo.hello()
+end
 
--- for n in pairs(_G) do
---     if n ~= nil then
---         s = tostring(n)
---         if s ~= nil then
---             log.info(s)
---         end
---     end
--- end
+for n in pairs(_G) do
+	log.info(n)
+end
 
 -- for n in pairs(mods["ReturnOfModding-DebugToolkit"]) do
---     if n ~= nil then
---         s = tostring(n)
---         if s ~= nil then
---             log.info(s)
---         end
---     end
+    -- log.info(n)
 -- end
 
 local new_room = 0
@@ -162,5 +156,5 @@ gui.add_imgui(function()
 end)
 
 gm.pre_code_execute(function(self, other, code, result, flags)
-    -- log.info("GML Script: " .. code.name .. " (" .. code.index .. ")")
+	-- log.info("GML Script: " .. code.name .. " (" .. code.index .. ")")
 end)
