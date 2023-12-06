@@ -305,6 +305,11 @@ namespace big
 	{
 		m_state.set_exception_handler(exception_handler);
 		m_state.set_panic(sol::c_call<decltype(&panic_handler), &panic_handler>);
+		m_state.set_function("__error_handler", [](std::string message) -> std::string {
+			LOG(FATAL) << "A function error occured: " << message;
+			return message;
+		});
+		sol::protected_function::set_default_handler(m_state["__error_handler"]);
 
 		// clang-format off
 		m_state.open_libraries(
