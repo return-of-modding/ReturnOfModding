@@ -52,7 +52,6 @@
 #include <format>
 #include <nlohmann/json.hpp>
 #define SOL_SAFE_USERTYPE 1
-#define SOL_NO_EXCEPTIONS 1
 #include "lua/sol.hpp"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
