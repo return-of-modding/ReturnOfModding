@@ -191,11 +191,7 @@ namespace big
 	void lua_manager::sandbox_lua_loads()
 	{
 		// That's from lua base lib, luaB
-		m_state["load"]       = not_supported_lua_function("load");
-		m_state["loadstring"] = not_supported_lua_function("loadstring");
-		m_loadfile            = m_state["loadfile"];
-		m_state["loadfile"]   = not_supported_lua_function("loadfile");
-		m_state["dofile"]     = not_supported_lua_function("dofile");
+		m_loadfile = m_state["loadfile"];
 
 		// That's from lua package lib.
 		// We only allow dependencies between .lua files, no DLLs.
@@ -319,7 +315,9 @@ namespace big
 		    sol::lib::os,
 		    sol::lib::math,
 			sol::lib::table,
+			sol::lib::debug,
 			sol::lib::bit32,
+			sol::lib::io,
 			sol::lib::utf8
 		);
 		// clang-format on
