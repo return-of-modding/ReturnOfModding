@@ -135,6 +135,19 @@ namespace big
 
 			g_lua_manager->draw_independent_gui();
 
+			if (ImGui::GetIO().WantCaptureKeyboard)
+			{
+				for (double i = 0; i < 256; i++)
+				{
+					gm::call("keyboard_clear", i);
+				}
+			}
+
+			if (ImGui::GetIO().WantCaptureMouse)
+			{
+				gm::call("mouse_clear", -1);
+			}
+
 			//if (0)
 			{
 				if (ImGui::Begin("Return Of Modding"))
