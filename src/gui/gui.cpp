@@ -63,8 +63,6 @@ namespace big
 
 	void gui::dx_init()
 	{
-		return;
-
 		static auto bgColor     = ImVec4(0.09f, 0.094f, 0.129f, .9f);
 		static auto primary     = ImVec4(0.172f, 0.380f, 0.909f, 1.f);
 		static auto secondary   = ImVec4(0.443f, 0.654f, 0.819f, 1.f);
