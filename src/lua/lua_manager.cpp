@@ -381,7 +381,7 @@ namespace big
 		});
 	}
 
-	load_module_result lua_manager::load_module(const module_info& module_info)
+	load_module_result lua_manager::load_module(const module_info& module_info, bool ignore_failed_to_load)
 	{
 		if (!std::filesystem::exists(module_info.m_path))
 		{
@@ -400,7 +400,7 @@ namespace big
 
 		const auto module      = std::make_shared<lua_module>(module_info, m_scripts_folder, m_state);
 		const auto load_result = module->load_and_call_script(m_state);
-		if (load_result == load_module_result::SUCCESS)
+		if (load_result == load_module_result::SUCCESS || (load_result == load_module_result::FAILED_TO_LOAD && ignore_failed_to_load))
 		{
 			m_modules.push_back(module);
 		}
@@ -428,7 +428,7 @@ namespace big
 								unload_module(module->guid());
 								const auto module_info = get_module_info(module_path);
 								if (module_info)
-									const auto load_result = load_module(module_info.value());
+									const auto load_result = load_module(module_info.value(), true);
 								break;
 							}
 						}

@@ -56,7 +56,7 @@ namespace big
 		std::weak_ptr<lua_module> get_module(const std::string& module_guid);
 
 		void unload_module(const std::string& module_guid);
-		load_module_result load_module(const module_info& module_info);
+		load_module_result load_module(const module_info& module_info, bool ignore_failed_to_load = false);
 
 		void reload_changed_scripts();
 
