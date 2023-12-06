@@ -124,6 +124,7 @@ namespace lua::memory
 		pointer_ut["add"]         = &pointer::add;
 		pointer_ut["sub"]         = &pointer::sub;
 		pointer_ut["rip"]         = &pointer::rip;
+		pointer_ut["rip_cmp"]     = &pointer::rip_cmp;
 		pointer_ut["get_byte"]    = &pointer::get<uint8_t>;
 		pointer_ut["get_word"]    = &pointer::get<uint16_t>;
 		pointer_ut["get_dword"]   = &pointer::get<uint32_t>;

@@ -63,7 +63,7 @@ Rips the current memory address and returns a new pointer object.
 pointer = pointer:rip(offset)
 ```
 
-### `rip(offset)`
+### `rip_cmp(offset)`
 
 Rips (cmp instruction) the current memory address and returns a new pointer object.
 
@@ -75,7 +75,7 @@ Rips (cmp instruction) the current memory address and returns a new pointer obje
 
 **Example Usage:**
 ```lua
-pointer = pointer:rip(offset)
+pointer = pointer:rip_cmp(offset)
 ```
 
 ### `get_byte()`

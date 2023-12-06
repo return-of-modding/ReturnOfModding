@@ -48,7 +48,7 @@ namespace lua::memory
 
 		// Lua API: Function
 		// Class: pointer
-		// Name: rip
+		// Name: rip_cmp
 		// Param: offset: integer: offset
 		// Returns: pointer: new pointer object.
 		// Rips (cmp instruction) the current memory address and returns a new pointer object.
