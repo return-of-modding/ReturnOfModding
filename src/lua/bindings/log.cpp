@@ -11,9 +11,18 @@ namespace lua::log
 	{
 		std::stringstream data;
 
+		size_t i = 0;
+		const size_t last_element_index = args.size() - 1;
 		for (const auto& arg : args)
 		{
-			data << tostring(arg).get<const char*>() << '\t';
+			data << tostring(arg).get<const char*>();
+
+			if (i != last_element_index)
+			{
+				data << '\t';
+			}
+
+			i++;
 		}
 
 		LOG(level) << big::lua_module::guid_from(env) << ": " << data.str();
