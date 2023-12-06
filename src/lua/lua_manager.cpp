@@ -212,7 +212,6 @@ namespace big
 		m_state["require"] = [&](std::string path, sol::variadic_args args, sol::this_environment this_env) -> sol::object {
 			sol::environment& env = this_env;
 
-
 			// Example of a non local require (mod is requiring a file from another mod/package):
 			// require "ReturnOfModding-DebugToolkit/lib_debug"
 			const auto is_non_local_require = !path.starts_with("./") && path.contains('-') && path.contains('/');
@@ -270,14 +269,21 @@ namespace big
 						}
 						else
 						{
+							bool found_the_other_module = false;
 							for (const auto& mod : m_modules)
 							{
 								if (guid_from_path.value().m_guid == mod->guid())
 								{
 									env = mod->env();
+									found_the_other_module = true;
 
 									break;
 								}
+							}
+
+							if (!found_the_other_module && is_non_local_require)
+							{
+								LOG(FATAL) << "You require'd a module called " << path << " but did not have a package manifest.json level dependency on it. Which lead to the owning package of that module to not be properly init yet. Expect unstable behaviors related to your dependencies.";
 							}
 
 							env.set_on(result);
