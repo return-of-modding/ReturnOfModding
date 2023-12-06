@@ -26,7 +26,7 @@ namespace big
 
 		std::vector<void*> m_allocated_memory;
 
-		lua_module(const module_info& module_info, folder& scripts_folder, sol::state& state);
+		lua_module(const module_info& module_info, sol::state& state);
 		~lua_module();
 
 		const std::filesystem::path& path() const;
@@ -35,7 +35,7 @@ namespace big
 
 		const std::chrono::time_point<std::chrono::file_clock> last_write_time() const;
 
-		load_module_result load_and_call_script(sol::state& state);
+		load_module_result load_and_call_plugin(sol::state& state);
 
 		sol::environment& env();
 

@@ -21,7 +21,7 @@ Return Of Modding is a modding plugin / framework for Risk of Rain Returns.
 
 - Place the `main.lua` file and the `manifest.json` file in the folder you've just created.
 
-- Place the newly created folder in the `scripts` folder in the Return Of Modding root folder, called `ReturnOfModding`, so the path to your manifest.json should be something like `ReturnOfModding/scripts/ReturnOfModding-DebugToolkit/manifest.json`.
+- Place the newly created folder in the `plugins` folder in the Return Of Modding root folder, called `ReturnOfModding`, so the path to your manifest.json should be something like `ReturnOfModding/plugins/ReturnOfModding-DebugToolkit/manifest.json`.
 
 - You can check the existing `examples` in that github repository if you wanna try stuff out.
 

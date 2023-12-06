@@ -19,13 +19,15 @@ namespace big
 		std::vector<std::shared_ptr<lua_module>> m_modules;
 
 		std::thread m_reload_watcher_thread;
-		static constexpr std::chrono::seconds m_delay_between_changed_scripts_check = 3s;
-		std::chrono::high_resolution_clock::time_point m_wake_time_changed_scripts_check;
+		static constexpr std::chrono::seconds m_delay_between_changed_plugins_check = 3s;
+		std::chrono::high_resolution_clock::time_point m_wake_time_changed_plugins_check;
 
-		folder m_scripts_folder;
+		folder m_config_folder;
+		folder m_plugins_data_folder;
+		folder m_plugins_folder;
 
 	public:
-		lua_manager(folder scripts_folder);
+		lua_manager(folder config_folder, folder plugins_data_folder, folder plugins_folder);
 		~lua_manager();
 
 		void init_lua_state();
@@ -43,9 +45,19 @@ namespace big
 			return m_modules.size();
 		}
 
-		inline const folder& get_scripts_folder() const
+		inline const folder& get_config_folder() const
 		{
-			return m_scripts_folder;
+			return m_config_folder;
+		}
+
+		inline const folder& get_plugins_data_folder() const
+		{
+			return m_plugins_data_folder;
+		}
+
+		inline const folder& get_plugins_folder() const
+		{
+			return m_plugins_folder;
 		}
 
 		void pre_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags);
@@ -58,7 +70,7 @@ namespace big
 		void unload_module(const std::string& module_guid);
 		load_module_result load_module(const module_info& module_info, bool ignore_failed_to_load = false);
 
-		void reload_changed_scripts();
+		void reload_changed_plugins();
 
 		inline void for_each_module(auto func)
 		{

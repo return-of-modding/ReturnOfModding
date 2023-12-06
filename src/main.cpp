@@ -22,12 +22,11 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		    nullptr,
 		    0,
 		    [](PVOID) -> DWORD {
-
-				HWND target_window{};
+			    HWND target_window{};
 			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
 				    std::this_thread::sleep_for(10ms);
 
-				std::this_thread::sleep_for(3000ms);
+			    std::this_thread::sleep_for(3000ms);
 
 			    //threads::suspend_all_but_one();
 			    //debug::wait_until_debugger();
@@ -77,7 +76,9 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 			    g_running = true;
 
-			    auto lua_manager_instance = std::make_unique<lua_manager>(g_file_manager.get_project_folder("scripts"));
+			    auto lua_manager_instance = std::make_unique<lua_manager>(g_file_manager.get_project_folder("config"),
+			        g_file_manager.get_project_folder("plugins_data"),
+			        g_file_manager.get_project_folder("plugins"));
 			    LOG(INFO) << "Lua manager initialized.";
 
 			    if (g_abort)

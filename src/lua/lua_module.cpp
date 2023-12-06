@@ -4,7 +4,7 @@
 
 namespace big
 {
-	lua_module::lua_module(const module_info& module_info, folder& scripts_folder, sol::state& state) :
+	lua_module::lua_module(const module_info& module_info, sol::state& state) :
 	    m_info(module_info),
 	    m_last_write_time(std::filesystem::last_write_time(module_info.m_path)),
 	    m_env(state, sol::create, state.globals())
@@ -44,7 +44,7 @@ namespace big
 		return m_env;
 	}
 
-	load_module_result lua_module::load_and_call_script(sol::state& state)
+	load_module_result lua_module::load_and_call_plugin(sol::state& state)
 	{
 		auto result = state.safe_script_file(m_info.m_path.string(), m_env, &sol::script_pass_on_error, sol::load_mode::text);
 

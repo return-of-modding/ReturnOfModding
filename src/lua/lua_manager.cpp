@@ -5,6 +5,7 @@
 #include "bindings/imgui.hpp"
 #include "bindings/log.hpp"
 #include "bindings/memory.hpp"
+#include "bindings/paths.hpp"
 #include "file_manager/file_manager.hpp"
 #include "string/string.hpp"
 
@@ -13,11 +14,13 @@
 
 namespace big
 {
-	lua_manager::lua_manager(folder scripts_folder) :
+	lua_manager::lua_manager(folder config_folder, folder plugins_data_folder, folder plugins_folder) :
 	    m_state(),
-	    m_scripts_folder(scripts_folder)
+	    m_config_folder(config_folder),
+	    m_plugins_data_folder(plugins_data_folder),
+	    m_plugins_folder(plugins_folder)
 	{
-		m_wake_time_changed_scripts_check = std::chrono::high_resolution_clock::now() + m_delay_between_changed_scripts_check;
+		m_wake_time_changed_plugins_check = std::chrono::high_resolution_clock::now() + m_delay_between_changed_plugins_check;
 
 		g_lua_manager = this;
 
@@ -26,7 +29,7 @@ namespace big
 		load_all_modules();
 
 		m_reload_watcher_thread = std::thread([&]() {
-			reload_changed_scripts();
+			reload_changed_plugins();
 		});
 	}
 
@@ -78,19 +81,19 @@ namespace big
 
 	void lua_manager::set_folder_for_lua_require()
 	{
-		std::string scripts_search_path = m_scripts_folder.get_path().string() + "/?.lua;";
+		std::string plugins_search_path = m_plugins_folder.get_path().string() + "/?.lua;";
 
-		for (const auto& entry : std::filesystem::recursive_directory_iterator(m_scripts_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
+		for (const auto& entry : std::filesystem::recursive_directory_iterator(m_plugins_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
 		{
 			if (!entry.is_directory())
 				continue;
 
-			scripts_search_path += entry.path().string() + "/?.lua;";
+			plugins_search_path += entry.path().string() + "/?.lua;";
 		}
 		// Remove final ';'
-		scripts_search_path.pop_back();
+		plugins_search_path.pop_back();
 
-		m_state["package"]["path"] = scripts_search_path;
+		m_state["package"]["path"] = plugins_search_path;
 	}
 
 	void lua_manager::sandbox_lua_os_library()
@@ -239,7 +242,7 @@ namespace big
 				required_module_guid = lua_module::guid_from(this_env);
 			}
 
-			for (const auto& entry : std::filesystem::recursive_directory_iterator(m_scripts_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
+			for (const auto& entry : std::filesystem::recursive_directory_iterator(m_plugins_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
 			{
 				if (entry.path().extension() == ".lua")
 				{
@@ -274,7 +277,7 @@ namespace big
 							{
 								if (guid_from_path.value().m_guid == mod->guid())
 								{
-									env = mod->env();
+									env                    = mod->env();
 									found_the_other_module = true;
 
 									break;
@@ -333,6 +336,7 @@ namespace big
 	{
 		m_state.create_named_table("mods");
 
+		lua::paths::bind(m_state);
 		lua::log::bind(m_state);
 		lua::memory::bind(m_state);
 		lua::gui::bind(m_state);
@@ -405,8 +409,8 @@ namespace big
 			}
 		}
 
-		const auto module      = std::make_shared<lua_module>(module_info, m_scripts_folder, m_state);
-		const auto load_result = module->load_and_call_script(m_state);
+		const auto module      = std::make_shared<lua_module>(module_info, m_state);
+		const auto load_result = module->load_and_call_plugin(m_state);
 		if (load_result == load_module_result::SUCCESS || (load_result == load_module_result::FAILED_TO_LOAD && ignore_failed_to_load))
 		{
 			m_modules.push_back(module);
@@ -415,13 +419,13 @@ namespace big
 		return load_result;
 	}
 
-	void lua_manager::reload_changed_scripts()
+	void lua_manager::reload_changed_plugins()
 	{
 		while (g_running)
 		{
-			if (m_wake_time_changed_scripts_check <= std::chrono::high_resolution_clock::now())
+			if (m_wake_time_changed_plugins_check <= std::chrono::high_resolution_clock::now())
 			{
-				for (const auto& entry : std::filesystem::recursive_directory_iterator(m_scripts_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
+				for (const auto& entry : std::filesystem::recursive_directory_iterator(m_plugins_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
 				{
 					if (entry.is_regular_file())
 					{
@@ -442,7 +446,7 @@ namespace big
 					}
 				}
 
-				m_wake_time_changed_scripts_check = std::chrono::high_resolution_clock::now() + m_delay_between_changed_scripts_check;
+				m_wake_time_changed_plugins_check = std::chrono::high_resolution_clock::now() + m_delay_between_changed_plugins_check;
 			}
 		}
 	}
@@ -518,7 +522,7 @@ namespace big
 		std::map<std::string, module_info> module_guid_to_module_info{};
 
 		// Get all the modules from the folder.
-		for (const auto& entry : std::filesystem::recursive_directory_iterator(m_scripts_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
+		for (const auto& entry : std::filesystem::recursive_directory_iterator(m_plugins_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
 		{
 			if (entry.is_regular_file() && entry.path().filename() == "main.lua")
 			{
