@@ -540,11 +540,11 @@ namespace big
 		std::unordered_set<std::string> missing_modules;
 		for (const auto& guid : sorted_modules)
 		{
+			constexpr auto mod_loader_name = "ReturnOfModding-ReturnOfModding-";
+
 			bool not_missing_dependency = true;
 			for (const auto& dependency : module_guid_to_module_info[guid].m_manifest.dependencies)
 			{
-				constexpr auto mod_loader_name = "ReturnOfModding-ReturnOfModding-";
-
 				// The mod loader is not a lua module,
 				// but might be put as a dependency in the mod manifest,
 				// don't mark the mod as unloadable because of that.
@@ -566,8 +566,10 @@ namespace big
 				const auto load_result  = load_module(module_info);
 				if (load_result == load_module_result::FILE_MISSING)
 				{
-					LOG(WARNING) << (module_info.m_guid_with_version.size() ? module_info.m_guid_with_version : guid)
-					             << " (file path: " << reinterpret_cast<const char*>(module_info.m_path.u8string().c_str()) << " does not exist in the filesystem. Not loading it.";
+					// Don't log the fact that the mod loader failed to load, it's normal (see comment above)
+					if (!guid.contains(mod_loader_name))
+						LOG(WARNING) << (module_info.m_guid_with_version.size() ? module_info.m_guid_with_version : guid)
+						             << " (file path: " << reinterpret_cast<const char*>(module_info.m_path.u8string().c_str()) << " does not exist in the filesystem. Not loading it.";
 
 					missing_modules.insert(guid);
 				}
