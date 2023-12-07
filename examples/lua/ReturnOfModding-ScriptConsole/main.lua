@@ -1,5 +1,7 @@
 log.info("Script Console Startup...")
 
+local mod_guid = "ReturnOfModding-ScriptConsole"
+
 local _repl_globals = {}
 for k,v in pairs(_G) do
 	_repl_globals[k] = v
@@ -243,7 +245,7 @@ end
 autoexec_name = "autoexec"
 
 function get_data_path()
-	return paths.plugins_data(_ENV)
+	return paths.plugins_data() .. '/' .. mod_guid
 end
 
 function run_console_command(mi, text)
@@ -309,6 +311,7 @@ console_commands = {
 		for _, arg in vararg(...) do
 			text = text .. ' ' .. arg
 		end
+		text = text:sub(2,#text)
 		return mlog.echo(mi,true,text)
 	end,
 	lua = function(mi,...)
@@ -316,6 +319,7 @@ console_commands = {
 		for _, arg in vararg(...) do
 			text = text .. ' ' .. arg
 		end
+		text = text:sub(2,#text)
 		if #text == 0 then
 			return mlog.error(mi, true, "cannot execute empty lua code.")
 		end
@@ -369,6 +373,7 @@ console_commands = {
 		for _, arg in vararg(...) do
 			text = text .. ' ' .. arg
 		end
+		text = text:sub(2,#text)
 		if #text == 0 then
 			local msg = console_aliases[name]
 			if not msg then 
