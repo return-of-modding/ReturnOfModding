@@ -301,15 +301,32 @@ namespace big
 		set_folder_for_lua_require();
 	}
 
+	static int traceback_error_handler(lua_State* L)
+	{
+		std::string msg = "An unknown error has triggered the error handler";
+		sol::optional<sol::string_view> maybetopmsg = sol::stack::unqualified_check_get<sol::string_view>(L, 1, &sol::no_panic);
+		if (maybetopmsg)
+		{
+			const sol::string_view& topmsg = maybetopmsg.value();
+			msg.assign(topmsg.data(), topmsg.size());
+		}
+		luaL_traceback(L, L, msg.c_str(), 1);
+		sol::optional<sol::string_view> maybetraceback = sol::stack::unqualified_check_get<sol::string_view>(L, -1, &sol::no_panic);
+		if (maybetraceback)
+		{
+			const sol::string_view& traceback = maybetraceback.value();
+			msg.assign(traceback.data(), traceback.size());
+		}
+		LOG(FATAL) << msg;
+		return sol::stack::push(L, msg);
+	}
+
 	void lua_manager::init_lua_state()
 	{
 		m_state.set_exception_handler(exception_handler);
 		m_state.set_panic(sol::c_call<decltype(&panic_handler), &panic_handler>);
-		m_state.set_function("__error_handler", [](std::string message) -> std::string {
-			LOG(FATAL) << "A function error occured: " << message;
-			return message;
-		});
-		sol::protected_function::set_default_handler(m_state["__error_handler"]);
+		lua_CFunction traceback_function = sol::c_call<decltype(&traceback_error_handler), &traceback_error_handler>;
+		sol::protected_function::set_default_handler(sol::object(m_state.lua_state(), sol::in_place, traceback_function));
 
 		// clang-format off
 		m_state.open_libraries(
