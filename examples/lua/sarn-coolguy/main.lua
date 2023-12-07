@@ -3,15 +3,13 @@ hooks["gml_Object_oStartMenu_Step_2"] = function() -- mod init
     log.info("initialising coolguy...")
     hooks["gml_Object_oStartMenu_Step_2"] = nil
 
-    local call = gm.call
-
     -- for interacting with global arrays as classes
     local function gm_array_class(name, fields)
         local mt = {
             __index = function(t, k)
                 local f = fields[k]
                 if f then
-                    local v = call("array_get", t.arr, f.idx)
+                    local v = gm.array_get(t.arr, f.idx)
                     if f.typ then
                         return v[f.typ]
                     elseif f.decode then
@@ -27,7 +25,7 @@ hooks["gml_Object_oStartMenu_Step_2"] = function() -- mod init
                     if f.readonly then
                         error("field " .. k .. " is read-only")
                     else
-                        return call("array_set", t.arr, f.idx, v)
+                        return gm.array_set(t.arr, f.idx, v)
                     end
                 else
                     error("setting unknown field " .. k)
@@ -35,8 +33,8 @@ hooks["gml_Object_oStartMenu_Step_2"] = function() -- mod init
             end
         }
         return function(id)
-            local class_arr = call("variable_global_get", name)
-            local arr = call("array_get", class_arr, id)
+            local class_arr = gm.variable_global_get(name)
+            local arr = gm.array_get(class_arr, id)
             return setmetatable({id = id, arr = arr}, mt)
         end
     end
@@ -45,9 +43,9 @@ hooks["gml_Object_oStartMenu_Step_2"] = function() -- mod init
     local skill_family_mt = {
         __index = function(t,k)
             if type(k) == "number" then
-                if k >= 0 and k < call("array_length", t.elements).value then
+                if k >= 0 and k < gm.array_length(t.elements).value then
                     -- the actual value in the array is a 'skill loadout unlockable' object, so get the skill id from it
-                    return Skill(tonumber(call("variable_struct_get", call("array_get", t.elements, k), "skill_id").tostring))
+                    return Skill(gm.variable_struct_get(gm.array_get(t.elements, k), "skill_id").value)
                 end
             end
             return nil
@@ -55,7 +53,7 @@ hooks["gml_Object_oStartMenu_Step_2"] = function() -- mod init
     }
     local function wrap_skill_family(struct_loadout_family)
         -- too lazy to write a proper wrapper right now sorry
-        local elements = call("variable_struct_get", struct_loadout_family, "elements")
+        local elements = gm.variable_struct_get(struct_loadout_family, "elements")
         return setmetatable({struct=struct_loadout_family, elements=elements}, skill_family_mt)
     end
     Skill = gm_array_class("class_skill", {
@@ -88,7 +86,7 @@ hooks["gml_Object_oStartMenu_Step_2"] = function() -- mod init
     local language_map
     local function language_register(d, root)
         if language_map == nil then
-            language_map = gm.call("variable_global_get", "_language_map").value
+            language_map = gm.variable_global_get("_language_map").value
         end
         if root == nil then
             root = ""
@@ -106,26 +104,26 @@ hooks["gml_Object_oStartMenu_Step_2"] = function() -- mod init
             if type(v) == "table" then
                 language_register(v, key)
             else
-                call("ds_map_set", language_map, key, tostring(v))
+                gm.ds_map_set(language_map, key, tostring(v))
                 --log.info(key .. ": " .. tostring(v))
             end
         end
     end
 
-    local coolguy_id = call("survivor_create", "coolguymod", "coolguy").value
+    local coolguy_id = gm.survivor_create("coolguymod", "coolguy").value
     local coolguy = Survivor(coolguy_id)
 
     -- configure properties
-    coolguy.sprite_loadout = call("asset_get_index", "sSelectCommando_PAL4")
-    coolguy.sprite_portrait = call("asset_get_index", "sCommandoPortrait_PAL4")
-    coolguy.sprite_portrait_small = call("asset_get_index", "sCommandoPortraitSmall_PAL5")
+    coolguy.sprite_loadout = gm.asset_get_index("sSelectCommando_PAL4")
+    coolguy.sprite_portrait = gm.asset_get_index("sCommandoPortrait_PAL4")
+    coolguy.sprite_portrait_small = gm.asset_get_index("sCommandoPortraitSmall_PAL5")
     coolguy.primary_color = 0x70D19D -- gamemaker uses BBGGRR colour
 
     -- configure skills
-    coolguy.skill_family_z[0].sprite = call("asset_get_index", "sMobSkills")
-    coolguy.skill_family_x[0].sprite = call("asset_get_index", "sMobSkills")
-    coolguy.skill_family_c[0].sprite = call("asset_get_index", "sMobSkills")
-    coolguy.skill_family_v[0].sprite = call("asset_get_index", "sMobSkills")
+    coolguy.skill_family_z[0].sprite = gm.asset_get_index("sMobSkills")
+    coolguy.skill_family_x[0].sprite = gm.asset_get_index("sMobSkills")
+    coolguy.skill_family_c[0].sprite = gm.asset_get_index("sMobSkills")
+    coolguy.skill_family_v[0].sprite = gm.asset_get_index("sMobSkills")
 
     -- set up strings
     language_register{
@@ -161,19 +159,19 @@ hooks["gml_Object_oStartMenu_Step_2"] = function() -- mod init
     -- can't hook into game callbacks yet, so this will do
     hooks["gml_Object_oP_Step_2"] = function(p)
         local id = p.i_id
-        if call("variable_instance_get", id, "class").value == coolguy_id then
+        if gm.variable_instance_get(id, "class").value == coolguy_id then
             -- do coolguy stuff
-            if call("variable_instance_get", id, "local_client_is_authority").value > 0.5 then -- don't call if this isn't our player
+            if gm.variable_instance_get(id, "local_client_is_authority").value > 0.5 then -- don't call if this isn't our player
                 -- spawn a hitbox
-                call("_mod_attack_fire_explosion",
+                gm._mod_attack_fire_explosion(
                     id, -- owner
-                    call("variable_instance_get", id, "x"),
-                    call("variable_instance_get", id, "y"),
+                    gm.variable_instance_get(id, "x"),
+                    gm.variable_instance_get(id, "y"),
                     40, 32, -- width / height
                     -- 0.05, -- damage
                     400.05, -- damage
-                    -1, --call("asset_get_index", "sLoaderExplode"), -- explosion sprite
-                    call("asset_get_index", "sSparks14"), -- sparks sprite
+                    -1, --gm.asset_get_index("sLoaderExplode"), -- explosion sprite
+                    gm.asset_get_index("sSparks14"), -- sparks sprite
                     1) -- procs?
             end
         end

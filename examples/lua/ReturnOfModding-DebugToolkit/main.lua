@@ -3,15 +3,11 @@ demo = require("./lib_debug", 5, 2)
 
 error("Initializing", nil, 5, "", 5.00000)
 
-if demo == nil then
-	log.info("lib_debug.lua is missing")
-else
-	demo.hello()
-end
+demo.hello()
 
-for n in pairs(_G) do
-	log.info(n)
-end
+-- for n in pairs(_G) do
+-- 	log.info(n)
+-- end
 
 -- for n in pairs(mods["ReturnOfModding-DebugToolkit"]) do
     -- log.info(n)
@@ -28,11 +24,11 @@ function imgui_dump(cinstance)
     ImGui.Text("Object Name: " .. cinstance.object_name .. " (Index: " .. cinstance.i_objectindex .. ")")
 
     local sprite_index = cinstance.i_spriteindex
-    local sprite_name = gm.call("sprite_get_name", sprite_index)
+    local sprite_name = gm.sprite_get_name(sprite_index)
     ImGui.Text("Sprite Name: " .. sprite_name.tostring .. " (Index: " .. cinstance.i_spriteindex .. ")")
 
     local layer_id = cinstance.m_nLayerID
-    local layer_name = gm.call("layer_get_name", layer_id)
+    local layer_name = gm.layer_get_name(layer_id)
         ImGui.Text("Layer Name: " .. layer_name.tostring .. " (Index: " .. cinstance.m_nLayerID .. ")")
 
     ImGui.Text("Depth: " .. cinstance.i_depth .. " | " .. cinstance.i_currentdepth)
@@ -40,7 +36,7 @@ end
 
 local instance_var_to_input = {}
 function imgui_dump_instance_variables(cinstance)
-    local instance_variable_names = gm.call("variable_instance_get_names", cinstance.i_id)
+    local instance_variable_names = gm.variable_instance_get_names(cinstance.i_id)
 
     if instance_variable_names.type == RValueType.ARRAY then
         local arr = instance_variable_names.array
@@ -51,7 +47,7 @@ function imgui_dump_instance_variables(cinstance)
             local variable_identifier = variable_name .. cinstance.i_id
 
             if instance_var_to_input[variable_identifier] == nil then
-                instance_var_to_input[variable_identifier] = gm.call("variable_instance_get", cinstance.i_id, variable_name).tostring
+                instance_var_to_input[variable_identifier] = gm.variable_instance_get(cinstance.i_id, variable_name).tostring
             end
 
             local new_text_value, res = ImGui.InputText(variable_name .. "##input_text" .. variable_identifier, instance_var_to_input[variable_identifier], 256)
@@ -60,7 +56,7 @@ function imgui_dump_instance_variables(cinstance)
             if ImGui.Button("Save##btn" .. variable_identifier) then
                 local new_value = tonumber(new_text_value)
                 if new_value ~= nil then
-                    gm.call("variable_instance_set", cinstance.i_id, variable_name, new_value)
+                    gm.variable_instance_set(cinstance.i_id, variable_name, new_value)
                 end
             end
         end
@@ -68,10 +64,10 @@ function imgui_dump_instance_variables(cinstance)
 end
 
 gui.add_imgui(function()
-    local mouse_x = gm.global_variable_get("mouse_x").value
-    local mouse_y = gm.global_variable_get("mouse_y").value
+    local mouse_x = gm.variable_global_get("mouse_x").value
+    local mouse_y = gm.variable_global_get("mouse_y").value
     if ImGui.Begin("Instance Under Cursor") then
-        local instance_nearest = gm.call("instance_nearest", mouse_x, mouse_y, EVariableType.ALL)
+        local instance_nearest = gm.instance_nearest(mouse_x, mouse_y, EVariableType.ALL)
         ImGui.Text("Cursor (" .. mouse_x .. ", " .. mouse_y .. ")")
         ImGui.Separator()
         if instance_nearest.type == RValueType.REF then
@@ -88,27 +84,32 @@ gui.add_imgui(function()
     ImGui.End()
 
     if ImGui.Begin("Room") then
-        local current_room = gm.global_variable_get("room").value
-        local current_room_name = gm.call("room_get_name", current_room)
-        ImGui.Text("Current Room: " .. current_room_name.tostring .. "(" .. current_room .. ")")
+        local current_room = gm.variable_global_get("room").value
+        local current_room_name = gm.room_get_name(current_room).tostring
+        ImGui.Text("Current Room: " .. current_room_name .. "(" .. current_room .. ")")
         local input_new_room, b = ImGui.InputInt("New Room ID", new_room)
         new_room = input_new_room
         if ImGui.Button("Goto Room (Can Crash You)") then
-            gm.call("room_goto", new_room)
+            gm.room_goto(new_room)
         end
     end
     ImGui.End()
 
     if ImGui.Begin("Misc") then
+        if ImGui.Button("Lua Error On Purpose") then
+            local ab= 5
+            ab(10)
+        end
+
         if ImGui.Button("Show/Hide GameMaker Debug Overlay") then
-            gm.call("show_debug_overlay", show_debug_overlay)
+            gm.show_debug_overlay(show_debug_overlay)
             show_debug_overlay = not show_debug_overlay
         end
 
         if ImGui.Button("Spawn Wisp") then
             local depth = -200.0
             local wisp_object_index = 324
-            gm.call("instance_create_depth", mouse_x, mouse_y, depth, wisp_object_index)
+            gm.instance_create_depth(mouse_x, mouse_y, depth, wisp_object_index)
         end
 
         if ImGui.Button("Dump Sprite") then
@@ -116,18 +117,18 @@ gui.add_imgui(function()
             -- https://manual.yoyogames.com/GameMaker_Language/GML_Reference/Asset_Management/Sprites/Sprite_Manipulation/sprite_duplicate.htm
             -- https://manual.yoyogames.com/GameMaker_Language/GML_Reference/Asset_Management/Sprites/Sprite_Manipulation/sprite_save.htm
 
-            local sprite_var = gm.call("sprite_duplicate", 858)
-            gm.call("sprite_save", sprite_var, 0, "wisp.png")
+            local sprite_var = gm.sprite_duplicate(858)
+            gm.sprite_save(sprite_var, 0, "wisp.png")
             -- This will save into %appdata%/Risk_of_Rain_Returns/wisp.png
         end
 
         if ImGui.Button("Create Survivor Entry") then
-            gm.call("survivor_create", "My", "SurvivorName")
+            gm.survivor_create("My", "SurvivorName")
         end
 		
 		if ImGui.Button("Test Array") then
-            local myArray = gm.call("array_create", 1, 1)
-			gm.call("array_push", myArray, 2)
+            local myArray = gm.array_create(1, 1)
+			gm.array_push(myArray, 2)
 			log.info(myArray.tostring)
         end
     end
