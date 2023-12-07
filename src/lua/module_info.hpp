@@ -6,6 +6,7 @@ namespace big
 	struct module_info
 	{
 		std::filesystem::path m_path{};
+		std::filesystem::path m_folder_path{};
 		std::string m_guid{};
 		std::string m_guid_with_version{};
 		ts::v1::manifest m_manifest{};

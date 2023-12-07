@@ -182,6 +182,7 @@ namespace big
 		const std::string guid = reinterpret_cast<const char*>(current_folder.filename().u8string().c_str());
 		return {{
 		    .m_path              = module_path,
+		    .m_folder_path       = current_folder,
 		    .m_guid              = guid,
 		    .m_guid_with_version = guid + "-" + manifest.version_number,
 		    .m_manifest          = manifest,

@@ -9,7 +9,47 @@ namespace big
 	    m_last_write_time(std::filesystem::last_write_time(module_info.m_path)),
 	    m_env(state, sol::create, state.globals())
 	{
+		// Lua API: Table
+		// Name: _ENV - Plugin Specific Global Table
+		// Each mod/plugin have their own global table containing helpers, such as:
+		// - Their own guid
+		// - Path to their own folder inside `plugins_data`
+		// - Path to their own folder inside `plugins`
+		// You can access other mods helpers through the `mods[OTHER_MOD_GUID]` table.
+		// **Example Usage:**
+		// ```lua
+		// print(_ENV["!guid"])
+		//
+		// for n in pairs(mods[_ENV["!guid"]]) do
+		//     log.info(n)
+		// end
+		// ```
+
+		// Lua API: Field
+		// Table: _ENV - Plugin Specific Global Table
+		// Field: !guid: string
+		// Guid of the mod.
 		m_env["!guid"] = m_info.m_guid;
+
+		// Lua API: Field
+		// Table: _ENV - Plugin Specific Global Table
+		// Field: !plugins_data_mod_folder_path: string
+		// Path to the mod folder inside `plugins_data`
+		auto plugins_data_mod_folder_path = g_file_manager.get_project_folder("plugins_data").get_path() / m_info.m_guid;
+		auto plugins_data_mod_folder_path_string =
+		    std::string(reinterpret_cast<const char*>(plugins_data_mod_folder_path.u8string().c_str()));
+		m_env["!plugins_data_mod_folder_path"] = plugins_data_mod_folder_path_string;
+
+		// Lua API: Field
+		// Table: _ENV - Plugin Specific Global Table
+		// Field: !plugins_mod_folder_path: string
+		// Path to the mod folder inside `plugins`
+		auto plugins_mod_folder_path_string = std::string(reinterpret_cast<const char*>(m_info.m_folder_path.u8string().c_str()));
+		m_env["!plugins_mod_folder_path"] = plugins_mod_folder_path_string;
+
+		// Lua API: Field
+		// Table: _ENV - Plugin Specific Global Table
+		// Field: !this: lua_module*
 		m_env["!this"] = this;
 	}
 
