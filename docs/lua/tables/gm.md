@@ -2,7 +2,7 @@
 
 Table containing helpers for interacting with the game maker engine.
 
-## Functions (4)
+## Functions (5)
 
 ### `pre_code_execute(callback)`
 
@@ -28,17 +28,28 @@ Registers a callback that will be called right after any game function is called
 gm.post_code_execute(callback)
 ```
 
-### `global_variable_get(name)`
+### `variable_global_get(name)`
 
 - **Parameters:**
   - `name` (string): name of the variable
 
 - **Returns:**
-  - `RValue`: Returns the variable RValue.
+  - `RValue`: Returns the global variable value.
 
 **Example Usage:**
 ```lua
-RValue = gm.global_variable_get(name)
+RValue = gm.variable_global_get(name)
+```
+
+### `variable_global_set(name, new_value)`
+
+- **Parameters:**
+  - `name` (string): name of the variable
+  - `new_value` (any): new value
+
+**Example Usage:**
+```lua
+gm.variable_global_set(name, new_value)
 ```
 
 ### `call(name, self, other, args)`
