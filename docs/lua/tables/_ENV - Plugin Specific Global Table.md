@@ -2,10 +2,15 @@
 
 Each mod/plugin have their own global table containing helpers, such as:
 - Their own guid
+
 - Path to their own folder inside `plugins_data`
+
 - Path to their own folder inside `plugins`
+
 You can access other mods helpers through the `mods[OTHER_MOD_GUID]` table.
+
 **Example Usage:**
+
 ```lua
 print(_ENV["!guid"])
 
