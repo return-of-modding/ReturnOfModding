@@ -4,7 +4,6 @@
 	"website_url": "https://github.com/return-of-modding/ReturnOfModding",
 	"description": "Interactive log terminal, command console, lua REPL",
 	"dependencies": [
-		"ReturnOfModding-ReturnOfModding-1.0.0",
-		"ReturnOfModding-GlobalExtensions-1.0.0"
+		"ReturnOfModding-ReturnOfModding-1.0.0"
 	]
 }
