@@ -23,6 +23,23 @@ static std::vector<RValue> parse_variadic_args(sol::variadic_args args)
 	return vec_args;
 }
 
+static RValue parse_variadic_args_as_single_RValue(sol::variadic_args args)
+{
+	for (const auto& arg : args)
+	{
+		if (arg.get_type() == sol::type::number)
+			return RValue(arg.as<double>());
+		else if (arg.get_type() == sol::type::string)
+			return RValue(arg.as<std::string>());
+		else if (arg.get_type() == sol::type::boolean)
+			return RValue(arg.as<bool>());
+		else if (arg.get_type() == sol::type::userdata)
+			return arg.as<RValue>();
+	}
+
+	return {};
+}
+
 // Lua API: Table
 // Name: gm
 // Table containing helpers for interacting with the game maker engine.
@@ -55,13 +72,23 @@ namespace lua::game_maker
 
 	// Lua API: Function
 	// Table: gm
-	// Name: global_variable_get
+	// Name: variable_global_get
 	// Param: name: string: name of the variable
-	// Returns: RValue: Returns the variable RValue.
-	static RValue lua_gm_global_variable_get(std::string_view name)
+	// Returns: RValue: Returns the global variable value.
+	static RValue lua_gm_variable_global_get(std::string_view name)
 	{
-		const auto res = gm::global_variable_get(name);
-		return res.result;
+		return gm::variable_global_get(name);
+	}
+
+	// Lua API: Function
+	// Table: gm
+	// Name: variable_global_set
+	// Param: name: string: name of the variable
+	// Param: new_value: any: new value
+	static void lua_gm_variable_global_set(std::string_view name, sol::variadic_args args)
+	{
+		auto val = parse_variadic_args_as_single_RValue(args);
+		gm::variable_global_set(name, val);
 	}
 
 	// Lua API: Function
@@ -145,82 +172,82 @@ namespace lua::game_maker
 			        // Field: REAL: REAL
 			        {"REAL", RValueType::REAL},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: STRING: STRING
 			        {"STRING", RValueType::STRING},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: ARRAY: ARRAY
 			        {"ARRAY", RValueType::ARRAY},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: PTR: PTR
 			        {"PTR", RValueType::PTR},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: VEC3: VEC3
 			        {"VEC3", RValueType::VEC3},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: UNDEFINED: UNDEFINED
 			        {"UNDEFINED", RValueType::UNDEFINED},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: OBJECT: OBJECT
 			        {"OBJECT", RValueType::OBJECT},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: INT32: INT32
 			        {"INT32", RValueType::_INT32},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: VEC4: VEC4
 			        {"VEC4", RValueType::VEC4},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: MATRIX: MATRIX
 			        {"MATRIX", RValueType::MATRIX},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: INT64: INT64
 			        {"INT64", RValueType::_INT64},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: ACCESSOR: ACCESSOR
 			        {"ACCESSOR", RValueType::ACCESSOR},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: JSNULL: JSNULL
 			        {"JSNULL", RValueType::JSNULL},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: BOOL: BOOL
 			        {"BOOL", RValueType::_BOOL},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: ITERATOR: ITERATOR
 			        {"ITERATOR", RValueType::ITERATOR},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: REF: REF
 			        {"REF", RValueType::REF},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: RValueType
 			        // Field: UNSET: UNSET
 			        {"UNSET", RValueType::UNSET},
@@ -238,42 +265,42 @@ namespace lua::game_maker
 			        // Field: SELF: SELF
 			        {"SELF", EVariableType::SELF},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: EVariableType
 			        // Field: OTHER: OTHER
 			        {"OTHER", EVariableType::OTHER},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: EVariableType
 			        // Field: ALL: ALL
 			        {"ALL", EVariableType::ALL},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: EVariableType
 			        // Field: NOONE: NOONE
 			        {"NOONE", EVariableType::NOONE},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: EVariableType
 			        // Field: GLOBAL: GLOBAL
 			        {"GLOBAL", EVariableType::GLOBAL},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: EVariableType
 			        // Field: BUILTIN: BUILTIN
 			        {"BUILTIN", EVariableType::BUILTIN},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: EVariableType
 			        // Field: LOCAL: LOCAL
 			        {"LOCAL", EVariableType::LOCAL},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: EVariableType
 			        // Field: STACKTOP: STACKTOP
 			        {"STACKTOP", EVariableType::STACKTOP},
 
-					// Lua API: Field
+			        // Lua API: Field
 			        // Table: EVariableType
 			        // Field: ARGUMENT: ARGUMENT
 			        {"ARGUMENT", EVariableType::ARGUMENT},
@@ -470,14 +497,14 @@ namespace lua::game_maker
 			// Name: get
 			// Param: variable_name: string: name of the instance variable to get
 			// Returns: RValue: Returns the variable value.
-			type["get"]        = &CInstance::get;
+			type["get"] = &CInstance::get;
 
 			// Lua API: Function
 			// Class: CInstance
 			// Name: get_bool
 			// Param: variable_name: string: name of the instance variable to get
 			// Returns: boolean: Returns the variable value.
-			type["get_bool"]   = &CInstance::get_bool;
+			type["get_bool"] = &CInstance::get_bool;
 
 			// Lua API: Function
 			// Class: CInstance
@@ -537,7 +564,34 @@ namespace lua::game_maker
 
 		ns["call"] = sol::overload(lua_gm_call, lua_gm_call_global);
 
-		ns["global_variable_get"] = lua_gm_global_variable_get;
-		ns["global_variable_set"] = gm::global_variable_set;
+		ns["variable_global_get"] = lua_gm_variable_global_get;
+		ns["variable_global_set"] = lua_gm_variable_global_set;
+
+		auto meta_gm = state.create_table();
+		// Wrapper so that users can do gm.room_goto(new_room) for example instead of gm.call("room_goto", new_room)
+		meta_gm.set_function(sol::meta_function::index, [](sol::table self, std::string key) -> sol::reference {
+			auto v = self.raw_get<sol::optional<sol::reference>>(key);
+			if (v)
+			{
+				return v.value();
+			}
+			else
+			{
+				self.raw_set(key,
+				    sol::overload(
+				        [key](sol::variadic_args args) {
+					        return gm::call(key, parse_variadic_args(args));
+				        },
+				        [key](CInstance* self, CInstance* other, sol::variadic_args args) {
+					        return gm::call(key, self, other, parse_variadic_args(args));
+				        }));
+
+				return self.raw_get<sol::reference>(key);
+			}
+		});
+		meta_gm.set_function(sol::meta_function::new_index, [](lua_State* L) -> int {
+			return luaL_error(L, "Can't define new game maker functions this way");
+		});
+		state["gm"][sol::metatable_key] = meta_gm;
 	}
 }
