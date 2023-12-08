@@ -1,14 +1,188 @@
-log.info("Script Console Startup...")
+-- BASE EXTENSIONS: Should be rolled into the base API if desired
 
-local _repl_globals = {}
-for k,v in pairs(_G) do
-	_repl_globals[k] = v
+local unpack = table.unpack
+
+local function getname( )
+	return debug.getinfo( 2, "n" ).name or "UNKNOWN"
 end
-repl_globals = _repl_globals
-repl_environment = setmetatable( { }, {
-	__index = repl_globals,
-	__newindex = repl_globals
-} )
+
+local function pusherror( f, ... )
+	local ret = table.pack( pcall( f, ... ) )
+	if ret[ 1 ] then return unpack( ret, 2, ret.n ) end
+	error( ret[ 2 ], 3 )
+end
+
+-- doesn't invoke __index
+rawnext = next
+
+-- invokes __next
+function next( t, k )
+	local m = debug.getmetatable( t )
+	local f = m and m.__next or rawnext
+	return pusherror( f, t, k )
+end
+
+-- truly raw pairs, ignores __next and __pairs
+function rawpairs( t )
+	return rawnext, t, nil
+end
+
+--[[
+
+-- quasi-raw pairs, invokes __next but ignores __pairs
+function qrawpairs( t )
+    return next, t, nil
+end
+
+--]]
+
+-- doesn't invoke __index just like rawnext
+function rawinext( t, i )
+
+	if type( t ) ~= "table" then
+		error( "bad argument #1 to '" .. getname( ) .. "'(table expected got " .. type( i ) ..")", 2 )
+	end
+
+	if i == nil then
+		i = 0
+	elseif type( i ) ~= "number" then
+		error( "bad argument #2 to '" .. getname( ) .. "'(number expected got " .. type( i ) ..")", 2 )
+	elseif i < 0 then
+		error( "bad argument #2 to '" .. getname( ) .. "'(index out of bounds, too low)", 2 )
+	end
+
+	i = i + 1
+	local v = rawget( t, i )
+	if v ~= nil then
+		return i, v
+	end
+end
+
+-- invokes __inext
+function inext( t, i )
+	local m = debug.getmetatable( t )
+	local f = m and m.__inext or rawinext
+	return pusherror( f, t, i )
+end
+
+-- truly raw ipairs, ignores __inext and __ipairs
+function rawipairs( t )
+	return function( self, key )
+		return rawinext( self, key )
+	end, t, nil
+end
+
+--[[
+
+-- quasi-raw ipairs, invokes __inext but ignores __ipairs
+function qrawipairs( t )
+	return function( self, key )
+		return inext( self, key )
+	end, t, nil
+end
+
+--]]
+
+--[[
+
+table.rawinsert = table.insert
+local rawinsert = table.rawinsert
+-- table.insert that respects metamethods
+function table.insert( list, pos, value )
+	local last = #list
+	if value == nil then
+		value = pos
+		pos = last + 1
+	end
+	if pos < 1 or pos > last + 1 then
+		error( "bad argument #2 to '" .. getname( ) .. "' (position out of bounds)", 2 )
+	end
+	if pos <= last then
+		local i = last
+		repeat
+			list[ i + 1 ] = list[ i ]
+			i = i - 1
+		until i < pos
+	end
+	list[ pos ] = value
+end
+
+table.rawremove = table.remove
+-- table.remove that respects metamethods
+function table.remove( list, pos )
+	local last = #list
+	if pos == nil then
+		pos = last
+	end
+	if pos < 1 or pos > last then
+		error( "bad argument #2 to '" .. getname( ) .. "' (position out of bounds)", 2 )
+	end
+	local value = list[ pos ]
+	if pos <= last then
+		local i = pos
+		repeat
+			list[ i ] = list[ i + 1 ]
+			i = i + 1
+		until i > last
+	end
+	return value
+end
+
+table.rawunpack = table.unpack
+-- table.unpack that respects metamethods
+do
+	local function unpack( t, m, i, ... )
+		if i < m then return ... end
+		return unpack( t, m, i - 1, t[ i ], ... )
+	end
+	
+	function table.unpack( list, i, j )
+		return unpack( list, i or 1, j or list.n or #list or 1 )
+	end
+end
+
+local rawconcat = table.concat
+table.rawconcat = rawconcat
+-- table.concat that respects metamethods and includes more values
+do
+	local wt = setmetatable( { }, { __mode = 'v' } )
+	function table.concat( tbl, sep, i, j )
+		i = i or 1
+		j = j or tbl.n or #tbl
+		if i > j then return "" end
+		sep = sep or ""
+		local t = rawnext( wt ) or { }
+		rawset( wt, 1, t )
+		for k = i, j, 1 do
+			rawset( t, k, tostring( tbl[ k ] ) )
+		end
+		return rawconcat( t, sep, i, j )
+	end
+end
+
+--[[
+	NOTE: Other table functions that need to get updated to respect metamethods
+	- table.sort
+--]]
+
+--]]
+
+function setfenv( fn, env )
+	if type( fn ) ~= "function" then
+		fn = debug.getinfo( ( fn or 1 ) + 1, "f" ).func
+	end
+	local i = 0
+	repeat
+		i = i + 1
+		local name = debug.getupvalue( fn, i )
+		if name == "_ENV" then
+			debug.upvaluejoin( fn, i, ( function( )
+				return env
+			end ), 1 )
+			return env
+		end
+	until not name
+end
 
 function lookup(t)
 	local l = {}
@@ -16,21 +190,6 @@ function lookup(t)
 		l[v] = k
 	end
 	return l
-end
-
-if ImGui.GetStyleVar == nil then
-	imgui_stylevar_lookup = lookup(ImGuiStyleVar)
-	imgui_stylevar_lookup[ImGuiStyleVar.COUNT] = nil
-
-	function ImGui.GetStyleVar(var)
-		if type(var) == "number" then
-			var = imgui_stylevar_lookup[var]
-		end
-		local s = ImGui.GetStyle()[var]
-		if type(s) == "number" then return s end
-		-- assume that if it's not a number that it's an imVec2
-		return s['x'],s['y']
-	end
 end
 
 function clear(t)
@@ -54,7 +213,7 @@ function iclear(...)
 end
 
 --http://lua-users.org/wiki/VarargTheSecondClassCitizen
-do
+do -- not thread safe
 	local i, t, l = 0, {}
 	local function iter(...)
 		i = i + 1
@@ -75,37 +234,22 @@ do
 	end
 end
 
-do
-	local varargmap_buffer = { }
-	function varargmap( map, ... )
-		for k in pairs(varargmap_buffer) do
-			varargmap_buffer[k] = nil
-		end
-		local n = 0
-		for i, a in vararg(...) do
-			n = i
-			varargmap_buffer[i] = map(a)
-		end
-		return table.unpack(varargmap_buffer, 1, n)
-	end
-end
+-- MOD SPECIFIC CODE:
 
-function setfenv( fn, env )
-	if type( fn ) ~= "function" then
-		fn = debug.getinfo( ( fn or 1 ) + 1, "f" ).func
-	end
-	local i = 0
-	repeat
-		i = i + 1
-		local name = debug.getupvalue( fn, i )
-		if name == "_ENV" then
-			debug.upvaluejoin( fn, i, ( function( )
-				return env
-			end ), 1 )
-			return env
-		end
-	until not name
+local _repl_globals = {}
+for k,v in pairs(_G) do
+	_repl_globals[k] = v
 end
+for k,v in pairs(_ENV) do
+	_repl_globals[k] = v
+end
+repl_globals = _repl_globals
+repl_environment = setmetatable( { }, {
+	__index = repl_globals,
+	__newindex = repl_globals
+} )
+
+autoexec_name = "autoexec"
 
 function tostring_literal(value)
 	-- TODO: expand tables python-style?
@@ -271,8 +415,6 @@ do
 	end
 end
 
-autoexec_name = "autoexec"
-
 function run_console_command(mi, text)
 		local parse_result = table.pack(parse_command_text(text))
 		local status, command_name = parse_result[1], parse_result[2]
@@ -424,8 +566,10 @@ console_mode_text = {}
 console_mode_selected = {}
 console_mode_color = {}
 console_mode_print = {}
+console_mode_enter_pressed = {}
 for mi in ipairs(console_modes_lookup) do
 	console_mode_text[mi] = ""
+	console_mode_enter_pressed[mi] = false
 	console_mode_history[mi] = {}
 	console_mode_history_offset[mi] = 0
 	console_mode_lines[mi] = {}
@@ -447,11 +591,12 @@ console_mode_on_enter = {
 	end,
 	function(mi,text) -- Lua Script REPL
 		mlog.history(mi, true, text)
-		local ret = table.pack( repl_execute_lua(mi, true, text) )
+		local ret = table.pack(repl_execute_lua(mi, true, text))
 		if ret.n <= 1 then return end
 		if ret[1] == false then
 			return mlog.error( mi, true, ret[2] )
 		end
+		repl_globals._ = ret[2]
 		return mlog.returns(mi, false, table.unpack( ret, 2, ret.n ))
 	end
 }
@@ -480,7 +625,78 @@ do
 	end
 end
 
+function endow_sol_class_with_pairs_and_next(sol_object)
+	-- sol objects are userdata or tables that have sol classes as metatables
+	-- sol object attributes are functions in their sol class as the same field
+	-- sol objects share `new`, `class_check` and `class_cast`
+	-- sol classes are metatables that do not themselves have metatables
+	-- sol classes have stub __pairs that just errors when called
+	-- sol overrides `next` to error when that is used on a sol class
+	local sol_meta = getmetatable(sol_object)
+	if not sol_meta then return end
+	local status, sol_next = pcall(pairs,sol_object)
+	if not status then
+		function sol_next(s,k)
+			local v
+			while v == nil do
+				k = next(sol_meta,k)
+				if k == nil then return nil end
+				if k:sub(0,2) ~= "__"
+					and k ~= "new"
+					and k ~= "class_check" 
+					and k ~= "class_cast"
+				then
+					v = s[k]
+				end
+			end
+			return k,v
+		end
+		sol_meta.__pairs = function(s,k)
+			return sol_next,s,k
+		end
+	end
+	local status = pcall(rawnext,sol_object)
+	if not status and sol_next ~= nil and sol_meta.__next == nil then
+		sol_meta.__next = sol_next
+	end
+end
+
+function on_delayed_load()
+	local imgui_style = ImGui.GetStyle() -- sol.ImGuiStyle*
+	local imgui_vector = imgui_style["WindowPadding"] -- sol.ImVec2*
+	local gm_instance_list = gm.CInstance.instances_all
+	local gm_instance = gm_instance_list[1]
+	local gm_rvalue = gm.variable_global_get("mouse_x")
+
+	endow_sol_class_with_pairs_and_next(imgui_style)
+	endow_sol_class_with_pairs_and_next(imgui_vector)
+	endow_sol_class_with_pairs_and_next(gm_instance_list)
+	endow_sol_class_with_pairs_and_next(gm_instance)
+	endow_sol_class_with_pairs_and_next(gm_rvalue)
+	
+	if ImGui.GetStyleVar == nil then
+		local imgui_vector_meta = getmetatable(imgui_vector)
+		local imgui_stylevar_lookup = lookup(ImGuiStyleVar)
+		imgui_stylevar_lookup[ImGuiStyleVar.COUNT] = nil
+
+		function ImGui.GetStyleVar(var)
+			if type(var) == "number" then
+				var = imgui_stylevar_lookup[var]
+			end
+			local s = ImGui.GetStyle()[var]
+			if getmetatable(s) ~= imgui_vector_meta then return s end
+			return s['x'],s['y']
+		end
+	end
+end
+
+local next_delayed_load = on_delayed_load
+
 function imgui_on_render()
+	if next_delayed_load then
+		next_delayed_load()
+		next_delayed_load = nil
+	end
 	if ImGui.Begin("Script Console") then
 		if ImGui.BeginTabBar("Mode",ImGuiTabBarFlags.Reorderable) then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
@@ -542,19 +758,11 @@ function imgui_on_render()
 						end
 						ImGui.EndListBox()
 					end
-					local enter
 					ImGui.PushItemWidth(x_input)
 					ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, frame_padding_x, y_input)
-					console_mode_text[mi], enter = ImGui.InputText("##Text" .. ms, console_mode_text[mi], 512, ImGuiInputTextFlags.EnterReturnsTrue)
+					console_mode_text[mi], console_mode_enter_pressed[mi] = ImGui.InputText("##Text" .. ms, console_mode_text[mi], 512, ImGuiInputTextFlags.EnterReturnsTrue)
 					ImGui.PopStyleVar()
 					ImGui.PopItemWidth()
-					if enter then
-						local text = console_mode_text[mi]
-						table.insert(console_mode_history[mi],text)
-						console_mode_history_offset[mi] = 0
-						console_mode_text[mi] = ""
-						console_mode_on_enter[mi](mi, text)
-					end
 					local changed_offset
 					ImGui.SameLine()
 					if ImGui.Button("^##" .. ms, x_up, bot_y_max) then
@@ -585,6 +793,18 @@ function imgui_on_render()
 		end
 	end
 	ImGui.End()
+	-- handling entering input separate from constructing the UI
+	-- so actions that use ImGui will be separate from the console's UI
+	for mi,pressed in ipairs(console_mode_enter_pressed) do
+		if pressed then
+			console_mode_enter_pressed[mi] = false
+			console_mode_history_offset[mi] = 0
+			local text = console_mode_text[mi]
+			table.insert(console_mode_history[mi],text)
+			console_mode_text[mi] = ""
+			console_mode_on_enter[mi](mi, text)
+		end
+	end
 end
 
 gui.add_imgui(imgui_on_render)
