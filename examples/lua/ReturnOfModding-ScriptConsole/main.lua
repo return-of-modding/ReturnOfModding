@@ -1,7 +1,5 @@
 log.info("Script Console Startup...")
 
-local mod_guid = "ReturnOfModding-ScriptConsole"
-
 local _repl_globals = {}
 for k,v in pairs(_G) do
 	_repl_globals[k] = v
@@ -18,6 +16,21 @@ function lookup(t)
 		l[v] = k
 	end
 	return l
+end
+
+if ImGui.GetStyleVar == nil then
+	imgui_stylevar_lookup = lookup(ImGuiStyleVar)
+	imgui_stylevar_lookup[ImGuiStyleVar.COUNT] = nil
+
+	function ImGui.GetStyleVar(var)
+		if type(var) == "number" then
+			var = imgui_stylevar_lookup[var]
+		end
+		local s = ImGui.GetStyle()[var]
+		if type(s) == "number" then return s end
+		-- assume that if it's not a number that it's an imVec2
+		return s['x'],s['y']
+	end
 end
 
 function clear(t)
@@ -448,12 +461,12 @@ do
 	function calculate_text_sizes(...)
 		-- don't need to clear the buffer since 
 		-- we only iterate over the region we overwrite
-		local frame_padding_x_2 = 2*4 -- I don't know how to retrieve this value dynamically
-		local frame_padding_y = 3 -- I don't know how to retrieve this value dynamically
+		local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
+		local frame_padding_x_2 = 2*frame_padding_x
 		local frame_padding_y_2 = 2*frame_padding_y
-		local my = 0
-		local sx = 0
-		local n
+		local my = 0 -- maximum y value in this row
+		local sx = 0 -- sum of x values in this row
+		local n -- number of items in this row
 		for i,t in vararg(...) do
 			n = i
 			local x,y = ImGui.CalcTextSize(t)
@@ -463,23 +476,24 @@ do
 			sx = sx + x
 			if y > my then my = y end
 		end
-		local f = ImGui.GetFontSize()
-		local iy = my - f - frame_padding_y  -- height of InputText == font_size + frame_padding.y
-		return n, iy, my, sx, table.unpack(calculate_text_sizes_x_buffer, 1, n)
+		return n, my, sx, table.unpack(calculate_text_sizes_x_buffer, 1, n)
 	end
 end
 
 function imgui_on_render()
 	if ImGui.Begin("Script Console") then
 		if ImGui.BeginTabBar("Mode",ImGuiTabBarFlags.Reorderable) then
-			local item_spacing_x = 8 -- I don't know how to retrieve this value dynamically
-			local item_spacing_y = 4 -- I don't know how to retrieve this value dynamically
-			local frame_padding_x = 4 -- I don't know how to retrieve this value dynamically
-			local top_num, top_y_input, top_y_max, top_x_total, x_clear, x_copy = calculate_text_sizes("Clear","Copy")
-			local bot_num, bot_y_input, bot_y_max, bot_x_total, x_up, x_down = calculate_text_sizes("^","v","|")
+			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
+			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
+			local top_num, top_y_max, top_x_total, x_clear, x_copy = calculate_text_sizes("Clear","Copy")
+			local bot_num, bot_y_max, bot_x_total, x_up, x_down = calculate_text_sizes("^","v","|")
 			local x,y = ImGui.GetContentRegionAvail()
-			local top_x_input = x - top_x_total - item_spacing_x*top_num
-			local bot_x_input = x - bot_x_total - item_spacing_x*bot_num
+			local x_bar = x - top_x_total - item_spacing_x*top_num
+			local x_input = x - bot_x_total - item_spacing_x*bot_num
+			-- height of InputText == font_size + frame_padding.y
+			-- and we're going to change frame_padding.y temporarily later on
+			-- such that InputText's height == max y
+			local y_input = bot_y_max - ImGui.GetFontSize() - frame_padding_y 
 			local box_y = y - top_y_max - bot_y_max - item_spacing_y*2
 			for mi,ds in ipairs(console_modes_lookup) do
 				local ms = tostring(mi)
@@ -490,7 +504,7 @@ function imgui_on_render()
 						autoexec_name = nil
 						run_console_command(mi,"exec " .. name)
 					end
-					ImGui.InvisibleButton("##Spacer" .. ms, top_x_input, top_y_max)
+					ImGui.InvisibleButton("##Spacer" .. ms, x_bar, top_y_max)
 					ImGui.SameLine()
 					if ImGui.Button("Clear##" .. ms, x_clear, top_y_max) then
 						iclear(console_mode_lines[mi],console_mode_raw[mi],console_mode_selected[mi],console_mode_color[mi])
@@ -529,8 +543,8 @@ function imgui_on_render()
 						ImGui.EndListBox()
 					end
 					local enter
-					ImGui.PushItemWidth(bot_x_input)
-					ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, frame_padding_x, bot_y_input)
+					ImGui.PushItemWidth(x_input)
+					ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, frame_padding_x, y_input)
 					console_mode_text[mi], enter = ImGui.InputText("##Text" .. ms, console_mode_text[mi], 512, ImGuiInputTextFlags.EnterReturnsTrue)
 					ImGui.PopStyleVar()
 					ImGui.PopItemWidth()
