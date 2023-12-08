@@ -342,6 +342,7 @@ end
 
 function repl_execute_lua(mi, env, text, ...)
 	repl_globals.print = console_mode_print[mi]
+	repl_globals.tprint = console_mode_tprint[mi]
 	local func, err = text, ''
 	if type(text) == "string" then
 		func, err = load( "return " .. text )
@@ -558,15 +559,16 @@ console_modes_lookup = {
 }
 console_modes = lookup(console_modes_lookup)
 
+console_mode_text = {}
+console_mode_enter_pressed = {}
 console_mode_history = {}
 console_mode_history_offset = {}
 console_mode_lines = {}
 console_mode_raw = {}
-console_mode_text = {}
 console_mode_selected = {}
 console_mode_color = {}
 console_mode_print = {}
-console_mode_enter_pressed = {}
+console_mode_tprint = {}
 for mi in ipairs(console_modes_lookup) do
 	console_mode_text[mi] = ""
 	console_mode_enter_pressed[mi] = false
@@ -576,7 +578,16 @@ for mi in ipairs(console_modes_lookup) do
 	console_mode_raw[mi] = {}
 	console_mode_selected[mi] = {}
 	console_mode_color[mi] = {}
-	console_mode_print[mi] = function(...) return mlog.print(mi,true,...) end
+	console_mode_print[mi] = function(...)
+		return mlog.print(mi,true,...)
+	end
+	console_mode_tprint[mi] = function(...)
+		for _,t in vararg(...) do
+			for k,v in pairs(t) do
+				mlog.print(mi,true,k,v)
+			end
+		end
+	end
 end
 
 console_mode_prefix = {
@@ -628,25 +639,28 @@ end
 function endow_sol_class_with_pairs_and_next(sol_object)
 	-- sol objects are userdata or tables that have sol classes as metatables
 	-- sol object attributes are functions in their sol class as the same field
-	-- sol objects share `new`, `class_check` and `class_cast`
-	-- sol classes are metatables that do not themselves have metatables
-	-- sol classes have stub __pairs that just errors when called
-	-- sol overrides `next` to error when that is used on a sol class
+	-- sol class __index function fallsback to itself so object's inherit class members
+	-- sol __index generates a new 'new' function whenever it is requested
+	-- sol classes have stub `__pairs` that just errors when called
+	-- sol overrides next to error when that is used on a sol class
 	local sol_meta = getmetatable(sol_object)
 	if not sol_meta then return end
 	local status, sol_next = pcall(pairs,sol_object)
 	if not status then
 		function sol_next(s,k)
-			local v
+			local v,u,w
 			while v == nil do
-				k = next(sol_meta,k)
+				k,u = rawnext(sol_meta,k)
 				if k == nil then return nil end
-				if k:sub(0,2) ~= "__"
-					and k ~= "new"
-					and k ~= "class_check" 
-					and k ~= "class_cast"
-				then
-					v = s[k]
+				w = s[k]
+				-- if the object reports a value different to the class
+				if u ~= w then
+					-- and the value is the same each time it is requested
+					u = s[k]
+					if u == w then
+						-- assume it's actually that object's attribute
+						v = w
+					end
 				end
 			end
 			return k,v
@@ -655,6 +669,7 @@ function endow_sol_class_with_pairs_and_next(sol_object)
 			return sol_next,s,k
 		end
 	end
+	-- __next is implemented by a custom implementation of next
 	local status = pcall(rawnext,sol_object)
 	if not status and sol_next ~= nil and sol_meta.__next == nil then
 		sol_meta.__next = sol_next
