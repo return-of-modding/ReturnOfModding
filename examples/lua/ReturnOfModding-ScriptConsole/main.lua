@@ -20,6 +20,26 @@ function lookup(t)
 	return l
 end
 
+function clear(t)
+	for k in pairs(t) do
+		t[k] = nil
+	end
+end
+
+function iclear(...)
+	local n = 0
+	for _,t in vararg(...) do
+		local l = #t
+		if l > n then n = l end
+	end
+	if n == 0 then return end
+	for _,t in vararg(...) do
+		for i = 1, n do
+			t[i] = nil
+		end
+	end
+end
+
 --http://lua-users.org/wiki/VarargTheSecondClassCitizen
 do
 	local i, t, l = 0, {}
@@ -186,9 +206,7 @@ do
 	-- TODO: This needs to be improved regarding properly handling embedded and mixed quotes!
 	local parse_command_text_buffer = {}
 	function parse_command_text(text)
-		for k in pairs(parse_command_text_buffer) do
-			parse_command_text_buffer[k] = nil
-		end
+		iclear(parse_command_text_buffer)
 		local spat, epat, buf, quoted = [=[^(['"])]=], [=[(['"])$]=]
 		for str in text:gmatch("%S+") do
 			local squoted = str:match(spat)
@@ -211,9 +229,7 @@ do
 	end
 	local parse_multicommand_text_buffer = {}
 	function parse_multicommand_text(text)
-		for k in pairs(parse_multicommand_text_buffer) do
-				parse_multicommand_text_buffer[k] = nil
-		end
+		iclear(parse_multicommand_text_buffer)
 		for mstr in text:gmatch("[^\r\n]+") do
 			local pquoted, buf = 0
 			for str in mstr:gmatch("[^;]+") do
@@ -243,10 +259,6 @@ do
 end
 
 autoexec_name = "autoexec"
-
-function get_data_path()
-	return paths.plugins_data() .. '/' .. mod_guid
-end
 
 function run_console_command(mi, text)
 		local parse_result = table.pack(parse_command_text(text))
@@ -332,7 +344,7 @@ console_commands = {
 	end,
 	--https://stackoverflow.com/a/10387949
 	luae = function(mi,path,...)
-		qualpath = get_data_path() .. '/' .. path
+		qualpath = _ENV["!plugins_data_mod_folder_path"] .. '/' .. path
 		local file = io.open(qualpath,"rb")
 		if not file or type(file) == "string" or type(file) == "number" then
 			file = io.open(qualpath .. ".lua","rb")
@@ -350,7 +362,7 @@ console_commands = {
 		return mlog.returns(mi, false, table.unpack( ret, 2, ret.n ))
 	end,
 	exec = function(mi,path)
-		qualpath = get_data_path() .. '/' .. path
+		qualpath = _ENV["!plugins_data_mod_folder_path"] .. '/' .. path
 		local file = io.open(qualpath,"rb")
 		if not file or type(file) == "string" or type(file) == "number" then
 			file = io.open(qualpath .. ".txt","rb")
@@ -400,11 +412,11 @@ console_mode_selected = {}
 console_mode_color = {}
 console_mode_print = {}
 for mi in ipairs(console_modes_lookup) do
+	console_mode_text[mi] = ""
 	console_mode_history[mi] = {}
 	console_mode_history_offset[mi] = 0
 	console_mode_lines[mi] = {}
 	console_mode_raw[mi] = {}
-	console_mode_text[mi] = ""
 	console_mode_selected[mi] = {}
 	console_mode_color[mi] = {}
 	console_mode_print[mi] = function(...) return mlog.print(mi,true,...) end
@@ -431,12 +443,44 @@ console_mode_on_enter = {
 	end
 }
 
+do
+	local calculate_text_sizes_x_buffer = {}
+	function calculate_text_sizes(...)
+		-- don't need to clear the buffer since 
+		-- we only iterate over the region we overwrite
+		local frame_padding_x_2 = 2*4 -- I don't know how to retrieve this value dynamically
+		local frame_padding_y = 3 -- I don't know how to retrieve this value dynamically
+		local frame_padding_y_2 = 2*frame_padding_y
+		local my = 0
+		local sx = 0
+		local n
+		for i,t in vararg(...) do
+			n = i
+			local x,y = ImGui.CalcTextSize(t)
+			x = x + frame_padding_x_2
+			y = y + frame_padding_y_2
+			calculate_text_sizes_x_buffer[i] = x
+			sx = sx + x
+			if y > my then my = y end
+		end
+		local f = ImGui.GetFontSize()
+		local iy = my - f - frame_padding_y  -- height of InputText == font_size + frame_padding.y
+		return n, iy, my, sx, table.unpack(calculate_text_sizes_x_buffer, 1, n)
+	end
+end
+
 function imgui_on_render()
-	local tx, ty = ImGui.CalcTextSize('||||||||||||||||||||||');
-	local tx2, ty2, tx0_5, tx1_5 = 2*tx, 2*ty, 0.5*tx, 1.5*tx
 	if ImGui.Begin("Script Console") then
 		if ImGui.BeginTabBar("Mode",ImGuiTabBarFlags.Reorderable) then
+			local item_spacing_x = 8 -- I don't know how to retrieve this value dynamically
+			local item_spacing_y = 4 -- I don't know how to retrieve this value dynamically
+			local frame_padding_x = 4 -- I don't know how to retrieve this value dynamically
+			local top_num, top_y_input, top_y_max, top_x_total, x_clear, x_copy = calculate_text_sizes("Clear","Copy")
+			local bot_num, bot_y_input, bot_y_max, bot_x_total, x_up, x_down = calculate_text_sizes("^","v","|")
 			local x,y = ImGui.GetContentRegionAvail()
+			local top_x_input = x - top_x_total - item_spacing_x*top_num
+			local bot_x_input = x - bot_x_total - item_spacing_x*bot_num
+			local box_y = y - top_y_max - bot_y_max - item_spacing_y*2
 			for mi,ds in ipairs(console_modes_lookup) do
 				local ms = tostring(mi)
 				if ImGui.BeginTabItem(ds) then
@@ -446,7 +490,27 @@ function imgui_on_render()
 						autoexec_name = nil
 						run_console_command(mi,"exec " .. name)
 					end
-					if ImGui.BeginListBox("##Box" .. ms,x,y-ty2) then
+					ImGui.InvisibleButton("##Spacer" .. ms, top_x_input, top_y_max)
+					ImGui.SameLine()
+					if ImGui.Button("Clear##" .. ms, x_clear, top_y_max) then
+						iclear(console_mode_lines[mi],console_mode_raw[mi],console_mode_selected[mi],console_mode_color[mi])
+					end
+					ImGui.SameLine()
+					if ImGui.Button("Copy##" .. ms, x_copy, top_y_max) then
+						local text
+						for hi,b in ipairs(console_mode_selected[mi]) do
+							if b then 
+								local line = console_mode_raw[mi][hi] or console_mode_lines[mi][hi]
+								if text == nil then
+									text = line
+								else
+									text = text .. '\n' .. line
+								end
+							end
+						end
+						ImGui.SetClipboardText(text)
+					end
+					if ImGui.BeginListBox("##Box" .. ms,x,box_y) then
 						for li,ls in ipairs(console_mode_lines[mi]) do
 							local _, y = ImGui.CalcTextSize(ls)
 							console_mode_selected[mi][li] = ImGui.Selectable("##Select" .. ms .. tostring(li), console_mode_selected[mi][li] or false, ImGuiSelectableFlags.AllowDoubleClick, 0, y)
@@ -465,8 +529,10 @@ function imgui_on_render()
 						ImGui.EndListBox()
 					end
 					local enter
-					ImGui.PushItemWidth(x-tx1_5)
+					ImGui.PushItemWidth(bot_x_input)
+					ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, frame_padding_x, bot_y_input)
 					console_mode_text[mi], enter = ImGui.InputText("##Text" .. ms, console_mode_text[mi], 512, ImGuiInputTextFlags.EnterReturnsTrue)
+					ImGui.PopStyleVar()
 					ImGui.PopItemWidth()
 					if enter then
 						local text = console_mode_text[mi]
@@ -477,16 +543,15 @@ function imgui_on_render()
 					end
 					local changed_offset
 					ImGui.SameLine()
-					if ImGui.Button("^##" .. ms) then
+					if ImGui.Button("^##" .. ms, x_up, bot_y_max) then
 						console_mode_history_offset[mi] = console_mode_history_offset[mi] + 1
 						if console_mode_history_offset[mi] > #console_mode_history[mi] then
 							console_mode_history_offset[mi] = #console_mode_history[mi]
 						end
 						changed_offset = true
 					end
-					ImGui.PushItemWidth(tx0_5)
 					ImGui.SameLine()
-					if ImGui.Button("v##" .. ms) then
+					if ImGui.Button("v##" .. ms, x_down, bot_y_max) then
 						console_mode_history_offset[mi] = console_mode_history_offset[mi] - 1
 						if console_mode_history_offset[mi] < 0 then
 							console_mode_history_offset[mi] = 0
@@ -500,28 +565,6 @@ function imgui_on_render()
 							console_mode_text[mi] = console_mode_history[mi][#console_mode_history[mi]-console_mode_history_offset[mi]+1]
 						end
 					end
-					ImGui.PopItemWidth()
-					ImGui.PushItemWidth(tx)
-					--ImGui.SameLine()
-					--if ImGui.Button("< Paste##" .. ms) then
-					--	console_mode_text[mi] = ImGui.GetClipboardText()
-					--end
-					ImGui.SameLine()
-					if ImGui.Button("Copy ^##" .. ms) then
-						local text
-						for hi,b in ipairs(console_mode_selected[mi]) do
-							if b then 
-								local line = console_mode_raw[mi][hi] or console_mode_lines[mi][hi]
-								if text == nil then
-									text = line
-								else
-									text = text .. '\n' .. line
-								end
-							end
-						end
-						ImGui.SetClipboardText(text)
-					end
-					ImGui.PopItemWidth()
 				end
 			end
 			ImGui.EndTabBar()
