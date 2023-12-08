@@ -335,7 +335,7 @@ for k in pairs(mlog_colors) do
 		table.insert(console_mode_lines[mi], mlog_prefixes_shown[k] .. text)
 		console_mode_color[mi][#console_mode_lines[mi]] = mlog_colors[k]
 		if mlog_loggers[k] then
-			return log.error( mlog_prefixes_debug[k] .. console_mode_prefix[mi] .. text )
+			return mlog_loggers[k]( mlog_prefixes_debug[k] .. console_mode_prefix[mi] .. text )
 		end
 	end
 end
