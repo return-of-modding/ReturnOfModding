@@ -2,6 +2,16 @@
 
 Table containing helpers for interacting with the game maker engine.
 
+## Fields (2)
+
+### `constants`
+
+- Type: `table of gml/game constants name to their asset index.`
+
+### `constant_types`
+
+- Type: `table of gml/game constants name to their type name`
+
 ## Functions (5)
 
 ### `pre_code_execute(callback)`

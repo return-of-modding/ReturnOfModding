@@ -531,12 +531,12 @@ namespace lua::game_maker
 
 			// Lua API: Field
 			// Table: gm.CInstance
-			// Field: instances_all: table of all (active or unactive) game maker object instances
+			// Field: instances_all: CInstance table of all (active or unactive) game maker object instances
 			CInstance_table["instances_all"] = &gm::CInstances_all;
 
 			// Lua API: Field
 			// Table: gm.CInstance
-			// Field: instances_active: table of all active game maker object instances
+			// Field: instances_active: CInstance table of all active game maker object instances
 			CInstance_table["instances_active"] = &gm::CInstances_active;
 		}
 
@@ -557,6 +557,76 @@ namespace lua::game_maker
 			// Field: name: string
 			// Name of the game function
 			BIND_USERTYPE(type, CCode, name);
+		}
+
+		// Lua API: Field
+		// Table: gm
+		// Field: constants: table of gml/game constants name to their asset index.
+
+		// Lua API: Field
+		// Table: gm
+		// Field: constant_types: table of gml/game constants name to their type name
+		{
+			auto constants      = ns["constants"].get_or_create<sol::table>();
+			auto constant_types = ns["constant_types"].get_or_create<sol::table>();
+
+			auto asset_loop_over = [&](std::string type, const std::string& custom_type_name = "", double start = 0.0) {
+				const char* name{"<undefined>"};
+
+				std::string routine_name = type + "_get_name";
+
+				if (custom_type_name.size())
+				{
+					type = custom_type_name;
+				}
+
+				double i;
+
+				try
+				{
+					for (i = start; true; ++i)
+					{
+						RValue n = gm::call(routine_name, i);
+						if (n.type == RValueType::STRING)
+						{
+							name = n.ref_string->m_thing;
+							// if asset does not exist, it's name will be "<undefined>"
+							// but since in GM an asset can't start with '<', it's faster to check for the first character.
+							if (name && name[0] != '<')
+							{
+								constants[name]      = i;
+								constant_types[name] = type;
+							}
+							else
+							{
+								break;
+							}
+						}
+						else
+						{
+							break;
+						}
+					}
+				}
+				catch (...)
+				{
+					// thrown by shader_get_name, just ignore it.
+				}
+
+				return i;
+			};
+
+			asset_loop_over("object");
+			asset_loop_over("sprite");
+			asset_loop_over("room");
+			asset_loop_over("font");
+			asset_loop_over("audio");
+			asset_loop_over("path");
+			asset_loop_over("timeline");
+			asset_loop_over("tileset");
+			asset_loop_over("shader");
+			asset_loop_over("script");                         // runtime funcs
+			asset_loop_over("script", "gml_script", 100001.0); // gml scripts
 		}
 
 		ns["pre_code_execute"]  = pre_code_execute;
