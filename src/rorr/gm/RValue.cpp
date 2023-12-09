@@ -20,8 +20,8 @@ void RValue::__localFree()
 		if ((type & MASK_TYPE_RVALUE) == ARRAY)
 		{
 			YYObjectPinMap::unpin(this->yy_object_base);
+		}
 	}
-}
 }
 
 static void COPY_RValue__Post(RValue* dest, const RValue* source)
@@ -34,9 +34,9 @@ static void COPY_RValue__Post(RValue* dest, const RValue* source)
 		big::g_pointers->m_rorr.m_copy_rvalue_do_post(dest, (RValue*)source);
 	}
 	else
-		{
+	{
 		dest->i64 = source->i64;
-		}
+	}
 }
 
 void RValue::__localCopy(const RValue& other)
@@ -96,7 +96,7 @@ RValue::RValue(double v)
 {
 	flags = 0;
 	type  = REAL;
-	value  = v;
+	value = v;
 }
 
 RValue::RValue(float v)
@@ -205,16 +205,16 @@ RValue& RValue::operator=(const RValue& other)
 RValue& RValue::operator=(double v)
 {
 	__localFree();
-	type = REAL;
-	value =v;
+	type  = REAL;
+	value = v;
 	return *this;
 }
 
 RValue& RValue::operator=(float v)
 {
 	__localFree();
-	type = REAL;
-	value =v;
+	type  = REAL;
+	value = v;
 	return *this;
 }
 
@@ -245,8 +245,8 @@ RValue& RValue::operator=(void* v)
 RValue& RValue::operator=(bool v)
 {
 	__localFree();
-	type = REAL;
-	value =v ? 1.0 : 0.0;
+	type  = REAL;
+	value = v ? 1.0 : 0.0;
 	return *this;
 }
 
@@ -385,7 +385,7 @@ std::string RValue::asString()
 	case ARRAY:
 	{
 		if (this->ref_array->m_Array == nullptr)
-			return "{ <empty array pointer> }";
+			return "{ <null array pointer> }";
 		int arrlen = this->ref_array->length;
 		if (arrlen <= 0)
 			return "{ <empty array> }";
@@ -398,7 +398,6 @@ std::string RValue::asString()
 			auto* elem = DoArrayIndex(i);
 			if (elem)
 			{
-				ss << '"' << i << "\": ";
 				if ((elem->type & MASK_TYPE_RVALUE) == STRING)
 					ss << '"';
 				ss << elem->asString();
@@ -413,7 +412,7 @@ std::string RValue::asString()
 		return ss.str();
 	}
 	case _BOOL: return (value > 0.5) ? "true" : "false";
-	case UNSET: return "<unset>"; // ??????????
+	case UNSET: return "<unset>";
 	case UNDEFINED: return "<undefined>";
 	case STRING: return ref_string->get();
 	default: return "<UNHANDLED TYPE TO STRING!>";
@@ -461,7 +460,7 @@ int RValue::asInt32() const
 	case _INT32: return i32;
 	case _INT64: return static_cast<int>(i64);
 	case REF: return i32;
-	case ARRAY: 
+	case ARRAY:
 	case PTR: return static_cast<int>(reinterpret_cast<intptr_t>(ptr));
 	case STRING:
 	{
@@ -489,7 +488,7 @@ bool RValue::asBoolean() const
 	case _INT32: return i32 > 0 ? true : false;
 	case _INT64: return i64 > 0L ? true : false;
 	case REF: return i32 > 0 ? true : false;
-	case ARRAY: 
+	case ARRAY:
 	case PTR: return ptr != nullptr ? true : false;
 	case STRING:
 	{

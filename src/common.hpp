@@ -51,6 +51,7 @@
 
 #include <format>
 #include <nlohmann/json.hpp>
+
 #define SOL_SAFE_USERTYPE 1
 #include "lua/sol.hpp"
 

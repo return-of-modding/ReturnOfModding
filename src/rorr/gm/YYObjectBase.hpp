@@ -46,11 +46,14 @@ struct YYObjectBase : CInstanceBase
 	unsigned int m_visitedGC;
 	int m_GCgen;
 	int m_GCcreationframe;
-	int m_slot;
+	int m_slot; // offset 30(int) | 120(byte)
 	int m_kind;
 	int m_rvalueInitType;
 	int m_curSlot;
 };
+
+// 120
+static constexpr auto YYObjectBase_offset_slot = offsetof(YYObjectBase, m_slot);
 
 struct CWeakRef : YYObjectBase
 {
