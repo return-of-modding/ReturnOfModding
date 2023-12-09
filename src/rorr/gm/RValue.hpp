@@ -48,6 +48,7 @@ typedef void (*DetPotRoot)(YYObjectBase* _pContainer, YYObjectBase* _yy_object_b
 
 struct RValue;
 typedef void (*FREE_RVal_Pre)(RValue* p);
+typedef void (*COPY_RValue_do__Post_t)(RValue* dest, RValue* src);
 typedef void (*YYSetStr)(RValue* _pVal, const char* _pS);
 typedef void (*YYCreStr)(RValue* _pVal, const char* _pS);
 typedef char* (*YYDupStr)(const char* _pStr);
@@ -175,6 +176,19 @@ static constexpr auto RefDynamicArrayOfRValue_offset_owner = offsetof(RefDynamic
 static constexpr auto RefDynamicArrayOfRValue_offset_length = offsetof(RefDynamicArrayOfRValue, length);
 
 #pragma pack(push, 4)
+struct DValue
+{
+	union {
+		int64_t __64;
+		void* __ptr;
+		RefDynamicArrayOfRValue* __arr;
+		YYObjectBase* __obj;
+	};
+
+	unsigned int flags;
+	unsigned int type;
+};
+
 struct RValue
 {
 	union {
@@ -212,6 +226,7 @@ struct RValue
 	RValue(std::nullptr_t);
 	RValue(std::nullptr_t, bool undefined);
 	RValue(void* v);
+	RValue(YYObjectBase* obj);
 	RValue(const char* v);
 	RValue(std::string v);
 	RValue(std::wstring v);

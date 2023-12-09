@@ -103,6 +103,24 @@ namespace big
 				g_pointers->m_rorr.m_yysetstring = ptr.sub(0xA).as<YYSetStr>();
             }
         },
+        // FREE_RValue_Pre
+        {
+            "FRP",
+            "74 34 83 F8 01",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_free_rvalue_pre = ptr.sub(0x1D).as<FREE_RVal_Pre>();
+            }
+        },
+        // COPY_RValue_do__Post
+        {
+            "CRDP",
+            "83 F8 04 75 66",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_copy_rvalue_do_post = ptr.sub(0x22).as<COPY_RValue_do__Post_t>();
+            }
+        },
         // Debug Console Output
         {
             "DCO",

@@ -9,6 +9,7 @@
 #include "threads/thread_pool.hpp"
 #include "threads/util.hpp"
 #include "version.hpp"
+#include "rorr/gm/pin_map.hpp"
 //#include "debug/debug.hpp"
 
 BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
@@ -70,6 +71,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 			    if (!g_abort)
 			    {
+				    YYObjectPinMap::init_pin_map();
+
 				    g_hooking->enable();
 				    LOG(INFO) << "Hooking enabled.";
 			    }
@@ -100,6 +103,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    // otherwise make sure that they have stopped executing
 			    thread_pool_instance->destroy();
 			    LOG(INFO) << "Destroyed thread pool.";
+
+				YYObjectPinMap::cleanup_pin_map();
 
 			    hooking_instance.reset();
 			    LOG(INFO) << "Hooking uninitialized.";

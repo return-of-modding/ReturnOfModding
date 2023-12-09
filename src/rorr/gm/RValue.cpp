@@ -1,59 +1,72 @@
 #include "RValue.hpp"
 
+#include "Code_Function_GET_the_function.hpp"
+#include "pin_map.hpp"
 #include "pointers.hpp"
 
 #include <sstream>
 
-void RValue::__localFree()
+static bool YYFree_valid_vkind(const unsigned int rvkind)
 {
-	if (((type - 1) & (MASK_TYPE_RVALUE & (~PTR))) == 0)
-	{
-		//big::g_pointers->m_rorr.m_free_rvalue_pre(this);
-	}
+	return (((1 << STRING) | (1 << OBJECT) | (1 << ARRAY)) & (1 << (rvkind & 0x1f))) != 0;
 }
 
-void RValue::__localCopy(const RValue& v)
+void RValue::__localFree()
 {
-	this->type  = v.type;
-	this->flags = v.flags;
-
-	switch (v.type & MASK_TYPE_RVALUE)
+	if (YYFree_valid_vkind(type))
 	{
-	case _BOOL:
-	case REAL: this->value = v.value; break;
-	case _INT32: this->i32 = v.i32; break;
-	case _INT64: this->i64 = v.i64; break;
-	case PTR:
-	case ITERATOR: this->ptr = v.ptr; break;
-	case ARRAY:
-		this->ref_array = v.ref_array;
-		if (this->ref_array != nullptr)
-		{
-			//++this->ref_array->m_refCount;
-			//this->ref_array->m_Owner = this;
-		}
-		break;
-	case STRING: this->ref_string = RefString::assign(v.ref_string); break;
-	case OBJECT:
-		this->yy_object_base = v.yy_object_base;
+		big::g_pointers->m_rorr.m_free_rvalue_pre(this);
 
-		if (this->yy_object_base != nullptr)
+		if ((type & MASK_TYPE_RVALUE) == ARRAY)
 		{
-			//LOG(FATAL) << "unhandled;";
-			//YYObjectBase* pContainer = GetContextStackTop();
-			//DeterminePotentialRoot(pContainer, v.yy_object_base);
+			YYObjectPinMap::unpin(this->yy_object_base);
+	}
+}
+}
+
+static void COPY_RValue__Post(RValue* dest, const RValue* source)
+{
+	dest->type  = source->type;
+	dest->flags = source->flags;
+
+	if (YYFree_valid_vkind(source->type))
+	{
+		big::g_pointers->m_rorr.m_copy_rvalue_do_post(dest, (RValue*)source);
+	}
+	else
+		{
+		dest->i64 = source->i64;
 		}
-		break;
-	case REF: this->i64 = v.i64; break;
+}
+
+void RValue::__localCopy(const RValue& other)
+{
+	if (&other != this)
+	{
+		DValue tmp{};
+		memcpy(&tmp, &other, sizeof(RValue));
+
+		bool is_array{(tmp.type & MASK_TYPE_RVALUE) == ARRAY};
+		if (is_array)
+			++(reinterpret_cast<RValue*>(&tmp)->ref_array->m_refCount);
+
+		__localFree();
+
+		if (is_array)
+			--(reinterpret_cast<RValue*>(&tmp)->ref_array->m_refCount);
+
+		COPY_RValue__Post(this, &other);
+
+		if (is_array)
+		{
+			YYObjectPinMap::pin(this->yy_object_base);
+		}
 	}
 }
 
 RValue::~RValue()
 {
 	__localFree();
-	flags = 0;
-	type  = UNSET;
-	i64   = 0L;
 }
 
 RValue::RValue()
@@ -72,6 +85,10 @@ RValue::RValue(std::nullptr_t, bool undefined)
 
 RValue::RValue(const RValue& v)
 {
+	flags = 0;
+	type  = UNSET;
+	i64   = 0L;
+
 	__localCopy(v);
 }
 
@@ -124,6 +141,13 @@ RValue::RValue(void* v)
 	ptr   = v;
 }
 
+RValue::RValue(YYObjectBase* obj)
+{
+	flags                = 0;
+	type                 = OBJECT;
+	this->yy_object_base = obj;
+}
+
 RValue::RValue(const char* v)
 {
 	flags = 0;
@@ -172,25 +196,9 @@ RValue RValue::operator+()
 	return copy;
 }
 
-RValue& RValue::operator=(const RValue& v)
+RValue& RValue::operator=(const RValue& other)
 {
-	if (&v != this)
-	{
-		RValue temp;
-		memcpy(&temp, &v, sizeof(RValue));
-
-		bool is_array = (temp.type & MASK_TYPE_RVALUE) == ARRAY;
-		if (is_array)
-			++(temp.ref_array->m_refCount);
-
-		__localFree();
-
-		if (is_array)
-			--(temp.ref_array->m_refCount);
-
-		__localCopy(temp);
-	}
-
+	__localCopy(other);
 	return *this;
 }
 

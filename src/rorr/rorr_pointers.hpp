@@ -34,6 +34,9 @@ namespace big
 
 		YYSetStr m_yysetstring;
 
+		FREE_RVal_Pre m_free_rvalue_pre;
+		COPY_RValue_do__Post_t m_copy_rvalue_do_post;
+
 		gm::debug_console_output_t m_debug_console_output;
 	};
 #pragma pack(pop)

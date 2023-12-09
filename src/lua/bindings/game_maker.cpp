@@ -132,7 +132,7 @@ namespace lua::game_maker
 			// Class: RValue
 			// Param: value: string: value
 			// Returns an RValue instance
-			sol::usertype<RValue> type = state.new_usertype<RValue>("RValue", sol::constructors<RValue(), RValue(bool), RValue(double), RValue(const char*)>());
+			sol::usertype<RValue> type = state.new_usertype<RValue>("RValue", sol::constructors<RValue(), RValue(bool), RValue(double), RValue(const char*)>(), sol::meta_function::garbage_collect, sol::destructor(&RValue::__localFree));
 
 			// Lua API: Field
 			// Class: RValue
