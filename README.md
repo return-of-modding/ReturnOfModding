@@ -44,3 +44,4 @@ The root folder used by Return Of Modding (which will then be used to load mods 
 This project wouldn't have been possible without
 
 - [Archie-osu](https://github.com/Archie-osu) [with their YYToolkit project](https://github.com/AurieFramework/YYToolkit)
+- [ModShovel](https://github.com/nkrapivin/modshovel)
