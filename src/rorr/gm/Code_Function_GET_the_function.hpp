@@ -1,9 +1,52 @@
 #pragma once
 #include <pointers.hpp>
 #include <string/hash.hpp>
+#include "YYGMLException.hpp"
 
 namespace gm
 {
+	inline bool ignore_gml_exceptions = true;
+	static void gml_exception_handler(const RValue& e)
+	{
+		std::stringstream exception_log;
+
+		RValue e_message{}, e_longMessage{}, e_script{}, e_line{}, e_stacktrace{};
+		e.yy_object_base->m_getOwnProperty(e.yy_object_base, &e_message, "message");
+		e.yy_object_base->m_getOwnProperty(e.yy_object_base, &e_longMessage, "longMessage");
+		e.yy_object_base->m_getOwnProperty(e.yy_object_base, &e_script, "script");
+		e.yy_object_base->m_getOwnProperty(e.yy_object_base, &e_line, "line");
+		e.yy_object_base->m_getOwnProperty(e.yy_object_base, &e_stacktrace, "stacktrace");
+
+		exception_log << "class: " << e.yy_object_base->m_class << "\n";
+		exception_log << "message:" << e_message.ref_string->get() << "\n";
+		exception_log << "longMessage:" << e_longMessage.ref_string->get() << "\n";
+		exception_log << "script:" << e_script.ref_string->get() << "\n";
+		exception_log << "line:" << static_cast<double>(e_line) << "\n";
+
+		exception_log << "stacktrace:" << static_cast<double>(e_line) << "\n";
+
+		if (((e_stacktrace.type & MASK_TYPE_RVALUE) == ARRAY) && e_stacktrace.ref_array && e_stacktrace.ref_array->m_Array
+		    && e_stacktrace.ref_array->length > 0)
+		{
+			auto thelen{e_stacktrace.ref_array->length};
+			for (auto i{0}; i < thelen; ++i)
+			{
+				const auto& item{e_stacktrace.ref_array->m_Array[i]};
+				if ((item.type & MASK_TYPE_RVALUE) == STRING)
+				{
+					exception_log << item.ref_string->get() << "\n";
+				}
+				else
+				{
+					exception_log << static_cast<double>(item) << "\n";
+				}
+			}
+		}
+
+		LOG(FATAL) << exception_log.str();
+		Logger::FlushQueue();
+	}
+
 	struct code_function_info
 	{
 		const char* function_name = nullptr;
@@ -47,8 +90,22 @@ namespace gm
 
 		if (func_info.function_ptr)
 		{
-			RValue res;
-			func_info.function_ptr(&res, self, other, arg_count, args);
+			RValue res{};
+			try
+			{
+				func_info.function_ptr(&res, self, other, arg_count, args);
+			}
+			catch (const YYGMLException& e)
+			{
+				if (ignore_gml_exceptions)
+				{
+					gml_exception_handler(e.GetExceptionObject());
+				}
+				else
+				{
+					throw;
+				}
+			}
 			return res;
 		}
 		// Script Execute
@@ -68,8 +125,22 @@ namespace gm
 					arranged_args[i + 1] = args[i];
 				}
 				const auto& script_execute = gm::get_code_function("script_execute");
-				RValue res;
-				script_execute.function_ptr(&res, self, other, arg_count + 1, arranged_args);
+				RValue res{};
+				try
+				{
+					script_execute.function_ptr(&res, self, other, arg_count + 1, arranged_args);
+				}
+				catch (const YYGMLException& e)
+				{
+					if (ignore_gml_exceptions)
+					{
+						gml_exception_handler(e.GetExceptionObject());
+					}
+					else
+					{
+						throw;
+					}
+				}
 				return res;
 			}
 		}
