@@ -229,23 +229,25 @@ function merge(m,...)
 end
 
 --http://lua-users.org/wiki/VarargTheSecondClassCitizen
-do -- not thread safe
-	local i, t, l = 0, {}
-	local function iter(...)
-		i = i + 1
-		if i > l then return end
-		return i, t[i]
-	end
-
+do
 	function vararg(...)
-		i = 0
+		local i, t, l = 0, {}
+		local function iter(...)
+			i = i + 1
+			if i > l then return end
+			return i, t[i]
+		end
+		
+		--i = 0
 		l = select("#", ...)
 		for n = 1, l do
 			t[n] = select(n, ...)
 		end
+		--[[
 		for n = l+1, #t do
 			t[n] = nil
 		end
+		--]]
 		return iter
 	end
 end
@@ -400,9 +402,9 @@ end
 --https://stackoverflow.com/a/28664691
 do 
 	-- TODO: This needs to be improved regarding properly handling embedded and mixed quotes!
-	local parse_command_text_buffer = {}
+	local parse_buffer = {}
 	function parse_command_text(text)
-		iclear(parse_command_text_buffer)
+		iclear(parse_buffer)
 		local spat, epat, buf, quoted = [=[^(['"])]=], [=[(['"])$]=]
 		for str in text:gmatch("%S+") do
 			local squoted = str:match(spat)
@@ -417,15 +419,14 @@ do
 			end
 			if not buf then
 				local token = str:gsub(spat,""):gsub(epat,"")
-				table.insert(parse_command_text_buffer,token)
+				table.insert(parse_buffer,token)
 			end
 		end
 		if buf then return false, "Missing matching quote for "..buf end
-		return true, table.unpack(parse_command_text_buffer)
+		return true, table.unpack(parse_buffer)
 	end
-	local parse_multicommand_text_buffer = {}
 	function parse_multicommand_text(text)
-		iclear(parse_multicommand_text_buffer)
+		iclear(parse_buffer)
 		for mstr in text:gmatch("[^\r\n]+") do
 			local pquoted, buf = 0
 			for str in mstr:gmatch("[^;]+") do
@@ -445,12 +446,12 @@ do
 				end
 				if not buf then
 					local token = str
-					table.insert(parse_multicommand_text_buffer,token)
+					table.insert(parse_buffer,token)
 				end
 			end
 			if buf then return false, "Missing matching quote for "..buf end
 		end
-		return true, table.unpack(parse_multicommand_text_buffer)
+		return true, table.unpack(parse_buffer)
 	end
 end
 
@@ -622,16 +623,22 @@ local function console_mode_definitions(get_md)
 			return console_logger.print(get_md(),true,...)
 		end,
 		tprint = function(...)
-			for _,t in vararg(...) do
-				for k,v in pairs(t) do
-					console_logger.print(get_md(),true,k,v)
+			for _,o in vararg(...) do
+				console_logger.print(get_md(),false,o)
+				if type(o) == "table" or type(o) == "userdata" then
+					for k,v in pairs(o) do
+						console_logger.print(get_md(),false,k,v)
+					end
 				end
 			end
 		end,
-		mprint = function(f,...)
-			for _,t in vararg(...) do
-				for k,v in pairs(t) do
-					console_logger.print(get_md(),true,k,f(v))
+		mprint = function(m,...)
+			for _,o in vararg(...) do
+				console_logger.print(get_md(),false,o)
+				if type(o) == "table" or type(o) == "userdata" then
+					for k,v in pairs(o) do
+						console_logger.print(get_md(),false,k,m(v))
+					end
 				end
 			end
 		end,
@@ -729,12 +736,16 @@ function endow_sol_class_with_pairs_and_next(sol_object)
 end
 
 do
-	local function id(...)
-		return ...
+	local function getstring(o)
+		return o.tostring
+	end
+	
+	local function getnumber(o)
+		return tonumber(o.tostring)
 	end
 
-	local function peval(text)
-		local func = load("return " .. text)
+	local function peval(o)
+		local func = load("return " .. o.tostring)
 		if not func then return nil end
 		local status, value = pcall(func)
 		if not status then return nil end
@@ -745,22 +756,26 @@ do
 		return nil
 	end
 	
-	local function istrue(text)
-		return text == 'true'
+	local function istrue(o)
+		return o.tostring == 'true'
+	end
+
+	local function getarray(o)
+		return o.array
 	end
 
 	rvalue_marshallers = {
-		[RValueType.REAL] = tonumber,
-		[RValueType.STRING] = id,
-		[RValueType.ARRAY] = peval,
+		[RValueType.REAL] = getnumber,
+		[RValueType.STRING] = getstring,
+		[RValueType.ARRAY] = getarray,
 		[RValueType.PTR] = nil,
-		[RValueType.VEC3] = peval,
+		[RValueType.VEC3] = nil,
 		[RValueType.UNDEFINED] = null,
 		[RValueType.OBJECT] = nil,
-		[RValueType.INT32] = tonumber,
-		[RValueType.VEC4] = peval,
-		[RValueType.MATRIX] = peval,
-		[RValueType.INT64] = tonumber,
+		[RValueType.INT32] = getnumber,
+		[RValueType.VEC4] = nil,
+		[RValueType.MATRIX] = nil,
+		[RValueType.INT64] = getnumber,
 		[RValueType.ACCESSOR] = nil,
 		[RValueType.JSNULL] = null,
 		[RValueType.BOOL] = istrue,
@@ -772,7 +787,7 @@ do
 	function rvalue_marshall(rvalue)
 		local m = rvalue_marshallers[rvalue.type]
 		if m == nil then return rvalue end
-		return m(rvalue.tostring)
+		return m(rvalue)
 	end
 
 	local function get_name(rvalue)
