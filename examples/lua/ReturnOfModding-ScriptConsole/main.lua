@@ -212,6 +212,15 @@ function iclear(...)
 	end
 end
 
+function merge(m,...)
+	for _,t in vararg(...) do
+		for k,v in pairs(t) do
+			m[k] = v
+		end
+	end
+	return m
+end
+
 --http://lua-users.org/wiki/VarargTheSecondClassCitizen
 do -- not thread safe
 	local i, t, l = 0, {}
@@ -287,62 +296,70 @@ function vararg_tostring(raw, ...)
 	return s:sub(2,#s)
 end
 
-mlog_prefixes_debug = {
-	error = "",
-	info = "",
-	warning = "",
-	history = "",
-	echo = "[Echo]:",
-	print = "[Print]:",
-	returns = "[Returns]:"
+console_logger = {
+	error = {
+		prefix_debug = "",
+		prefix_shown = "",
+		logger = log.error,
+		color = 0xFF2020EE,
+	},
+	info = {
+		prefix_debug = "",
+		prefix_shown = "",
+		logger = log.info,
+		color = 0xFFEEEEEE,
+	},
+	warning = {
+		prefix_debug = "",
+		prefix_shown = "",
+		logger = log.warning,
+		color = 0xFF20EEEE,
+	},
+	history = {
+		prefix_debug = "",
+		prefix_shown = "] ",
+		logger = false,
+		color = 0xEECCCCCC,
+	},
+	echo = {
+		prefix_debug = "[Echo]:",
+		prefix_shown = "",
+		logger = log.info,
+		color = 0xFFEEEEEE,
+	},
+	print = {
+		prefix_debug = "[Print]:",
+		prefix_shown = "",
+		logger = log.info,
+		color = 0xFFEEEEEE,
+	},
+	returns = {
+		prefix_debug = "[Returns]:",
+		prefix_shown = "",
+		logger = log.info,
+		color = 0xFFFFFF20,
+	}
 }
 
-mlog_prefixes_shown = {
-	error = "",
-	info = "",
-	warning = "",
-	history = "] ",
-	echo = "",
-	print = "",
-	returns = ""
-}
+console_logger_meta = { __call = function(lg,...) return lg.log(...) end }
 
-mlog_loggers = {
-	error = log.error,
-	info = log.info,
-	warning = log.warning,
-	history = false,
-	echo = log.info,
-	print = log.info,
-	returns = log.info
-}
-
-mlog_colors = {
-	error = 0xFF2020EE,
-	info = 0xFFEEEEEE,
-	warning = 0xFF20EEEE,
-	history = 0xEECCCCCC,
-	echo = 0xFFEEEEEE,
-	print = 0xFFEEEEEE,
-	returns = 0xFFFFFF20
-}
-
-mlog = {}
-for k in pairs(mlog_colors) do
-	mlog[k] = function(mi, raw, ...)
+for _,lg in pairs(console_logger) do
+	lg.log = function(md, raw, ...)
 		local text = vararg_tostring(raw, ...)
-		table.insert(console_mode_raw[mi], text)
-		table.insert(console_mode_lines[mi], mlog_prefixes_shown[k] .. text)
-		console_mode_color[mi][#console_mode_lines[mi]] = mlog_colors[k]
-		if mlog_loggers[k] then
-			return mlog_loggers[k]( mlog_prefixes_debug[k] .. console_mode_prefix[mi] .. text )
+		table.insert(md.lines_raw, text)
+		table.insert(md.lines_shown, lg.prefix_shown .. text)
+		md.lines_colors[#md.lines_raw] = lg.color
+		if lg.logger then
+			return lg.logger( lg.prefix_debug .. md.prefix .. text )
 		end
 	end
+	setmetatable(lg,console_logger_meta)
 end
 
-function repl_execute_lua(mi, env, text, ...)
-	repl_globals.print = console_mode_print[mi]
-	repl_globals.tprint = console_mode_tprint[mi]
+function repl_execute_lua(md, env, text, ...)
+	for k,v in pairs(md.definitions) do
+		repl_globals[k] = v
+	end
 	local func, err = text, ''
 	if type(text) == "string" then
 		func, err = load( "return " .. text )
@@ -416,37 +433,37 @@ do
 	end
 end
 
-function run_console_command(mi, text)
+function run_console_command(md, text)
 		local parse_result = table.pack(parse_command_text(text))
 		local status, command_name = parse_result[1], parse_result[2]
 		if not status then
-			mlog.error(mi, true, command_name)
+			console_logger.error(md, true, command_name)
 		end
 		local alias = console_aliases[command_name]
 		if alias ~= nil then
-			return run_console_multicommand(mi, alias)
+			return run_console_multicommand(md, alias)
 		end
 		local command = console_commands[command_name]
 		if command == nil then
-			return mlog.error(mi, true, 'no command by the name of "' .. command_name .. '" found')
+			return console_logger.error(md, true, 'no command by the name of "' .. command_name .. '" found')
 		end
-		local ret = table.pack(repl_execute_lua(mi, false, command, mi, table.unpack(parse_result, 3, parse_result.n)))
+		local ret = table.pack(pcall(command,md,table.unpack(parse_result, 3, parse_result.n)))
 		if ret.n <= 1 then return end
 		if ret[1] == false then
-			return mlog.error( mi, true, ret[2] )
+			return console_logger.error( md, true, ret[2] )
 		end
-		return mlog.info(mi, false, table.unpack( ret, 2, ret.n ))
+		return console_logger.info(md, false, table.unpack( ret, 2, ret.n ))
 end
 
-function run_console_multicommand(mi, text)
+function run_console_multicommand(md, text)
 		local parse_result = table.pack(parse_multicommand_text(text))
 		local status, err = parse_result[1], parse_result[2]
 		if not status then
-			mlog.error(mi, true, err)
+			console_logger.error(md, true, err)
 		end
 		table.unpack(parse_result, 2, parse_result.n)
 		for i = 2, parse_result.n do
-			run_console_command(mi, parse_result[i])
+			run_console_command(md, parse_result[i])
 		end
 end
 
@@ -462,78 +479,78 @@ console_commands_help = {
 }
 
 console_commands = {
-	help = function(mi,stub)
+	help = function(md,stub)
 		if stub then
 			local msg = console_commands_help[stub]
 			if not msg then 
-				return mlog.error(mi, true, 'no command by the name of "' .. stub .. '" found')
+				return console_logger.error(md, true, 'no command by the name of "' .. stub .. '" found')
 			end
-			return mlog.echo(mi, true, msg)
+			return console_logger.echo(md, true, msg)
 		end
 		for _,h in ipairs(console_commands_help) do
-			mlog.echo(mi, true, table.unpack(h))
+			console_logger.echo(md, true, table.unpack(h))
 		end
 	end,
-	echo = function(mi,...)
+	echo = function(md,...)
 		local text = ""
 		for _, arg in vararg(...) do
 			text = text .. ' ' .. arg
 		end
 		text = text:sub(2,#text)
-		return mlog.echo(mi,true,text)
+		return console_logger.echo(md,true,text)
 	end,
-	lua = function(mi,...)
+	lua = function(md,...)
 		local text = ""
 		for _, arg in vararg(...) do
 			text = text .. ' ' .. arg
 		end
 		text = text:sub(2,#text)
 		if #text == 0 then
-			return mlog.error(mi, true, "cannot execute empty lua code.")
+			return console_logger.error(md, true, "cannot execute empty lua code.")
 		end
-		local ret = table.pack(repl_execute_lua(mi, true, text))
+		local ret = table.pack(repl_execute_lua(md, true, text))
 		if ret.n <= 1 then return end
 		if ret[1] == false then
-			return mlog.error( mi, true, ret[2] )
+			return console_logger.error(md, true, ret[2])
 		end
-		return mlog.returns(mi, false, table.unpack( ret, 2, ret.n ))
+		return console_logger.returns(md, false, table.unpack( ret, 2, ret.n ))
 	end,
 	--https://stackoverflow.com/a/10387949
-	luae = function(mi,path,...)
+	luae = function(md,path,...)
 		qualpath = _ENV["!plugins_data_mod_folder_path"] .. '/' .. path
 		local file = io.open(qualpath,"rb")
 		if not file or type(file) == "string" or type(file) == "number" then
 			file = io.open(qualpath .. ".lua","rb")
 			if not file or type(file) == "string" or type(file) == "number" then
-				return mlog.warning(mi, true, 'attempted to read the lua file "' .. path .. '", but failed.')
+				return console_logger.warning(md, true, 'attempted to read the lua file "' .. path .. '", but failed.')
 			end
 		end
 		local data = file:read("*a")
 		file:close()
-		local ret = table.pack(repl_execute_lua(mi, true, data, ...))
+		local ret = table.pack(repl_execute_lua(md, true, data, ...))
 		if ret.n <= 1 then return end
 		if ret[1] == false then
-			return mlog.error( mi, true, ret[2] )
+			return console_logger.error(md, true, ret[2])
 		end
-		return mlog.returns(mi, false, table.unpack( ret, 2, ret.n ))
+		return console_logger.returns(md, false, table.unpack( ret, 2, ret.n ))
 	end,
-	exec = function(mi,path)
+	exec = function(md,path)
 		qualpath = _ENV["!plugins_data_mod_folder_path"] .. '/' .. path
 		local file = io.open(qualpath,"rb")
 		if not file or type(file) == "string" or type(file) == "number" then
 			file = io.open(qualpath .. ".txt","rb")
 			if not file or type(file) == "string" or type(file) == "number" then
-				return mlog.warning(mi, true, 'attempted to read the batch file "' .. path .. '", but failed.')
+				return console_logger.warning(md, true, 'attempted to read the batch file "' .. path .. '", but failed.')
 			end
 		end
 		local data = file:read("*a")
 		file:close()
-		return run_console_multicommand(mi,data)
+		return run_console_multicommand(md,data)
 	end,
-	alias = function(mi,name,...)
+	alias = function(md,name,...)
 		if name == nil then
 			for k,v in pairs(console_aliases) do
-				mlog.echo(mi, true, k,v)
+				console_logger.echo(md, true, k,v)
 			end
 			return
 		end
@@ -545,72 +562,73 @@ console_commands = {
 		if #text == 0 then
 			local msg = console_aliases[name]
 			if not msg then 
-				return mlog.error(mi, true, 'no alias by the name of "' .. name .. '" exists')
+				return console_logger.error(md, true, 'no alias by the name of "' .. name .. '" exists')
 			end
-			return mlog.echo(mi, true, msg)
+			return console_logger.echo(md, true, msg)
 		end
 		console_aliases[name] = text
 	end,
 }
 
-console_modes_lookup = {
-	"Command Console",
-	"Lua Script REPL"
-}
-console_modes = lookup(console_modes_lookup)
-
-console_mode_text = {}
-console_mode_enter_pressed = {}
-console_mode_history = {}
-console_mode_history_offset = {}
-console_mode_lines = {}
-console_mode_raw = {}
-console_mode_selected = {}
-console_mode_color = {}
-console_mode_print = {}
-console_mode_tprint = {}
-for mi in ipairs(console_modes_lookup) do
-	console_mode_text[mi] = ""
-	console_mode_enter_pressed[mi] = false
-	console_mode_history[mi] = {}
-	console_mode_history_offset[mi] = 0
-	console_mode_lines[mi] = {}
-	console_mode_raw[mi] = {}
-	console_mode_selected[mi] = {}
-	console_mode_color[mi] = {}
-	console_mode_print[mi] = function(...)
-		return mlog.print(mi,true,...)
-	end
-	console_mode_tprint[mi] = function(...)
-		for _,t in vararg(...) do
-			for k,v in pairs(t) do
-				mlog.print(mi,true,k,v)
+console_modes = {
+	{
+		name = "Command Console",
+		prefix = "[Console]:",
+		on_enter = function(md) return function(text)
+			console_logger.history(md, true, text)
+			return run_console_multicommand(md, text)
+		end end
+	},
+	{
+		name = "Lua Script REPL",
+		prefix = "[LuaREPL]:",
+		on_enter = function(md) return function(text)
+			console_logger.history(md, true, text)
+			local ret = table.pack(repl_execute_lua(md, true, text))
+			if ret.n <= 1 then return end
+			if ret[1] == false then
+				return console_logger.error(md, true, ret[2])
 			end
-		end
-	end
+			repl_globals._ = ret[2]
+			return console_logger.returns(md, false, table.unpack(ret, 2, ret.n))
+		end end
+	}
+}
+
+for mi,md in ipairs(console_modes) do
+	merge(md,{
+		current_text = "",
+		enter_pressed = false,
+		history_offset = 0,
+		history = {},
+		lines_shown = {},
+		lines_raw = {},
+		lines_selected = {},
+		lines_colors = {},
+		
+		index = mi,
+		on_enter = md.on_enter(md),
+		definitions = {
+			print = function(...)
+				return console_logger.print(md,true,...)
+			end,
+			tprint = function(...)
+				for _,t in vararg(...) do
+					for k,v in pairs(t) do
+						console_logger.print(md,true,k,v)
+					end
+				end
+			end,
+			mprint = function(f,...)
+				for _,t in vararg(...) do
+					for k,v in pairs(t) do
+						console_logger.print(md,true,k,f(v))
+					end
+				end
+			end
+		}
+	})
 end
-
-console_mode_prefix = {
-	"[Console]:",
-	"[LuaREPL]:",
-}
-
-console_mode_on_enter = {
-	function(mi,text) -- Command Console
-		mlog.history(mi, true, text)
-		return run_console_multicommand(mi, text)
-	end,
-	function(mi,text) -- Lua Script REPL
-		mlog.history(mi, true, text)
-		local ret = table.pack(repl_execute_lua(mi, true, text))
-		if ret.n <= 1 then return end
-		if ret[1] == false then
-			return mlog.error( mi, true, ret[2] )
-		end
-		repl_globals._ = ret[2]
-		return mlog.returns(mi, false, table.unpack( ret, 2, ret.n ))
-	end
-}
 
 do
 	local calculate_text_sizes_x_buffer = {}
@@ -637,12 +655,16 @@ do
 end
 
 function endow_sol_class_with_pairs_and_next(sol_object)
-	-- sol objects are userdata or tables that have sol classes as metatables
-	-- sol object attributes are functions in their sol class as the same field
-	-- sol class __index function fallsback to itself so object's inherit class members
-	-- sol __index generates a new 'new' function whenever it is requested
-	-- sol classes have stub `__pairs` that just errors when called
-	-- sol overrides next to error when that is used on a sol class
+	-- this should be idempotent (does nothing extra when applied more than once)
+	--[[
+	context behind this approach:
+		sol objects are userdata or tables that have sol classes as metatables
+		sol object attributes are functions in their sol class as the same field
+		sol class __index function fallsback to itself so objects inherit class members
+		sol __index generates a new 'new' function whenever it is requested
+		sol classes have stub __pairs that just errors when called
+		sol overrides next to error when that is used on a sol class
+	--]]
 	local sol_meta = getmetatable(sol_object)
 	if not sol_meta then return end
 	local status, sol_next = pcall(pairs,sol_object)
@@ -675,6 +697,57 @@ function endow_sol_class_with_pairs_and_next(sol_object)
 		sol_meta.__next = sol_next
 	end
 end
+
+--[[
+do
+	-- doesn't work?
+
+	local cinstance_variables_id_register = setmetatable({},{__mode = "k"})
+
+	local cinstance_variables_proxy_meta = {
+		__index = function(s,k)
+			local id = cinstance_variables_id_register[s]
+			return tonumber(gm.variable_instance_get(id,k).tostring)
+		end,
+		__newindex = function(s,k,v)
+			local id = cinstance_variables_id_register[s]
+			return gm.variable_instance_set(id,k,v)
+		end,
+		__next = function(s,k)
+			local id = cinstance_variables_id_register[s]
+			local names = gm.variable_instance_get_names(id)
+			if names.type ~= RValueType.ARRAY then return nil end
+			names = names.array
+			local names_lookup = lookup(names)
+			local i = names_lookup[k]
+			if i == nil then return nil end
+			k = names[i+1].tostring
+			if k == nil then return nil end
+			return k, tonumber(gm.variable_instance_get(id,k).tostring)
+		end,
+		__pairs = function(s,k)
+			local id = cinstance_variables_id_register[s]
+			local names = gm.variable_instance_get_names(id)
+			if names.type ~= RValueType.ARRAY then return nil end
+			names = names.array
+			local names_lookup = lookup(names)
+			return function(_,k)
+				local i = names_lookup[k]
+				if i == nil then return nil end
+				k = names[i+1].tostring
+				if k == nil then return nil end
+				return tonumber(gm.variable_instance_get(id,k).tostring)
+			end,s,k
+		end
+	}
+
+	function cinstance_variables_proxy(cinstance)
+		local proxy = setmetatable({},cinstance_variables_proxy_meta)
+		cinstance_variables_id_register[proxy] = cinstance.i_id
+		return proxy
+	end
+end
+--]]
 
 function on_delayed_load()
 	local imgui_style = ImGui.GetStyle() -- sol.ImGuiStyle*
@@ -726,26 +799,27 @@ function imgui_on_render()
 			-- such that InputText's height == max y
 			local y_input = bot_y_max - ImGui.GetFontSize() - frame_padding_y 
 			local box_y = y - top_y_max - bot_y_max - item_spacing_y*2
-			for mi,ds in ipairs(console_modes_lookup) do
+			for mi,md in ipairs(console_modes) do
+				local ds = md.name
 				local ms = tostring(mi)
 				if ImGui.BeginTabItem(ds) then
 					ImGui.EndTabItem()
 					if autoexec_name then
 						local name = autoexec_name
 						autoexec_name = nil
-						run_console_command(mi,"exec " .. name)
+						run_console_command(md,"exec " .. name)
 					end
 					ImGui.InvisibleButton("##Spacer" .. ms, x_bar, top_y_max)
 					ImGui.SameLine()
 					if ImGui.Button("Clear##" .. ms, x_clear, top_y_max) then
-						iclear(console_mode_lines[mi],console_mode_raw[mi],console_mode_selected[mi],console_mode_color[mi])
+						iclear(md.lines_shown,md.lines_raw,md.lines_selected,md.lines_colors)
 					end
 					ImGui.SameLine()
 					if ImGui.Button("Copy##" .. ms, x_copy, top_y_max) then
 						local text
-						for hi,b in ipairs(console_mode_selected[mi]) do
+						for hi,b in ipairs(md.lines_selected) do
 							if b then 
-								local line = console_mode_raw[mi][hi] or console_mode_lines[mi][hi]
+								local line = md.lines_raw[hi] or md.lines_shown[hi]
 								if text == nil then
 									text = line
 								else
@@ -756,17 +830,17 @@ function imgui_on_render()
 						ImGui.SetClipboardText(text)
 					end
 					if ImGui.BeginListBox("##Box" .. ms,x,box_y) then
-						for li,ls in ipairs(console_mode_lines[mi]) do
+						for li,ls in ipairs(md.lines_shown) do
 							local _, y = ImGui.CalcTextSize(ls)
-							console_mode_selected[mi][li] = ImGui.Selectable("##Select" .. ms .. tostring(li), console_mode_selected[mi][li] or false, ImGuiSelectableFlags.AllowDoubleClick, 0, y)
+							md.lines_selected[li] = ImGui.Selectable("##Select" .. ms .. tostring(li), md.lines_selected[li] or false, ImGuiSelectableFlags.AllowDoubleClick, 0, y)
 							if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Right) then
-								local selected = not console_mode_selected[mi][li]
-								for oli in ipairs(console_mode_lines[mi]) do
-									console_mode_selected[mi][oli] = selected
+								local selected = not md.lines_selected[li]
+								for oli in ipairs(md.lines_selected) do
+									md.lines_selected[oli] = selected
 								end
 							end
 							ImGui.SameLine()
-							local color = console_mode_color[mi][li]
+							local color = md.lines_colors[li]
 							if color ~= nil then ImGui.PushStyleColor(ImGuiCol.Text, color) end
 							ImGui.TextWrapped(ls)
 							if color ~= nil then ImGui.PopStyleColor() end
@@ -775,31 +849,31 @@ function imgui_on_render()
 					end
 					ImGui.PushItemWidth(x_input)
 					ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, frame_padding_x, y_input)
-					console_mode_text[mi], console_mode_enter_pressed[mi] = ImGui.InputText("##Text" .. ms, console_mode_text[mi], 512, ImGuiInputTextFlags.EnterReturnsTrue)
+					md.current_text, md.enter_pressed = ImGui.InputText("##Text" .. ms, md.current_text, 512, ImGuiInputTextFlags.EnterReturnsTrue)
 					ImGui.PopStyleVar()
 					ImGui.PopItemWidth()
 					local changed_offset
 					ImGui.SameLine()
 					if ImGui.Button("^##" .. ms, x_up, bot_y_max) then
-						console_mode_history_offset[mi] = console_mode_history_offset[mi] + 1
-						if console_mode_history_offset[mi] > #console_mode_history[mi] then
-							console_mode_history_offset[mi] = #console_mode_history[mi]
+						md.history_offset = md.history_offset + 1
+						if md.history_offset > #md.history then
+							md.history_offset = #md.history
 						end
 						changed_offset = true
 					end
 					ImGui.SameLine()
 					if ImGui.Button("v##" .. ms, x_down, bot_y_max) then
-						console_mode_history_offset[mi] = console_mode_history_offset[mi] - 1
-						if console_mode_history_offset[mi] < 0 then
-							console_mode_history_offset[mi] = 0
+						md.history_offset = md.history_offset - 1
+						if md.history_offset < 0 then
+							md.history_offset = 0
 						end
 						changed_offset = true
 					end
 					if changed_offset then
-						if console_mode_history_offset[mi] == 0 then
-							console_mode_text[mi] = ""
+						if md.history_offset == 0 then
+							md.current_text = ""
 						else
-							console_mode_text[mi] = console_mode_history[mi][#console_mode_history[mi]-console_mode_history_offset[mi]+1]
+							md.current_text = md.history[#md.history-md.history_offset+1]
 						end
 					end
 				end
@@ -810,14 +884,14 @@ function imgui_on_render()
 	ImGui.End()
 	-- handling entering input separate from constructing the UI
 	-- so actions that use ImGui will be separate from the console's UI
-	for mi,pressed in ipairs(console_mode_enter_pressed) do
-		if pressed then
-			console_mode_enter_pressed[mi] = false
-			console_mode_history_offset[mi] = 0
-			local text = console_mode_text[mi]
-			table.insert(console_mode_history[mi],text)
-			console_mode_text[mi] = ""
-			console_mode_on_enter[mi](mi, text)
+	for mi,md in ipairs(console_modes) do
+		if md.enter_pressed then
+			md.enter_pressed = false
+			md.history_offset = 0
+			local text = md.current_text
+			table.insert(md.history,text)
+			md.current_text = ""
+			md.on_enter(text)
 		end
 	end
 end
