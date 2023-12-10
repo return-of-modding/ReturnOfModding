@@ -184,17 +184,19 @@ function setfenv( fn, env )
 	until not name
 end
 
-function lookup(t,s,f)
-	if s ~= nil or f ~= nil then
-		for k,v in pairs(t) do
-			if f ~= nil then v = f(v) end
-			if v == s then return k end
-		end
-		return nil
+function perform_lookup(t,s,f)
+	for k,v in pairs(t) do
+		if f ~= nil then v = f(v) end
+		if v == s then return k end
 	end
+	return nil
+end
+
+function build_lookup(t,f)
 	local l = {}
 	for k,v in pairs(t) do
-		l[v] = k
+		if f ~= nil then v = f(v) end
+		if v ~= nil then l[v] = k end
 	end
 	return l
 end
@@ -810,7 +812,7 @@ do
 			local names = gm.variable_instance_get_names(id)
 			if names.type ~= RValueType.ARRAY then return nil end
 			names = names.array
-			local i = k and lookup(names,k,get_name) or 0
+			local i = k and perform_lookup(names,k,get_name) or 0
 			k = names[i+1]
 			if k == nil then return nil end
 			k = k.tostring
@@ -821,8 +823,9 @@ do
 			local names = gm.variable_instance_get_names(id)
 			if names.type ~= RValueType.ARRAY then return nil end
 			names = names.array
+			local names_lookup = build_lookup(names,get_name)
 			return function(_,k)
-				local i = k and lookup(names,k,get_name) or 0
+				local i = k and names_lookup[k] or 0
 				k = names[i+1]
 				if k == nil then return nil end
 				k = k.tostring
@@ -853,7 +856,7 @@ function on_delayed_load()
 	
 	if ImGui.GetStyleVar == nil then
 		local imgui_vector_meta = getmetatable(imgui_vector)
-		local imgui_stylevar_lookup = lookup(ImGuiStyleVar)
+		local imgui_stylevar_lookup = build_lookup(ImGuiStyleVar)
 		imgui_stylevar_lookup[ImGuiStyleVar.COUNT] = nil
 
 		function ImGui.GetStyleVar(var)
