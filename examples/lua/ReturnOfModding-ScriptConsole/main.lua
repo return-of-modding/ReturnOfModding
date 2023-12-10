@@ -184,7 +184,14 @@ function setfenv( fn, env )
 	until not name
 end
 
-function lookup(t)
+function lookup(t,s,f)
+	if s ~= nil or f ~= nil then
+		for k,v in pairs(t) do
+			if f ~= nil then v = f(v) end
+			if v == s then return k end
+		end
+		return nil
+	end
 	local l = {}
 	for k,v in pairs(t) do
 		l[v] = k
@@ -245,6 +252,20 @@ end
 
 -- MOD SPECIFIC CODE:
 
+function find_instance(name)
+	for k,v in pairs(gm.CInstance.instances_active) do
+		if v.object_name == name then return v end
+	end
+	for k,v in pairs(gm.CInstance.instances_all) do
+		if v.object_name == name then return v end
+	end
+	return nil
+end
+
+function variables(...)
+	return cinstance_variables_proxy(...)
+end
+
 local _repl_globals = {}
 for k,v in pairs(_G) do
 	_repl_globals[k] = v
@@ -253,10 +274,10 @@ for k,v in pairs(_ENV) do
 	_repl_globals[k] = v
 end
 repl_globals = _repl_globals
-repl_environment = setmetatable( { }, {
+repl_environment = setmetatable({},{
 	__index = repl_globals,
 	__newindex = repl_globals
-} )
+})
 
 autoexec_name = "autoexec"
 
@@ -450,9 +471,9 @@ function run_console_command(md, text)
 		local ret = table.pack(pcall(command,md,table.unpack(parse_result, 3, parse_result.n)))
 		if ret.n <= 1 then return end
 		if ret[1] == false then
-			return console_logger.error( md, true, ret[2] )
+			return console_logger.error(md, true, ret[2])
 		end
-		return console_logger.info(md, false, table.unpack( ret, 2, ret.n ))
+		return console_logger.info(md, false, table.unpack(ret, 2, ret.n))
 end
 
 function run_console_multicommand(md, text)
@@ -595,6 +616,31 @@ console_modes = {
 	}
 }
 
+local function console_mode_definitions(get_md)
+	return {
+		print = function(...)
+			return console_logger.print(get_md(),true,...)
+		end,
+		tprint = function(...)
+			for _,t in vararg(...) do
+				for k,v in pairs(t) do
+					console_logger.print(get_md(),true,k,v)
+				end
+			end
+		end,
+		mprint = function(f,...)
+			for _,t in vararg(...) do
+				for k,v in pairs(t) do
+					console_logger.print(get_md(),true,k,f(v))
+				end
+			end
+		end,
+		eval = function(...)
+			return repl_execute_lua(get_md(), ...)
+		end
+	}
+end
+
 for mi,md in ipairs(console_modes) do
 	merge(md,{
 		current_text = "",
@@ -605,30 +651,14 @@ for mi,md in ipairs(console_modes) do
 		lines_raw = {},
 		lines_selected = {},
 		lines_colors = {},
-		
 		index = mi,
 		on_enter = md.on_enter(md),
-		definitions = {
-			print = function(...)
-				return console_logger.print(md,true,...)
-			end,
-			tprint = function(...)
-				for _,t in vararg(...) do
-					for k,v in pairs(t) do
-						console_logger.print(md,true,k,v)
-					end
-				end
-			end,
-			mprint = function(f,...)
-				for _,t in vararg(...) do
-					for k,v in pairs(t) do
-						console_logger.print(md,true,k,f(v))
-					end
-				end
-			end
-		}
+		definitions = console_mode_definitions(function() return md end)
 	})
 end
+
+console_mode = console_modes[1]
+merge(_ENV,console_mode_definitions(function() return console_mode end))
 
 do
 	local calculate_text_sizes_x_buffer = {}
@@ -698,16 +728,63 @@ function endow_sol_class_with_pairs_and_next(sol_object)
 	end
 end
 
---[[
 do
-	-- doesn't work?
+	local function id(...)
+		return ...
+	end
+
+	local function peval(text)
+		local func = load("return " .. text)
+		if not func then return nil end
+		local status, value = pcall(func)
+		if not status then return nil end
+		return value
+	end
+	
+	local function null()
+		return nil
+	end
+	
+	local function istrue(text)
+		return text == 'true'
+	end
+
+	rvalue_marshallers = {
+		[RValueType.REAL] = tonumber,
+		[RValueType.STRING] = id,
+		[RValueType.ARRAY] = peval,
+		[RValueType.PTR] = nil,
+		[RValueType.VEC3] = peval,
+		[RValueType.UNDEFINED] = null,
+		[RValueType.OBJECT] = nil,
+		[RValueType.INT32] = tonumber,
+		[RValueType.VEC4] = peval,
+		[RValueType.MATRIX] = peval,
+		[RValueType.INT64] = tonumber,
+		[RValueType.ACCESSOR] = nil,
+		[RValueType.JSNULL] = null,
+		[RValueType.BOOL] = istrue,
+		[RValueType.ITERATOR] = nil,
+		[RValueType.REF] = nil,
+		[RValueType.UNSET] = null
+	}
+
+	function rvalue_marshall(rvalue)
+		local m = rvalue_marshallers[rvalue.type]
+		if m == nil then return rvalue end
+		return m(rvalue.tostring)
+	end
+
+	local function get_name(rvalue)
+		return rvalue.tostring
+	end
 
 	local cinstance_variables_id_register = setmetatable({},{__mode = "k"})
 
 	local cinstance_variables_proxy_meta = {
 		__index = function(s,k)
 			local id = cinstance_variables_id_register[s]
-			return tonumber(gm.variable_instance_get(id,k).tostring)
+			return rvalue_marshall(gm.variable_instance_get(id,k))
 		end,
 		__newindex = function(s,k,v)
 			local id = cinstance_variables_id_register[s]
@@ -718,25 +795,23 @@ do
 			local names = gm.variable_instance_get_names(id)
 			if names.type ~= RValueType.ARRAY then return nil end
 			names = names.array
-			local names_lookup = lookup(names)
-			local i = names_lookup[k]
-			if i == nil then return nil end
-			k = names[i+1].tostring
+			local i = k and lookup(names,k,get_name) or 0
+			k = names[i+1]
 			if k == nil then return nil end
-			return k, tonumber(gm.variable_instance_get(id,k).tostring)
+			k = k.tostring
+			return k, rvalue_marshall(gm.variable_instance_get(id,k))
 		end,
 		__pairs = function(s,k)
 			local id = cinstance_variables_id_register[s]
 			local names = gm.variable_instance_get_names(id)
 			if names.type ~= RValueType.ARRAY then return nil end
 			names = names.array
-			local names_lookup = lookup(names)
 			return function(_,k)
-				local i = names_lookup[k]
-				if i == nil then return nil end
-				k = names[i+1].tostring
+				local i = k and lookup(names,k,get_name) or 0
+				k = names[i+1]
 				if k == nil then return nil end
-				return tonumber(gm.variable_instance_get(id,k).tostring)
+				k = k.tostring
+				return k, rvalue_marshall(gm.variable_instance_get(id,k))
 			end,s,k
 		end
 	}
@@ -747,7 +822,6 @@ do
 		return proxy
 	end
 end
---]]
 
 function on_delayed_load()
 	local imgui_style = ImGui.GetStyle() -- sol.ImGuiStyle*
@@ -804,6 +878,7 @@ function imgui_on_render()
 				local ms = tostring(mi)
 				if ImGui.BeginTabItem(ds) then
 					ImGui.EndTabItem()
+					console_mode = md
 					if autoexec_name then
 						local name = autoexec_name
 						autoexec_name = nil
