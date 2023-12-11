@@ -158,7 +158,7 @@ hooks["gml_Object_oStartMenu_Step_2"] = function() -- mod init
 
     -- can't hook into game callbacks yet, so this will do
     hooks["gml_Object_oP_Step_2"] = function(p)
-        local id = p.i_id
+        local id = p.id
         if gm.variable_instance_get(id, "class").value == coolguy_id then
             -- do coolguy stuff
             if gm.variable_instance_get(id, "local_client_is_authority").value > 0.5 then -- don't call if this isn't our player
@@ -177,7 +177,7 @@ hooks["gml_Object_oStartMenu_Step_2"] = function() -- mod init
         end
     end
     --[[hooks["gml_Object_oP_Draw_0"] = function(p)
-        local id = p.i_id
+        local id = p.id
         
     end]]
 
