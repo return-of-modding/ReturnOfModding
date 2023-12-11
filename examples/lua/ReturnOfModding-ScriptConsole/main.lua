@@ -864,20 +864,23 @@ do
 
 	function cinstance_variables_proxy(cinstance)
 		local proxy = setmetatable({},cinstance_variables_proxy_meta)
-		cinstance_variables_id_register[proxy] = cinstance.i_id
+		cinstance_variables_id_register[proxy] = cinstance.id
 		return proxy
 	end
 end
 
 function on_delayed_load()
-	local imgui_style = ImGui.GetStyle() -- sol.ImGuiStyle*
-	local imgui_vector = imgui_style["WindowPadding"] -- sol.ImVec2*
+
 	local gm_instance_list = gm.CInstance.instances_all
 	local gm_instance = gm_instance_list[1]
+	if not gm_instance then return false end
 	local gm_rvalue = gm.variable_global_get("mouse_x")
-
+	
+	local imgui_style = ImGui.GetStyle() -- sol.ImGuiStyle*
+	local imgui_vector = imgui_style["WindowPadding"] -- sol.ImVec2*
 	endow_with_pairs_and_next(imgui_style)
 	endow_with_pairs_and_next(imgui_vector)
+
 	endow_with_pairs_and_next(gm_instance_list)
 	endow_with_pairs_and_next(gm_instance)
 	endow_with_pairs_and_next(gm_rvalue)
@@ -903,13 +906,14 @@ function on_delayed_load()
 			return s['x'],s['y']
 		end
 	end
+	
+	return true
 end
 
 local next_delayed_load = on_delayed_load
 
 function imgui_on_render()
-	if next_delayed_load then
-		next_delayed_load()
+	if next_delayed_load and next_delayed_load() then
 		next_delayed_load = nil
 	end
 	if ImGui.Begin("Script Console") then
