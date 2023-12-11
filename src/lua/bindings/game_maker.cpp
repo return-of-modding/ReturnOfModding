@@ -6,38 +6,28 @@
 
 #define BIND_USERTYPE(lua_variable, type_name, field_name) lua_variable[#field_name] = &type_name::field_name;
 
+static RValue parse_sol_object(sol::object arg)
+{
+		if (arg.get_type() == sol::type::number)
+		return RValue(arg.as<double>());
+		else if (arg.get_type() == sol::type::string)
+		return RValue(arg.as<std::string>());
+		else if (arg.get_type() == sol::type::boolean)
+		return RValue(arg.as<bool>());
+		else if (arg.get_type() == sol::type::userdata)
+		return arg.as<RValue>();
+
+	return {};
+	}
+
 static std::vector<RValue> parse_variadic_args(sol::variadic_args args)
 {
 	std::vector<RValue> vec_args;
 	for (const auto& arg : args)
 	{
-		if (arg.get_type() == sol::type::number)
-			vec_args.push_back(arg.as<double>());
-		else if (arg.get_type() == sol::type::string)
-			vec_args.push_back(arg.as<std::string>());
-		else if (arg.get_type() == sol::type::boolean)
-			vec_args.push_back(arg.as<bool>());
-		else if (arg.get_type() == sol::type::userdata)
-			vec_args.push_back(arg.as<RValue>());
+		vec_args.push_back(parse_sol_object(arg));
 	}
 	return vec_args;
-}
-
-static RValue parse_variadic_args_as_single_RValue(sol::variadic_args args)
-{
-	for (const auto& arg : args)
-	{
-		if (arg.get_type() == sol::type::number)
-			return RValue(arg.as<double>());
-		else if (arg.get_type() == sol::type::string)
-			return RValue(arg.as<std::string>());
-		else if (arg.get_type() == sol::type::boolean)
-			return RValue(arg.as<bool>());
-		else if (arg.get_type() == sol::type::userdata)
-			return arg.as<RValue>();
-	}
-
-	return {};
 }
 
 // Lua API: Table
@@ -85,9 +75,9 @@ namespace lua::game_maker
 	// Name: variable_global_set
 	// Param: name: string: name of the variable
 	// Param: new_value: any: new value
-	static void lua_gm_variable_global_set(std::string_view name, sol::variadic_args args)
+	static void lua_gm_variable_global_set(std::string_view name, sol::reference new_value)
 	{
-		auto val = parse_variadic_args_as_single_RValue(args);
+		auto val = parse_sol_object(new_value);
 		gm::variable_global_set(name, val);
 	}
 
@@ -309,13 +299,68 @@ namespace lua::game_maker
 
 		// Lua API: Class
 		// Name: CInstance
-		// Class representing a game maker object instance
+		// Class representing a game maker object instance.
+		//
+		// You can use most if not all of the builtin game maker variables (For example `myCInstance.x`) [listed here](https://manual.gamemaker.io/monthly/en/GameMaker_Language/GML_Reference/Asset_Management/Instances/Instance_Variables/Instance_Variables.htm).
+		//
+		// To know the specific instance variables of a given object defined by the game call dump_vars() on the instance
 		{
-			sol::usertype<CInstance> type = state.new_usertype<CInstance>("CInstance");
+			sol::usertype<CInstance> type = state.new_usertype<CInstance>(
+			    "CInstance",
+			    sol::meta_function::index,
+			    [](sol::this_state this_state_, sol::object self, sol::stack_object key) -> sol::reference {
+				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
+				    if (v)
+				    {
+					    return v.value();
+				    }
+				    else
+				    {
+					    if (!key.is<const char*>())
+					    {
+						    return sol::lua_nil;
+					    }
 
-			// Lua API: Field
-			// Table: CInstance
-			// Field: m_CreateCounter: number
+					    const auto res =
+					        gm::call("variable_instance_get", std::to_array<RValue, 2>({self.as<CInstance&>().id, key.as<const char*>()}));
+
+					    switch (res.type & MASK_TYPE_RVALUE)
+					    {
+					    case REAL:
+					    case STRING: return sol::make_object<const char*>(this_state_, res.ref_string->get());
+					    case _BOOL:
+					    case _INT32:
+					    case _INT64: return sol::make_object<double>(this_state_, res.asReal());
+					    case ARRAY:
+						    return sol::make_object<std::span<RValue>>(this_state_,
+						        res.ref_array && res.isArray() ? res.ref_array->array() : dummy_rvalue_array);
+					    case REF:
+					    case PTR: return sol::make_object<void*>(this_state_, res.ptr);
+					    case OBJECT: return sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr);
+					    case UNDEFINED: 
+					    case UNSET: return sol ::lua_nil;
+					    default: return sol::make_object<RValue>(this_state_, res);
+					    }
+				    }
+			    },
+			    sol::meta_function::new_index,
+			    [](sol::object self, sol::stack_object key, sol::stack_object value) {
+				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
+				    if (v)
+				    {
+					    self.as<sol::table&>().raw_set(key, value);
+				    }
+				    else
+				    {
+					    if (!key.is<const char*>())
+		{
+						    return;
+					    }
+
+					    gm::call("variable_instance_set", std::to_array<RValue, 3>({self.as<CInstance&>().id, key.as<const char*>(), parse_sol_object(key)}));
+				    }
+			    });
+
 			BIND_USERTYPE(type, CInstance, m_CreateCounter);
 
 			BIND_USERTYPE(type, CInstance, m_Instflags);
@@ -494,38 +539,15 @@ namespace lua::game_maker
 
 			// Lua API: Function
 			// Class: CInstance
-			// Name: get
-			// Param: variable_name: string: name of the instance variable to get
-			// Returns: RValue: Returns the variable value.
-			type["get"] = &CInstance::get;
-
-			// Lua API: Function
-			// Class: CInstance
-			// Name: get_bool
-			// Param: variable_name: string: name of the instance variable to get
-			// Returns: boolean: Returns the variable value.
-			type["get_bool"] = &CInstance::get_bool;
-
-			// Lua API: Function
-			// Class: CInstance
-			// Name: get_double
-			// Param: variable_name: string: name of the instance variable to get
-			// Returns: number: Returns the variable value.
-			type["get_double"] = &CInstance::get_double;
-
-			// Lua API: Function
-			// Class: CInstance
-			// Name: get_string
-			// Param: variable_name: string: name of the instance variable to get
-			// Returns: string: Returns the variable value.
-			type["get_string"] = &CInstance::get_string;
-
-			// Lua API: Function
-			// Class: CInstance
-			// Name: set
-			// Param: variable_name: string: name of the instance variable to set
-			// Param: new_value: any: new value
-			type["set"] = sol::overload(&CInstance::set, &CInstance::set_bool, &CInstance::set_double, &CInstance::set_string);
+			// Name: dump_vars
+			// Log dump to the console all the variable names of the given object, for example with an `oP` (Player) object instance you will be able to do `print(myoPInstance.user_name)`
+			type["dump_vars"] = [](CInstance& self) {
+				const auto var_names = gm::call("variable_instance_get_names", self.id).asArray();
+				for (int i = 0; i < var_names->length; i++)
+				{
+					LOG(INFO) << var_names->m_Array[i].asString();
+				}
+			};
 
 			auto CInstance_table = ns["CInstance"].get_or_create<sol::table>();
 
