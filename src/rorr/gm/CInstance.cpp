@@ -4,28 +4,26 @@
 
 void CInstance::imgui_dump()
 {
-	ImGui::Text("Instance ID: %d", i_id);
-	ImGui::Text("Position: %.2f, %.2f", i_x, i_y);
-	ImGui::Text("Gravity: %.2f (Direction: %.2f)", i_gravity, i_gravitydir);
-	ImGui::Text("Speed: %.2f", i_speed);
-	ImGui::Text("Object Name: %s (Index: %d) ", object_name().c_str(), i_objectindex);
+	ImGui::Text("Instance ID: %d", id);
+	ImGui::Text("Position: %.2f, %.2f", x, y);
+	ImGui::Text("Gravity: %.2f (Direction: %.2f)", gravity, gravity_direction);
+	ImGui::Text("Speed: %.2f", speed);
+	ImGui::Text("Object Name: %s (Index: %d) ", object_name().c_str(), object_index);
 
-	RValue sprite_index    = i_spriteindex;
 	const auto sprite_name = gm::call("sprite_get_name", sprite_index);
 	if (sprite_name.type == RValueType::STRING)
-		ImGui::Text("Sprite Name: %s (Index: %d) ", sprite_name.ref_string->m_thing, i_spriteindex);
+		ImGui::Text("Sprite Name: %s (Index: %d) ", sprite_name.ref_string->m_thing, sprite_index);
 
-	RValue layer_id       = m_nLayerID;
-	const auto layer_name = gm::call("layer_get_name", layer_id);
+	const auto layer_name = gm::call("layer_get_name", layer);
 	if (layer_name.type == RValueType::STRING)
-		ImGui::Text("Layer Name: %s (Index: %d) ", layer_name.ref_string->m_thing, m_nLayerID);
+		ImGui::Text("Layer Name: %s (Index: %d) ", layer_name.ref_string->m_thing, layer);
 
-	ImGui::Text("Depth: %.2f | %.2f", i_depth, i_currentdepth);
+	ImGui::Text("Depth: %.2f | %.2f", depth, i_currentdepth);
 }
 
 void CInstance::imgui_dump_instance_variables()
 {
-	RValue instance_variable_names = gm::call("variable_instance_get_names", i_id);
+	RValue instance_variable_names = gm::call("variable_instance_get_names", id);
 	ImGui::Text("Var Count: %d", instance_variable_names.ref_array->length);
 	ImGui::Text("Ref Count: %d", instance_variable_names.ref_array->m_refCount);
 	ImGui::Text("Flags: %d", instance_variable_names.ref_array->m_flags);
@@ -44,29 +42,28 @@ void CInstance::imgui_dump_instance_variables()
 			if (ImGui::Button(std::format("SAVE ##btn{}", var_name).c_str()))
 			{
 				gm::call("variable_instance_set",
-				    std::to_array<RValue, 3>({i_id, var_name, std::stod(var_to_input_texts[var_name].data())}));
+				    std::to_array<RValue, 3>({id, var_name, std::stod(var_to_input_texts[var_name].data())}));
 			}
 		}
 	}
 }
 
-static std::unordered_map<int64_t, std::string> object_index_to_name;
+static std::unordered_map<int, std::string> object_index_to_name;
 static std::string dummy;
 const std::string& CInstance::object_name() const
 {
-	if (!object_index_to_name.contains((int64_t)i_objectindex))
+	if (!object_index_to_name.contains(object_index))
 	{
-		RValue object_index    = i_objectindex;
 		const auto object_name = gm::call("object_get_name", object_index);
 		if (object_name.type == RValueType::STRING)
 		{
-			object_index_to_name[(int64_t)i_objectindex] = object_name.ref_string->m_thing;
-			return object_index_to_name[(int64_t)i_objectindex];
+			object_index_to_name[object_index] = object_name.ref_string->m_thing;
+			return object_index_to_name[object_index];
 		}
 	}
 	else
 	{
-		return object_index_to_name[(int64_t)i_objectindex];
+		return object_index_to_name[object_index];
 	}
 
 	return dummy;

@@ -161,7 +161,7 @@ namespace big
 					{
 						for (const auto& instance : gm::CInstances_active)
 						{
-							if (instance->i_id == nearest_instance.i32)
+							if (instance->id == nearest_instance.i32)
 							{
 								instance->imgui_dump();
 								ImGui::Separator();

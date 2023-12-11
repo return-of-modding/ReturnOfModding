@@ -321,166 +321,166 @@ namespace lua::game_maker
 			BIND_USERTYPE(type, CInstance, m_Instflags);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_id: number
-			BIND_USERTYPE(type, CInstance, i_id);
+			// Class: CInstance
+			// Field: id: number
+			BIND_USERTYPE(type, CInstance, id);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_objectindex: number
-			BIND_USERTYPE(type, CInstance, i_objectindex);
+			// Class: CInstance
+			// Field: object_index: number
+			BIND_USERTYPE(type, CInstance, object_index);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_spriteindex: number
-			BIND_USERTYPE(type, CInstance, i_spriteindex);
+			// Class: CInstance
+			// Field: sprite_index: number
+			BIND_USERTYPE(type, CInstance, sprite_index);
 
 			BIND_USERTYPE(type, CInstance, i_sequencePos);
 			BIND_USERTYPE(type, CInstance, i_lastSequencePos);
 			BIND_USERTYPE(type, CInstance, i_sequenceDir);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_imageindex: number
-			BIND_USERTYPE(type, CInstance, i_imageindex);
+			// Class: CInstance
+			// Field: image_index: number
+			BIND_USERTYPE(type, CInstance, image_index);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_imagespeed: number
-			BIND_USERTYPE(type, CInstance, i_imagespeed);
+			// Class: CInstance
+			// Field: image_speed: number
+			BIND_USERTYPE(type, CInstance, image_speed);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_imagescalex: number
-			BIND_USERTYPE(type, CInstance, i_imagescalex);
+			// Class: CInstance
+			// Field: image_xscale: number
+			BIND_USERTYPE(type, CInstance, image_xscale);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_imagescaley: number
-			BIND_USERTYPE(type, CInstance, i_imagescaley);
+			// Class: CInstance
+			// Field: image_yscale: number
+			BIND_USERTYPE(type, CInstance, image_yscale);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_imageangle: number
-			BIND_USERTYPE(type, CInstance, i_imageangle);
+			// Class: CInstance
+			// Field: image_angle: number
+			BIND_USERTYPE(type, CInstance, image_angle);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_imagealpha: number
-			BIND_USERTYPE(type, CInstance, i_imagealpha);
+			// Class: CInstance
+			// Field: image_alpha: number
+			BIND_USERTYPE(type, CInstance, image_alpha);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_imageblend: number
-			BIND_USERTYPE(type, CInstance, i_imageblend);
+			// Class: CInstance
+			// Field: image_blend: number
+			BIND_USERTYPE(type, CInstance, image_blend);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_x: number
-			BIND_USERTYPE(type, CInstance, i_x);
+			// Class: CInstance
+			// Field: x: number
+			BIND_USERTYPE(type, CInstance, x);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_y: number
-			BIND_USERTYPE(type, CInstance, i_y);
+			// Class: CInstance
+			// Field: y: number
+			BIND_USERTYPE(type, CInstance, y);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_xstart: number
-			BIND_USERTYPE(type, CInstance, i_xstart);
+			// Class: CInstance
+			// Field: xstart: number
+			BIND_USERTYPE(type, CInstance, xstart);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_ystart: number
-			BIND_USERTYPE(type, CInstance, i_ystart);
+			// Class: CInstance
+			// Field: ystart: number
+			BIND_USERTYPE(type, CInstance, ystart);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_xprevious: number
-			BIND_USERTYPE(type, CInstance, i_xprevious);
+			// Class: CInstance
+			// Field: xprevious: number
+			BIND_USERTYPE(type, CInstance, xprevious);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_yprevious: number
-			BIND_USERTYPE(type, CInstance, i_yprevious);
+			// Class: CInstance
+			// Field: yprevious: number
+			BIND_USERTYPE(type, CInstance, yprevious);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_direction: number
-			BIND_USERTYPE(type, CInstance, i_direction);
+			// Class: CInstance
+			// Field: direction: number
+			BIND_USERTYPE(type, CInstance, direction);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_speed: number
-			BIND_USERTYPE(type, CInstance, i_speed);
+			// Class: CInstance
+			// Field: speed: number
+			BIND_USERTYPE(type, CInstance, speed);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_friction: number
-			BIND_USERTYPE(type, CInstance, i_friction);
+			// Class: CInstance
+			// Field: friction: number
+			BIND_USERTYPE(type, CInstance, friction);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_gravitydir: number
-			BIND_USERTYPE(type, CInstance, i_gravitydir);
+			// Class: CInstance
+			// Field: gravity_direction: number
+			BIND_USERTYPE(type, CInstance, gravity_direction);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_gravity: number
-			BIND_USERTYPE(type, CInstance, i_gravity);
+			// Class: CInstance
+			// Field: gravity: number
+			BIND_USERTYPE(type, CInstance, gravity);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_hspeed: number
-			BIND_USERTYPE(type, CInstance, i_hspeed);
+			// Class: CInstance
+			// Field: hspeed: number
+			BIND_USERTYPE(type, CInstance, hspeed);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_vspeed: number
-			BIND_USERTYPE(type, CInstance, i_vspeed);
+			// Class: CInstance
+			// Field: vspeed: number
+			BIND_USERTYPE(type, CInstance, vspeed);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_bbox: number[4] array
-			BIND_USERTYPE(type, CInstance, i_bbox);
+			// Class: CInstance
+			// Field: bbox: number[4] array
+			BIND_USERTYPE(type, CInstance, bbox);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_timer: number
-			BIND_USERTYPE(type, CInstance, i_timer);
+			// Class: CInstance
+			// Field: timer: number
+			BIND_USERTYPE(type, CInstance, timer);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: m_nLayerID: number
-			BIND_USERTYPE(type, CInstance, m_nLayerID);
+			// Class: CInstance
+			// Field: layer: number
+			BIND_USERTYPE(type, CInstance, layer);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_maskindex: number
-			BIND_USERTYPE(type, CInstance, i_maskindex);
+			// Class: CInstance
+			// Field: mask_index: number
+			BIND_USERTYPE(type, CInstance, mask_index);
 
 			// Lua API: Field
-			// Table: CInstance
+			// Class: CInstance
 			// Field: m_nMouseOver: number
 			BIND_USERTYPE(type, CInstance, m_nMouseOver);
 
 			// Lua API: Field
-			// Table: CInstance
+			// Class: CInstance
 			// Field: m_pNext: CInstance
 			BIND_USERTYPE(type, CInstance, m_pNext);
 
 			// Lua API: Field
-			// Table: CInstance
+			// Class: CInstance
 			// Field: m_pPrev: CInstance
 			BIND_USERTYPE(type, CInstance, m_pPrev);
 
 			// Lua API: Field
-			// Table: CInstance
-			// Field: i_depth: number
-			BIND_USERTYPE(type, CInstance, i_depth);
+			// Class: CInstance
+			// Field: depth: number
+			BIND_USERTYPE(type, CInstance, depth);
 
 			// Lua API: Field
-			// Table: CInstance
+			// Class: CInstance
 			// Field: i_currentdepth: number
 			BIND_USERTYPE(type, CInstance, i_currentdepth);
 
@@ -488,7 +488,7 @@ namespace lua::game_maker
 			BIND_USERTYPE(type, CInstance, m_collisionTestNumber);
 
 			// Lua API: Field
-			// Table: CInstance
+			// Class: CInstance
 			// Field: object_name: string
 			type["object_name"] = sol::property(&CInstance::object_name);
 
