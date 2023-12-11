@@ -18,7 +18,7 @@ rawnext = next
 -- invokes __next
 function next( t, k )
 	local m = debug.getmetatable( t )
-	local f = m and m.__next or rawnext
+	local f = m and rawget(m,'__next') or rawnext
 	return pusherror( f, t, k )
 end
 
@@ -61,7 +61,7 @@ end
 -- invokes __inext
 function inext( t, i )
 	local m = debug.getmetatable( t )
-	local f = m and m.__inext or rawinext
+	local f = m and rawget(m,'__inext') or rawinext
 	return pusherror( f, t, i )
 end
 
@@ -693,7 +693,7 @@ do
 	end
 end
 
-function endow_sol_class_with_pairs_and_next(sol_object)
+function endow_with_pairs_and_next(sol_object)
 	-- this should be idempotent (does nothing extra when applied more than once)
 	--[[
 	context behind this approach:
@@ -706,34 +706,62 @@ function endow_sol_class_with_pairs_and_next(sol_object)
 	--]]
 	local sol_meta = getmetatable(sol_object)
 	if not sol_meta then return end
-	local status, sol_next = pcall(pairs,sol_object)
+	local status, sol_next
+	if rawget(sol_meta,'__pairs') or rawget(sol_meta,'__next') then
+		status, sol_next = pcall(pairs,sol_object)
+	end
 	if not status then
-		function sol_next(s,k)
-			local v,u,w
-			while v == nil do
-				k,u = rawnext(sol_meta,k)
-				if k == nil then return nil end
-				w = s[k]
-				-- if the object reports a value different to the class
-				if u ~= w then
-					-- and the value is the same each time it is requested
-					u = s[k]
-					if u == w then
-						-- assume it's actually that object's attribute
-						v = w
+		local sol_index = rawget(sol_meta,'__index')
+		if not sol_index then return end
+		if type(sol_index) ~= 'function' then
+            function sol_next(s,k)
+                return next(sol_index,k)
+            end
+        else
+			function sol_next(s,k)
+				local v,u,w
+				while v == nil do
+					k,u = rawnext(sol_meta,k)
+					if k == nil then return nil end
+					w = s[k]
+					-- if the object reports a value different to the class
+					if u ~= w then
+						-- and the value is the same each time it is requested
+						u = s[k]
+						if u == w then
+							-- assume it's actually that object's attribute
+							v = w
+						end
 					end
 				end
+				return k,v
 			end
-			return k,v
 		end
-		sol_meta.__pairs = function(s,k)
+		rawset(sol_meta,'__pairs',function(s,k)
 			return sol_next,s,k
-		end
+		end)
 	end
 	-- __next is implemented by a custom implementation of next
 	local status = pcall(rawnext,sol_object)
-	if not status and sol_next ~= nil and sol_meta.__next == nil then
-		sol_meta.__next = sol_next
+	if not status and sol_next ~= nil and rawget(sol_meta,'__next') == nil then
+		rawset(sol_meta,'__next',sol_next)
+	end
+end
+
+function endow_with_new_properties(sol_object,properties)
+	local meta = getmetatable(sol_object)
+	local new_properties = {}
+	for k,v in pairs(properties) do
+		if not rawget(meta,k) then
+			new_properties[k] = v
+			rawset(meta,k,v)
+		end
+	end
+	local index = meta.__index
+	meta.__index = function(s,k)
+		local v = new_properties[k]
+		if v then return v(s) end
+		return index(s,k)
 	end
 end
 
@@ -848,11 +876,18 @@ function on_delayed_load()
 	local gm_instance = gm_instance_list[1]
 	local gm_rvalue = gm.variable_global_get("mouse_x")
 
-	endow_sol_class_with_pairs_and_next(imgui_style)
-	endow_sol_class_with_pairs_and_next(imgui_vector)
-	endow_sol_class_with_pairs_and_next(gm_instance_list)
-	endow_sol_class_with_pairs_and_next(gm_instance)
-	endow_sol_class_with_pairs_and_next(gm_rvalue)
+	endow_with_pairs_and_next(imgui_style)
+	endow_with_pairs_and_next(imgui_vector)
+	endow_with_pairs_and_next(gm_instance_list)
+	endow_with_pairs_and_next(gm_instance)
+	endow_with_pairs_and_next(gm_rvalue)
+	endow_with_pairs_and_next(RValueType)
+	
+	local rvalue_lookup = build_lookup(RValueType)
+	endow_with_new_properties(gm_rvalue,{
+			type_name = function(s) return rvalue_lookup[s.type] end,
+			lua_value = rvalue_marshall
+	})
 	
 	if ImGui.GetStyleVar == nil then
 		local imgui_vector_meta = getmetatable(imgui_vector)
