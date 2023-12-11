@@ -2,7 +2,7 @@
 
 Table containing helpers for interacting with the game maker engine.
 
-## Fields (2)
+## Fields (3)
 
 ### `constants`
 
@@ -11,6 +11,10 @@ Table containing helpers for interacting with the game maker engine.
 ### `constant_types`
 
 - Type: `table of gml/game constants name to their type name`
+
+### `constants_type_sorted`
+
+- Type: `constants_type_sorted[type_name][i] = constant_name`
 
 ## Functions (5)
 

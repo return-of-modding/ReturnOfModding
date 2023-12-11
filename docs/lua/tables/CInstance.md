@@ -1,116 +1,112 @@
 # Table: CInstance
 
-## Fields (34)
+## Fields (33)
 
-### `m_CreateCounter`
-
-- Type: `number`
-
-### `i_id`
+### `id`
 
 - Type: `number`
 
-### `i_objectindex`
+### `object_index`
 
 - Type: `number`
 
-### `i_spriteindex`
+### `sprite_index`
 
 - Type: `number`
 
-### `i_imageindex`
+### `image_index`
 
 - Type: `number`
 
-### `i_imagespeed`
+### `image_speed`
 
 - Type: `number`
 
-### `i_imagescalex`
+### `image_xscale`
 
 - Type: `number`
 
-### `i_imagescaley`
+### `image_yscale`
 
 - Type: `number`
 
-### `i_imageangle`
+### `image_angle`
 
 - Type: `number`
 
-### `i_imagealpha`
+### `image_alpha`
 
 - Type: `number`
 
-### `i_imageblend`
+### `image_blend`
 
 - Type: `number`
 
-### `i_x`
+### `x`
 
 - Type: `number`
 
-### `i_y`
+### `y`
 
 - Type: `number`
 
-### `i_xstart`
+### `xstart`
 
 - Type: `number`
 
-### `i_ystart`
+### `ystart`
 
 - Type: `number`
 
-### `i_xprevious`
+### `xprevious`
 
 - Type: `number`
 
-### `i_yprevious`
+### `yprevious`
 
 - Type: `number`
 
-### `i_direction`
+### `direction`
 
 - Type: `number`
 
-### `i_speed`
+### `speed`
 
 - Type: `number`
 
-### `i_friction`
+### `friction`
 
 - Type: `number`
 
-### `i_gravitydir`
+### `gravity_direction`
 
 - Type: `number`
 
-### `i_gravity`
+### `gravity`
 
 - Type: `number`
 
-### `i_hspeed`
+### `hspeed`
 
 - Type: `number`
 
-### `i_vspeed`
+### `vspeed`
 
 - Type: `number`
 
-### `i_bbox`
+### `bbox`
 
 - Type: `number[4] array`
 
-### `i_timer`
+### `timer`
 
 - Type: `number`
 
-### `m_nLayerID`
+### `layer`
 
 - Type: `number`
 
-### `i_maskindex`
+### `mask_index`
 
 - Type: `number`
 
@@ -126,7 +122,7 @@
 
 - Type: `CInstance`
 
-### `i_depth`
+### `depth`
 
 - Type: `number`
 
