@@ -8,17 +8,17 @@
 
 static RValue parse_sol_object(sol::object arg)
 {
-		if (arg.get_type() == sol::type::number)
+	if (arg.get_type() == sol::type::number)
 		return RValue(arg.as<double>());
-		else if (arg.get_type() == sol::type::string)
+	else if (arg.get_type() == sol::type::string)
 		return RValue(arg.as<std::string>());
-		else if (arg.get_type() == sol::type::boolean)
+	else if (arg.get_type() == sol::type::boolean)
 		return RValue(arg.as<bool>());
-		else if (arg.get_type() == sol::type::userdata)
+	else if (arg.get_type() == sol::type::userdata)
 		return arg.as<RValue>();
 
 	return {};
-	}
+}
 
 static std::vector<RValue> parse_variadic_args(sol::variadic_args args)
 {
@@ -353,7 +353,7 @@ namespace lua::game_maker
 				    else
 				    {
 					    if (!key.is<const char*>())
-		{
+					    {
 						    return;
 					    }
 
@@ -581,19 +581,25 @@ namespace lua::game_maker
 			BIND_USERTYPE(type, CCode, name);
 		}
 
-		// Lua API: Field
-		// Table: gm
-		// Field: constants: table of gml/game constants name to their asset index.
-
-		// Lua API: Field
-		// Table: gm
-		// Field: constant_types: table of gml/game constants name to their type name
+		// Constants
 		{
-			auto constants      = ns["constants"].get_or_create<sol::table>();
+			// Lua API: Field
+			// Table: gm
+			// Field: constants: table of gml/game constants name to their asset index.
+			auto constants = ns["constants"].get_or_create<sol::table>();
+
+			// Lua API: Field
+			// Table: gm
+			// Field: constant_types: table of gml/game constants name to their type name
 			auto constant_types = ns["constant_types"].get_or_create<sol::table>();
 
+			// Lua API: Field
+			// Table: gm
+			// Field: constants_type_sorted: constants_type_sorted[type_name][i] = constant_name
+			auto constants_type_sorted = ns["constants_type_sorted"].get_or_create<sol::table>();
+
 			auto asset_loop_over = [&](std::string type, const std::string& custom_type_name = "", double start = 0.0) {
-				const char* name{"<undefined>"};
+				const char* asset_name{"<undefined>"};
 
 				std::string routine_name = type + "_get_name";
 
@@ -608,16 +614,18 @@ namespace lua::game_maker
 				{
 					for (i = start; true; ++i)
 					{
-						RValue n = gm::call(routine_name, i);
-						if (n.type == RValueType::STRING)
+						RValue asset = gm::call(routine_name, i);
+						if (asset.type == RValueType::STRING)
 						{
-							name = n.ref_string->m_thing;
-							// if asset does not exist, it's name will be "<undefined>"
-							// but since in GM an asset can't start with '<', it's faster to check for the first character.
-							if (name && name[0] != '<')
+							asset_name = asset.ref_string->m_thing;
+							// if the asset does not exist, its name will be "<undefined>"
+							// but since in GM an asset can't start with '<', it's faster to just check for the first character.
+							// (It seems GM internally does the exact same check)
+							if (asset_name && asset_name[0] != '<')
 							{
-								constants[name]      = i;
-								constant_types[name] = type;
+								constants[asset_name]                                      = i;
+								constant_types[asset_name]                                 = type;
+								constants_type_sorted[type].get_or_create<sol::table>()[i] = asset_name;
 							}
 							else
 							{
@@ -638,9 +646,35 @@ namespace lua::game_maker
 				return i;
 			};
 
+			auto room_loop_over = [&]() {
+				std::string room = "room";
+
+				const char* asset_name{"<undefined>"};
+				// arbitrary random limit,
+				// can't use room_last because room added through room_add which happens a lot here are not counted by it
+				constexpr double arbitrary_limit = 1000.0;
+				for (double i = 0; i < arbitrary_limit; ++i)
+				{
+					RValue asset = gm::call(room + "_get_name", i);
+					if (asset.type == RValueType::STRING)
+					{
+						asset_name = asset.ref_string->m_thing;
+						// if the asset does not exist, its name will be "<undefined>"
+						// but since in GM an asset can't start with '<', it's faster to just check for the first character.
+						// (It seems GM internally does the exact same check)
+						if (asset_name && asset_name[0] != '<')
+						{
+							state["gm"]["constants"][asset_name]                                      = i;
+							state["gm"]["constant_types"][asset_name]                                 = room;
+							state["gm"]["constants_type_sorted"][room].get_or_create<sol::table>()[i] = asset_name;
+						}
+					}
+				}
+			};
+
 			asset_loop_over("object");
 			asset_loop_over("sprite");
-			asset_loop_over("room");
+			room_loop_over();
 			asset_loop_over("font");
 			asset_loop_over("audio");
 			asset_loop_over("path");
@@ -649,6 +683,8 @@ namespace lua::game_maker
 			asset_loop_over("shader");
 			asset_loop_over("script");                         // runtime funcs
 			asset_loop_over("script", "gml_script", 100001.0); // gml scripts
+
+			ns["_returnofmodding_constants_internal_"].get_or_create<sol::table>()["update_room_cache"] = room_loop_over;
 		}
 
 		ns["pre_code_execute"]  = pre_code_execute;
