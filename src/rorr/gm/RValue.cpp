@@ -470,10 +470,10 @@ int RValue::asInt32() const
 		}
 		catch (...)
 		{
-			LOG(FATAL) << "unhandled";
+			LOG(FATAL) << "error, tried to convert string to i32, " << ref_string->get();
 		}
 	}
-	default: LOG(FATAL) << "unhandled";
+	default: LOG(FATAL) << "unhandled " << type;
 	}
 
 	return 0;
