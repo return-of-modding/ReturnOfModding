@@ -1,7 +1,8 @@
 #pragma once
+#include "YYGMLException.hpp"
+
 #include <pointers.hpp>
 #include <string/hash.hpp>
-#include "YYGMLException.hpp"
 
 namespace gm
 {
@@ -18,12 +19,12 @@ namespace gm
 		e.yy_object_base->m_getOwnProperty(e.yy_object_base, &e_stacktrace, "stacktrace");
 
 		exception_log << "class: " << e.yy_object_base->m_class << "\n";
-		exception_log << "message:" << e_message.ref_string->get() << "\n";
-		exception_log << "longMessage:" << e_longMessage.ref_string->get() << "\n";
-		exception_log << "script:" << e_script.ref_string->get() << "\n";
-		exception_log << "line:" << static_cast<double>(e_line) << "\n";
+		exception_log << "message:" << (e_message.type == RValueType::STRING ? e_message.ref_string->get() : "") << "\n";
+		exception_log << "longMessage:" << (e_longMessage.type == RValueType::STRING ? e_longMessage.ref_string->get() : "") << "\n";
+		exception_log << "script:" << (e_script.type == RValueType::STRING ? e_script.ref_string->get() : "") << "\n";
+		exception_log << "line:" << (e_line.type == RValueType::REAL ? e_line.value : 0) << "\n";
 
-		exception_log << "stacktrace:" << static_cast<double>(e_line) << "\n";
+		exception_log << "stacktrace:\n";
 
 		if (((e_stacktrace.type & MASK_TYPE_RVALUE) == ARRAY) && e_stacktrace.ref_array && e_stacktrace.ref_array->m_Array
 		    && e_stacktrace.ref_array->length > 0)
