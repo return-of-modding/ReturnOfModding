@@ -1,4 +1,7 @@
 #pragma once
+#include "RValue.hpp"
+
+struct CInstance;
 
 class YYGMLException
 {
