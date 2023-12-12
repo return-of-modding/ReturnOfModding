@@ -73,6 +73,7 @@ namespace big
 	inline DWORD g_main_thread_id{};
 	inline std::atomic_bool g_abort{false};
 	inline std::atomic_bool g_running{false};
+	inline bool g_gml_safe{false};
 
 	inline constexpr auto g_project_name             = "ReturnOfModding";
 	inline constexpr auto g_target_window_class_name = "YYGameMakerYY";

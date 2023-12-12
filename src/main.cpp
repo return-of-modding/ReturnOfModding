@@ -27,7 +27,7 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
 				    std::this_thread::sleep_for(10ms);
 
-			    std::this_thread::sleep_for(3000ms);
+			    //std::this_thread::sleep_for(3000ms);
 
 			    //threads::suspend_all_but_one();
 			    //debug::wait_until_debugger();
@@ -71,10 +71,13 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 			    if (!g_abort)
 			    {
-				    YYObjectPinMap::init_pin_map();
-
 				    g_hooking->enable();
 				    LOG(INFO) << "Hooking enabled.";
+
+					while (!g_gml_safe)
+					    std::this_thread::sleep_for(10ms);
+
+					YYObjectPinMap::init_pin_map();
 			    }
 
 			    g_running = true;
@@ -86,7 +89,7 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 			    if (g_abort)
 			    {
-				    LOG(FATAL) << "The menu failed to init properly, exiting.";
+				    LOG(FATAL) << "ReturnOfModding failed to init properly, exiting.";
 				    g_running = false;
 			    }
 
