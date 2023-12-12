@@ -1,17 +1,44 @@
 #pragma once
+#include "logger/exception_handler.hpp"
+#include "debug/debug.hpp"
 
 namespace gm
 {
-    using debug_console_output_t = void(*)(void* this_, const char* fmt, ...);
+	using debug_console_output_t = void (*)(void* this_, const char* fmt, ...);
 
 	static bool starts_with(const char* pre, const char* str)
 	{
 		return strncmp(pre, str, strlen(pre)) == 0;
 	}
 
-    inline void hook_debug_console_output(void* this_, const char* fmt, ...)
+	inline void log_stacktrace_and_abort()
+	{
+		__try
+		{
+			*(int*)0 = 0;
+		}
+		__except (big::vectored_exception_handler(GetExceptionInformation()), EXCEPTION_EXECUTE_HANDLER)
+		{
+			Logger::FlushQueue();
+			big::debug::wait_until_debugger();
+		}
+	}
+
+	inline void hook_debug_console_output(void* this_, const char* fmt, ...)
 	{
 		va_list args;
+
+		// get a stacktrace when this happen, the game triggers a debugbreak on this.
+		if (!strcmp("Why are we reallocing a block that we didn't alloc?!\n", fmt))
+		{
+			va_start(args, fmt);
+			big::g_hooking->get_original<hook_debug_console_output>()(this_, fmt, args);
+			va_end(args);
+
+			log_stacktrace_and_abort();
+
+			return;
+		}
 
 		// bandaid fix cause current debug gui code trigger it through getting layer names
 		if (!strcmp("layer_get_all_elements() - can't find specified layer\n", fmt))
