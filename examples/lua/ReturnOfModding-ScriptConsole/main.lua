@@ -270,6 +270,14 @@ function variables(...)
 	return cinstance_variables_proxy(...)
 end
 
+function globals()
+	return global_variables_proxy
+end
+
+function functions()
+	return constants_proxy.scripts
+end
+
 local _repl_globals = {}
 for k,v in pairs(_G) do
 	_repl_globals[k] = v
@@ -867,6 +875,63 @@ do
 		cinstance_variables_id_register[proxy] = cinstance.id
 		return proxy
 	end
+
+	local global_variables_proxy_meta = {
+		__index = function(s,k)
+			return rvalue_marshall(gm.variable_instance_get(EVariableType.GLOBAL,k))
+		end,
+		__newindex = function(s,k,v)
+			return gm.variable_instance_set(EVariableType.GLOBAL,k,v)
+		end,
+		__next = function(s,k)
+			local names = gm.variable_instance_get_names(EVariableType.GLOBAL)
+			if names.type ~= RValueType.ARRAY then return nil end
+			names = names.array
+			local i = k and perform_lookup(names,k,get_name) or 0
+			k = names[i+1]
+			if k == nil then return nil end
+			k = k.tostring
+			return k, rvalue_marshall(gm.variable_instance_get(EVariableType.GLOBAL,k))
+		end,
+		__pairs = function(s,k)
+			local names = gm.variable_instance_get_names(EVariableType.GLOBAL)
+			if names.type ~= RValueType.ARRAY then return nil end
+			names = names.array
+			local names_lookup = build_lookup(names,get_name)
+			return function(_,k)
+				local i = k and names_lookup[k] or 0
+				k = names[i+1]
+				if k == nil then return nil end
+				k = k.tostring
+				return k, rvalue_marshall(gm.variable_instance_get(EVariableType.GLOBAL,k))
+			end,s,k
+		end
+	}
+
+	global_variables_proxy = setmetatable({},global_variables_proxy_meta)
+	
+	local constants_scripts_lookup = build_lookup(gm.constants_type_sorted.script)
+
+	local constants_scripts_proxy_meta = {
+		__index = function(s,k)
+			return gm[k]
+		end,
+		__newindex = function(s,k,v)
+			error(2,"cannot override gamemaker script by assigning to gm.")
+		end,
+		__next = function(s,k)
+			local k = next(constants_scripts_lookup,k)
+			return k, gm[k]
+		end,
+		__pairs = function(s,k)
+			return function(s,k)
+				local k = next(constants_scripts_lookup,k)
+				return k, gm[k]
+			end,s,k
+		end
+	}
+	
+	constants_proxy = { scripts = setmetatable({},constants_scripts_proxy_meta) }
 end
 
 function on_delayed_load()
