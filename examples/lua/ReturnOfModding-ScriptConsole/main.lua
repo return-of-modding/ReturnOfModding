@@ -1140,7 +1140,7 @@ function imgui_on_render()
 					end
 					ImGui.PushItemWidth(x_input)
 					ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, frame_padding_x, y_input)
-					md.current_text, md.enter_pressed = ImGui.InputText("##Text" .. ms, md.current_text, 512, ImGuiInputTextFlags.EnterReturnsTrue)
+					md.current_text, md.enter_pressed = ImGui.InputText("##Text" .. ms, md.current_text, 65535, ImGuiInputTextFlags.EnterReturnsTrue)
 					ImGui.PopStyleVar()
 					ImGui.PopItemWidth()
 					local changed_offset
