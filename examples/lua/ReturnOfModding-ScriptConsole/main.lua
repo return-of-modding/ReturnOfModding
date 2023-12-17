@@ -958,10 +958,10 @@ do
 
 	local global_variables_proxy_meta = {
 		__index = function(s,k)
-			return rvalue_marshall(gm.variable_instance_get(EVariableType.GLOBAL,k))
+			return rvalue_marshall(gm.variable_global_get(k))
 		end,
 		__newindex = function(s,k,v)
-			return gm.variable_instance_set(EVariableType.GLOBAL,k,v)
+			return gm.variable_global_set(k,v)
 		end,
 		__next = function(s,k)
 			local names = gm.variable_instance_get_names(EVariableType.GLOBAL)
@@ -971,7 +971,7 @@ do
 			k = names[i+1]
 			if k == nil then return nil end
 			k = k.tostring
-			return k, rvalue_marshall(gm.variable_instance_get(EVariableType.GLOBAL,k))
+			return k, rvalue_marshall(gm.variable_global_get(k))
 		end,
 		__pairs = function(s,k)
 			local names = gm.variable_instance_get_names(EVariableType.GLOBAL)
@@ -983,7 +983,7 @@ do
 				k = names[i+1]
 				if k == nil then return nil end
 				k = k.tostring
-				return k, rvalue_marshall(gm.variable_instance_get(EVariableType.GLOBAL,k))
+				return k, rvalue_marshall(gm.variable_global_get(k))
 			end,s,k
 		end
 	}
