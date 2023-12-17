@@ -256,6 +256,8 @@ end
 
 -- MOD SPECIFIC CODE:
 
+proxy = {}
+
 function find_instance(name)
 	for k,v in pairs(gm.CInstance.instances_active) do
 		if v.object_name == name then return v end
@@ -264,18 +266,6 @@ function find_instance(name)
 		if v.object_name == name then return v end
 	end
 	return nil
-end
-
-function variables(...)
-	return cinstance_variables_proxy(...)
-end
-
-function globals()
-	return global_variables_proxy
-end
-
-function functions()
-	return constants_proxy.scripts
 end
 
 local _repl_globals = {}
@@ -731,12 +721,11 @@ function endow_with_pairs_and_next(sol_object)
 				while v == nil do
 					k,u = rawnext(sol_meta,k)
 					if k == nil then return nil end
-					w = s[k]
-					-- if the object reports a value different to the class
-					if u ~= w then
-						-- and the value is the same each time it is requested
-						u = s[k]
-						if u == w then
+					-- ignore 'new' and metatable fields
+					if k ~= 'new' and k:sub(1,2) ~= '__' then
+						w = s[k]
+						-- if the object reports a value different to the class
+						if u ~= w then
 							-- assume it's actually that object's attribute
 							v = w
 						end
@@ -832,19 +821,19 @@ do
 		return rvalue.tostring
 	end
 
-	local cinstance_variables_id_register = setmetatable({},{__mode = "k"})
+	local instance_variables_id_register = setmetatable({},{__mode = "k"})
 
-	local cinstance_variables_proxy_meta = {
+	local instance_variables_proxy_meta = {
 		__index = function(s,k)
-			local id = cinstance_variables_id_register[s]
+			local id = instance_variables_id_register[s]
 			return rvalue_marshall(gm.variable_instance_get(id,k))
 		end,
 		__newindex = function(s,k,v)
-			local id = cinstance_variables_id_register[s]
+			local id = instance_variables_id_register[s]
 			return gm.variable_instance_set(id,k,v)
 		end,
 		__next = function(s,k)
-			local id = cinstance_variables_id_register[s]
+			local id = instance_variables_id_register[s]
 			local names = gm.variable_instance_get_names(id)
 			if names.type ~= RValueType.ARRAY then return nil end
 			names = names.array
@@ -855,7 +844,7 @@ do
 			return k, rvalue_marshall(gm.variable_instance_get(id,k))
 		end,
 		__pairs = function(s,k)
-			local id = cinstance_variables_id_register[s]
+			local id = instance_variables_id_register[s]
 			local names = gm.variable_instance_get_names(id)
 			if names.type ~= RValueType.ARRAY then return nil end
 			names = names.array
@@ -870,9 +859,100 @@ do
 		end
 	}
 
-	function cinstance_variables_proxy(cinstance)
-		local proxy = setmetatable({},cinstance_variables_proxy_meta)
-		cinstance_variables_id_register[proxy] = cinstance.id
+	function proxy.variables(cinstance_or_id)
+		if type(cinstance_or_id) ~= 'number' then cinstance_or_id = cinstance_or_id.id end
+		local proxy = setmetatable({},instance_variables_proxy_meta)
+		instance_variables_id_register[proxy] = cinstance_or_id
+		return proxy
+	end
+
+	local struct_id_register = setmetatable({},{__mode = "k"})
+
+	local struct_proxy_meta = {
+		__index = function(s,k)
+			local id = struct_id_register[s]
+			return rvalue_marshall(gm.struct_get(id,k))
+		end,
+		__newindex = function(s,k,v)
+			local id = struct_id_register[s]
+			return gm.struct_set(id,k,v)
+		end,
+		__next = function(s,k)
+			local id = struct_id_register[s]
+			local names = gm.struct_get_names(id)
+			if names.type ~= RValueType.ARRAY then return nil end
+			names = names.array
+			local i = k and perform_lookup(names,k,get_name) or 0
+			k = names[i+1]
+			if k == nil then return nil end
+			k = k.tostring
+			return k, rvalue_marshall(gm.struct_get(id,k))
+		end,
+		__pairs = function(s,k)
+			local id = struct_id_register[s]
+			local names = gm.struct_get_names(id)
+			if names.type ~= RValueType.ARRAY then return nil end
+			names = names.array
+			local names_lookup = build_lookup(names,get_name)
+			return function(_,k)
+				local i = k and names_lookup[k] or 0
+				k = names[i+1]
+				if k == nil then return nil end
+				k = k.tostring
+				return k, rvalue_marshall(gm.struct_get(id,k))
+			end,s,k
+		end
+	}
+
+	proxy.struct = setmetatable({},{
+		__call = function(_,id)
+			local proxy = setmetatable({},struct_proxy_meta)
+			struct_id_register[proxy] = id
+			return proxy
+		end
+	})
+	
+	local struct_variables_id_register = setmetatable({},{__mode = "k"})
+	
+	local struct_variables_proxy_meta = {
+		__index = function(s,k)
+			local id = struct_variables_id_register[s]
+			return rvalue_marshall(gm.variable_struct_get(id,k))
+		end,
+		__newindex = function(s,k,v)
+			local id = struct_variables_id_register[s]
+			return gm.variable_struct_set(id,k,v)
+		end,
+		__next = function(s,k)
+			local id = struct_variables_id_register[s]
+			local names = gm.variable_struct_get_names(id)
+			if names.type ~= RValueType.ARRAY then return nil end
+			names = names.array
+			local i = k and perform_lookup(names,k,get_name) or 0
+			k = names[i+1]
+			if k == nil then return nil end
+			k = k.tostring
+			return k, rvalue_marshall(gm.variable_struct_get(id,k))
+		end,
+		__pairs = function(s,k)
+			local id = struct_variables_id_register[s]
+			local names = gm.variable_struct_get_names(id)
+			if names.type ~= RValueType.ARRAY then return nil end
+			names = names.array
+			local names_lookup = build_lookup(names,get_name)
+			return function(_,k)
+				local i = k and names_lookup[k] or 0
+				k = names[i+1]
+				if k == nil then return nil end
+				k = k.tostring
+				return k, rvalue_marshall(gm.variable_struct_get(id,k))
+			end,s,k
+		end
+	}
+
+	function proxy.struct.variables(id)
+		local proxy = setmetatable({},struct_variables_proxy_meta)
+		struct_variables_id_register[proxy] = id
 		return proxy
 	end
 
@@ -908,30 +988,41 @@ do
 		end
 	}
 
-	global_variables_proxy = setmetatable({},global_variables_proxy_meta)
+	proxy.globals = setmetatable({},global_variables_proxy_meta)
 	
-	local constants_scripts_lookup = build_lookup(gm.constants_type_sorted.script)
-
-	local constants_scripts_proxy_meta = {
-		__index = function(s,k)
-			return gm[k]
-		end,
-		__newindex = function(s,k,v)
-			error(2,"cannot override gamemaker script by assigning to gm.")
-		end,
-		__next = function(s,k)
-			local k = next(constants_scripts_lookup,k)
-			return k, gm[k]
-		end,
-		__pairs = function(s,k)
-			return function(s,k)
-				local k = next(constants_scripts_lookup,k)
-				return k, gm[k]
-			end,s,k
-		end
-	}
+	local function get_asset(asset_name,asset_type)
+		if asset_type == 'script' then return gm[asset_name] end
+		--return gm.asset_get_index(asset_name)
+		return gm.constants[asset_name]
+	end
 	
-	constants_proxy = { scripts = setmetatable({},constants_scripts_proxy_meta) }
+	proxy.constants = {}
+	local constants_lookup = {}
+	local constants_proxy_meta = {}
+	
+	for t,v in pairs(gm.constants_type_sorted) do
+		constants_lookup[t] = build_lookup(v)
+		constants_proxy_meta[t] = {
+			__index = function(s,k)
+				return get_asset(k,t)
+			end,
+			__newindex = function(s,k,v)
+				error(2,"cannot override gamemaker asset.")
+			end,
+			__next = function(s,k)
+				local k = next(constants_lookup[t],k)
+				return k, get_asset(k,t)
+			end,
+			__pairs = function(s,k)
+				return function(s,k)
+					local k = next(constants_lookup[t],k)
+					return k, get_asset(k,t)
+				end,s,k
+			end
+		}
+		proxy.constants[t] = setmetatable({},constants_proxy_meta[t])
+	end
+	
 end
 
 function on_delayed_load()
@@ -953,8 +1044,11 @@ function on_delayed_load()
 	
 	local rvalue_lookup = build_lookup(RValueType)
 	endow_with_new_properties(gm_rvalue,{
-			type_name = function(s) return rvalue_lookup[s.type] end,
-			lua_value = rvalue_marshall
+		type_name = function(s) return rvalue_lookup[s.type] end,
+		lua_value = rvalue_marshall
+	})
+	endow_with_new_properties(gm_instance,{
+		variables = proxy.variables
 	})
 	
 	if ImGui.GetStyleVar == nil then
