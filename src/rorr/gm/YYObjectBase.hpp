@@ -18,6 +18,36 @@ struct CInstanceBase
 	virtual RValue& InternalGetYYVarRefL(int index) = 0;
 };
 
+enum class YYObjectBaseType : int
+{
+	YYOBJECTBASE = 0,
+	CINSTANCE,
+	ACCESSOR,
+	SCRIPTREF,
+	PROPERTY,
+	ARRAY,
+	WEAKREF,
+
+	CONTAINER,
+
+	SEQUENCE,
+	SEQUENCEINSTANCE,
+	SEQUENCETRACK,
+	SEQUENCECURVE,
+	SEQUENCECURVECHANNEL,
+	SEQUENCECURVEPOINT,
+	SEQUENCEKEYFRAMESTORE,
+	SEQUENCEKEYFRAME,
+	SEQUENCEKEYFRAMEDATA,
+	SEQUENCEEVALTREE,
+	SEQUENCEEVALNODE,
+	SEQUENCEEVENT,
+
+	NINESLICE,
+
+	MAX
+};
+
 struct YYObjectBase : CInstanceBase
 {
 	virtual bool Mark4GC(unsigned int* _pM, int _numObjects)             = 0;
@@ -47,7 +77,7 @@ struct YYObjectBase : CInstanceBase
 	int m_GCgen;
 	int m_GCcreationframe;
 	int m_slot; // offset 30(int) | 120(byte)
-	int m_kind;
+	YYObjectBaseType type; // m_kind
 	int m_rvalueInitType;
 	int m_curSlot;
 };

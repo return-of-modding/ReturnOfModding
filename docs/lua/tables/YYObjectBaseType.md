@@ -1,0 +1,82 @@
+# Table: YYObjectBaseType
+
+Table containing all possible types of an YYObjectBaseType
+
+## Fields (19)
+
+### `YYOBJECTBASE`
+
+- Type: `YYOBJECTBASE`
+
+### `CINSTANCE`
+
+- Type: `CINSTANCE`
+
+### `ACCESSOR`
+
+- Type: `ACCESSOR`
+
+### `SCRIPTREF`
+
+- Type: `SCRIPTREF`
+
+### `PROPERTY`
+
+- Type: `PROPERTY`
+
+### `ARRAY`
+
+- Type: `ARRAY`
+
+### `WEAKREF`
+
+- Type: `WEAKREF`
+
+### `CONTAINER`
+
+- Type: `CONTAINER`
+
+### `SEQUENCE`
+
+- Type: `SEQUENCE`
+
+### `SEQUENCEINSTANCE`
+
+- Type: `SEQUENCEINSTANCE`
+
+### `SEQUENCETRACK`
+
+- Type: `SEQUENCETRACK`
+
+### `SEQUENCECURVE`
+
+- Type: `SEQUENCECURVE`
+
+### `SEQUENCECURVECHANNEL`
+
+- Type: `SEQUENCECURVECHANNEL`
+
+### `SEQUENCEKEYFRAMESTORE`
+
+- Type: `SEQUENCEKEYFRAMESTORE`
+
+### `SEQUENCEKEYFRAME`
+
+- Type: `SEQUENCEKEYFRAME`
+
+### `SEQUENCEEVALTREE`
+
+- Type: `SEQUENCEEVALTREE`
+
+### `SEQUENCEEVALNODE`
+
+- Type: `SEQUENCEEVALNODE`
+
+### `SEQUENCEEVENT`
+
+- Type: `SEQUENCEEVENT`
+
+### `NINESLICE`
+
+- Type: `NINESLICE`
+

@@ -335,6 +335,7 @@ bool RValue::operator==(const RValue& rhs) const
 	case _INT64: rhsD = static_cast<double>(rhs.i64); break;
 	case ARRAY:
 	case REF:
+	case OBJECT:
 	case PTR: rhsD = static_cast<double>(reinterpret_cast<uintptr_t>(ptr)); break;
 	case UNSET:
 	case UNDEFINED: rhsD = std::nan(""); break;
@@ -433,6 +434,10 @@ double RValue::asReal() const
 	case _INT64: return static_cast<double>(i64);
 	case REF: return (double)i32;
 	case ARRAY:
+	case OBJECT:
+	case VEC4:
+	case MATRIX:
+	case VEC3:
 	case PTR: return static_cast<double>(reinterpret_cast<uintptr_t>(ptr));
 	case STRING:
 	{
@@ -442,13 +447,13 @@ double RValue::asReal() const
 		}
 		catch (...)
 		{
-			return std::nan("");
+
 		}
 	}
-	default: LOG(FATAL) << "unhandled";
+	default: LOG(FATAL) << "unhandled " << (type & MASK_TYPE_RVALUE);
 	}
 
-	return 0.0;
+	return std::nan("");
 }
 
 int RValue::asInt32() const
@@ -461,6 +466,10 @@ int RValue::asInt32() const
 	case _INT64: return static_cast<int>(i64);
 	case REF: return i32;
 	case ARRAY:
+	case OBJECT:
+	case VEC4:
+	case MATRIX:
+	case VEC3:
 	case PTR: return static_cast<int>(reinterpret_cast<intptr_t>(ptr));
 	case STRING:
 	{
@@ -470,10 +479,10 @@ int RValue::asInt32() const
 		}
 		catch (...)
 		{
-			LOG(FATAL) << "error, tried to convert string to i32, " << ref_string->get();
+			
 		}
 	}
-	default: LOG(FATAL) << "unhandled " << type;
+	default: LOG(FATAL) << "unhandled " << (type & MASK_TYPE_RVALUE);
 	}
 
 	return 0;
@@ -489,6 +498,10 @@ bool RValue::asBoolean() const
 	case _INT64: return i64 > 0L ? true : false;
 	case REF: return i32 > 0 ? true : false;
 	case ARRAY:
+	case OBJECT:
+	case VEC4:
+	case MATRIX:
+	case VEC3:
 	case PTR: return ptr != nullptr ? true : false;
 	case STRING:
 	{
@@ -503,10 +516,10 @@ bool RValue::asBoolean() const
 		}
 		catch (...)
 		{
-			LOG(FATAL) << "unhandled";
+			
 		}
 	}
-	default: LOG(FATAL) << "unhandled";
+	default: LOG(FATAL) << "unhandled " << (type & MASK_TYPE_RVALUE);
 	}
 
 	return false;
@@ -531,10 +544,10 @@ long long RValue::asInt64() const
 		}
 		catch (...)
 		{
-			LOG(FATAL) << "unhandled";
+			
 		}
 	}
-	default: LOG(FATAL) << "unhandled";
+	default: LOG(FATAL) << "unhandled " << (type & MASK_TYPE_RVALUE);
 	}
 
 	return 0;
@@ -591,11 +604,20 @@ void* RValue::asPointer() const
 	case _INT64: return reinterpret_cast<void*>(static_cast<uintptr_t>(i64));
 	case ARRAY:
 	case REF:
+	case OBJECT:
+	case VEC3:
+	case VEC4:
+	case MATRIX:
 	case PTR: return ptr;
 	default: LOG(FATAL) << "unhandled";
 	}
 
 	return nullptr;
+}
+
+YYObjectBase* RValue::asObject() const
+{
+	return yy_object_base;
 }
 
 RValue::operator void*() const

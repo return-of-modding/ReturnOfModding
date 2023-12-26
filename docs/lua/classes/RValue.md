@@ -12,6 +12,9 @@ Class representing a value coming from the game maker engine
 
 - Type: `number`
 
+### `object`
+
+- Type: `YYObjectBase`
 ### `array`
 
 - Type: `table of RValues`

@@ -104,6 +104,129 @@ namespace lua::game_maker
 	{
 		auto ns = state["gm"].get_or_create<sol::table>();
 
+		// Lua API: Table
+		// Name: YYObjectBaseType
+		// Table containing all possible types of an YYObjectBaseType
+		{
+			state.new_enum<YYObjectBaseType>("YYObjectBaseType",
+			    {
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: YYOBJECTBASE: YYOBJECTBASE
+			        {"YYOBJECTBASE", YYObjectBaseType::YYOBJECTBASE},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: CINSTANCE: CINSTANCE
+			        {"CINSTANCE", YYObjectBaseType::CINSTANCE},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: ACCESSOR: ACCESSOR
+			        {"ACCESSOR", YYObjectBaseType::ACCESSOR},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: SCRIPTREF: SCRIPTREF
+			        {"SCRIPTREF", YYObjectBaseType::SCRIPTREF},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: PROPERTY: PROPERTY
+			        {"PROPERTY", YYObjectBaseType::PROPERTY},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: ARRAY: ARRAY
+			        {"ARRAY", YYObjectBaseType::ARRAY},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: WEAKREF: WEAKREF
+			        {"WEAKREF", YYObjectBaseType::WEAKREF},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: CONTAINER: CONTAINER
+			        {"CONTAINER", YYObjectBaseType::CONTAINER},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: SEQUENCE: SEQUENCE
+			        {"SEQUENCE", YYObjectBaseType::SEQUENCE},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: SEQUENCEINSTANCE: SEQUENCEINSTANCE
+			        {"SEQUENCEINSTANCE", YYObjectBaseType::SEQUENCEINSTANCE},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: SEQUENCETRACK: SEQUENCETRACK
+			        {"SEQUENCETRACK", YYObjectBaseType::SEQUENCETRACK},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: SEQUENCECURVE: SEQUENCECURVE
+			        {"SEQUENCECURVE", YYObjectBaseType::SEQUENCECURVE},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: SEQUENCECURVECHANNEL: SEQUENCECURVECHANNEL
+			        {"SEQUENCECURVECHANNEL", YYObjectBaseType::SEQUENCECURVECHANNEL},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: SEQUENCEKEYFRAMESTORE: SEQUENCEKEYFRAMESTORE
+			        {"SEQUENCEKEYFRAMESTORE", YYObjectBaseType::SEQUENCEKEYFRAMESTORE},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: SEQUENCEKEYFRAME: SEQUENCEKEYFRAME
+			        {"SEQUENCEKEYFRAME", YYObjectBaseType::SEQUENCEKEYFRAME},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: SEQUENCEEVALTREE: SEQUENCEEVALTREE
+			        {"SEQUENCEEVALTREE", YYObjectBaseType::SEQUENCEEVALTREE},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: SEQUENCEEVALNODE: SEQUENCEEVALNODE
+			        {"SEQUENCEEVALNODE", YYObjectBaseType::SEQUENCEEVALNODE},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: SEQUENCEEVENT: SEQUENCEEVENT
+			        {"SEQUENCEEVENT", YYObjectBaseType::SEQUENCEEVENT},
+
+			        // Lua API: Field
+			        // Table: YYObjectBaseType
+			        // Field: NINESLICE: NINESLICE
+			        {"NINESLICE", YYObjectBaseType::NINESLICE},
+			    });
+		}
+
+		// Lua API: Class
+		// Name: YYObjectBase
+		// Class representing an object coming from the game maker engine
+		{
+			sol::usertype<YYObjectBase> type = state.new_usertype<YYObjectBase>("YYObjectBase");
+
+			// Lua API: Field
+			// Class: YYObjectBase
+			// Field: type: YYObjectBaseType
+			BIND_USERTYPE(type, YYObjectBase, type);
+
+			// Lua API: Field
+			// Class: YYObjectBase
+			// Field: cinstance: CInstance
+			type["cinstance"] = sol::property([](YYObjectBase& inst) {
+				return (CInstance*)&inst;
+			});
+		}
+
+
 		// Lua API: Class
 		// Name: RValue
 		// Class representing a value coming from the game maker engine
@@ -138,6 +261,10 @@ namespace lua::game_maker
 
 			// Lua API: Field
 			// Class: RValue
+			// Field: object: YYObjectBase
+			type["object"] = sol::property([](RValue& inst) {
+				return inst.asObject();
+			});
 			// Field: array: table of RValues
 			type["array"] = sol::property([](RValue& inst) {
 				return inst.ref_array && inst.isArray() ? inst.ref_array->array() : dummy_rvalue_array;

@@ -263,6 +263,7 @@ struct RValue
 	bool asBoolean() const;
 	long long asInt64() const;
 	void* asPointer() const;
+	YYObjectBase* asObject() const;
 	const RefDynamicArrayOfRValue* asArray() const;
 	bool isNumber() const;
 	bool isUnset() const;
