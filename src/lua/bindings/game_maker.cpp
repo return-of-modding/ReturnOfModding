@@ -265,6 +265,16 @@ namespace lua::game_maker
 			type["object"] = sol::property([](RValue& inst) {
 				return inst.asObject();
 			});
+
+			// Lua API: Field
+			// Class: RValue
+			// Field: cinstance: CInstance
+			type["cinstance"] = sol::property([](RValue& inst) {
+				return (CInstance*)inst.asObject();
+			});
+
+			// Lua API: Field
+			// Class: RValue
 			// Field: array: table of RValues
 			type["array"] = sol::property([](RValue& inst) {
 				return inst.ref_array && inst.isArray() ? inst.ref_array->array() : dummy_rvalue_array;
@@ -464,7 +474,7 @@ namespace lua::game_maker
 					    case REF:
 					    case PTR: return sol::make_object<void*>(this_state_, res.ptr);
 					    case OBJECT: return sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr);
-					    case UNDEFINED: 
+					    case UNDEFINED:
 					    case UNSET: return sol ::lua_nil;
 					    default: return sol::make_object<RValue>(this_state_, res);
 					    }
