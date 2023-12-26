@@ -1,0 +1,10 @@
+﻿{
+	"name": "ObjectBrowser",
+	"version_number": "1.0.0",
+	"website_url": "https://github.com/return-of-modding/ReturnOfModding",
+	"description": "Browse and modify lua API objects in a hierarchical view",
+	"dependencies": [
+		"ReturnOfModding-ReturnOfModding-1.0.0",
+		"ReturnOfModding-GlobalExtensions-1.0.0"
+	]
+}

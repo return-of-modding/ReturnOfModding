@@ -137,7 +137,7 @@ if inext == nil then -- don't run this on refresh
 			if i < m then return ... end
 			return unpack( t, m, i - 1, t[ i ], ... )
 		end
-		
+
 		function table.unpack( list, i, j )
 			return unpack( list, i or 1, j or list.n or #list or 1 )
 		end
@@ -185,11 +185,11 @@ if inext == nil then -- don't run this on refresh
 			end
 		until not name
 	end
-	
+
 end
 
 if util == nil then -- don't run this on refresh
-	
+
 	-- GLOBAL UTILITY EXTENSIONS
 
 	_G.util = {}
@@ -249,7 +249,7 @@ if util == nil then -- don't run this on refresh
 				if i > l then return end
 				return i, t[i]
 			end
-			
+
 			--i = 0
 			l = select("#", ...)
 			for n = 1, l do
@@ -274,7 +274,7 @@ if _G.proxy == nil then -- don't do this on refresh
 	local function getstring(o)
 		return o.tostring
 	end
-	
+
 	local function getnumber(o)
 		return tonumber(o.tostring)
 	end
@@ -286,17 +286,21 @@ if _G.proxy == nil then -- don't do this on refresh
 		if not status then return nil end
 		return value
 	end
-	
+
 	local function null()
 		return nil
 	end
-	
+
 	local function istrue(o)
 		return o.tostring == 'true'
 	end
 
 	local function getarray(o)
 		return o.array
+	end
+	
+	local function getobject(o)
+		return gm.struct_get_from_hash(gm.variable_get_hash(o))
 	end
 
 	rvalue_marshallers = {
@@ -306,7 +310,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		[RValueType.PTR] = nil,
 		[RValueType.VEC3] = nil,
 		[RValueType.UNDEFINED] = null,
-		[RValueType.OBJECT] = nil,
+		[RValueType.OBJECT] = getobject,
 		[RValueType.INT32] = getnumber,
 		[RValueType.VEC4] = nil,
 		[RValueType.MATRIX] = nil,
@@ -321,8 +325,17 @@ if _G.proxy == nil then -- don't do this on refresh
 
 	function rvalue_marshall(rvalue)
 		local m = rvalue_marshallers[rvalue.type]
-		if m == nil then return rvalue end
+		if m == nil then return nil end
 		return m(rvalue)
+	end
+	
+	local function rvalue_marshall_get(rvalue)
+		--return rvalue_marshall(rvalue)
+		return rvalue
+	end
+	
+	local function rvalue_marshall_set(rvalue)
+		return rvalue
 	end
 
 	local function get_name(rvalue)
@@ -334,11 +347,11 @@ if _G.proxy == nil then -- don't do this on refresh
 	local instance_variables_proxy_meta = {
 		__index = function(s,k)
 			local id = instance_variables_id_register[s]
-			return rvalue_marshall(gm.variable_instance_get(id,k))
+			return rvalue_marshall_get(gm.variable_instance_get(id,k))
 		end,
 		__newindex = function(s,k,v)
 			local id = instance_variables_id_register[s]
-			return gm.variable_instance_set(id,k,v)
+			return gm.variable_instance_set(id,k,rvalue_marshall_set(v))
 		end,
 		__next = function(s,k)
 			local id = instance_variables_id_register[s]
@@ -349,7 +362,7 @@ if _G.proxy == nil then -- don't do this on refresh
 			k = names[i+1]
 			if k == nil then return nil end
 			k = k.tostring
-			return k, rvalue_marshall(gm.variable_instance_get(id,k))
+			return k, rvalue_marshall_get(gm.variable_instance_get(id,k))
 		end,
 		__pairs = function(s,k)
 			local id = instance_variables_id_register[s]
@@ -362,15 +375,16 @@ if _G.proxy == nil then -- don't do this on refresh
 				k = names[i+1]
 				if k == nil then return nil end
 				k = k.tostring
-				return k, rvalue_marshall(gm.variable_instance_get(id,k))
+				return k, rvalue_marshall_get(gm.variable_instance_get(id,k))
 			end,s,k
 		end
 	}
 
-	function proxy.variables(cinstance_or_id)
-		if type(cinstance_or_id) ~= 'number' then cinstance_or_id = cinstance_or_id.id end
+	function proxy.variables(id)
 		local proxy = setmetatable({},instance_variables_proxy_meta)
-		instance_variables_id_register[proxy] = cinstance_or_id
+		local meta = getmetatable(id)
+		if meta and meta.__name and meta.__name:match('*') then id = id.id end
+		instance_variables_id_register[proxy] = id
 		return proxy
 	end
 
@@ -379,11 +393,11 @@ if _G.proxy == nil then -- don't do this on refresh
 	local struct_proxy_meta = {
 		__index = function(s,k)
 			local id = struct_id_register[s]
-			return rvalue_marshall(gm.struct_get(id,k))
+			return rvalue_marshall_get(gm.struct_get(id,k))
 		end,
 		__newindex = function(s,k,v)
 			local id = struct_id_register[s]
-			return gm.struct_set(id,k,v)
+			return gm.struct_set(id,k,rvalue_marshall_set(v))
 		end,
 		__next = function(s,k)
 			local id = struct_id_register[s]
@@ -394,7 +408,7 @@ if _G.proxy == nil then -- don't do this on refresh
 			k = names[i+1]
 			if k == nil then return nil end
 			k = k.tostring
-			return k, rvalue_marshall(gm.struct_get(id,k))
+			return k, rvalue_marshall_get(gm.struct_get(id,k))
 		end,
 		__pairs = function(s,k)
 			local id = struct_id_register[s]
@@ -407,7 +421,7 @@ if _G.proxy == nil then -- don't do this on refresh
 				k = names[i+1]
 				if k == nil then return nil end
 				k = k.tostring
-				return k, rvalue_marshall(gm.struct_get(id,k))
+				return k, rvalue_marshall_get(gm.struct_get(id,k))
 			end,s,k
 		end
 	}
@@ -419,17 +433,17 @@ if _G.proxy == nil then -- don't do this on refresh
 			return proxy
 		end
 	})
-	
+
 	local struct_variables_id_register = setmetatable({},{__mode = "k"})
-	
+
 	local struct_variables_proxy_meta = {
 		__index = function(s,k)
 			local id = struct_variables_id_register[s]
-			return rvalue_marshall(gm.variable_struct_get(id,k))
+			return rvalue_marshall_get(gm.variable_struct_get(id,k))
 		end,
 		__newindex = function(s,k,v)
 			local id = struct_variables_id_register[s]
-			return gm.variable_struct_set(id,k,v)
+			return gm.variable_struct_set(id,k,rvalue_marshall_set(v))
 		end,
 		__next = function(s,k)
 			local id = struct_variables_id_register[s]
@@ -440,7 +454,7 @@ if _G.proxy == nil then -- don't do this on refresh
 			k = names[i+1]
 			if k == nil then return nil end
 			k = k.tostring
-			return k, rvalue_marshall(gm.variable_struct_get(id,k))
+			return k, rvalue_marshall_get(gm.variable_struct_get(id,k))
 		end,
 		__pairs = function(s,k)
 			local id = struct_variables_id_register[s]
@@ -453,7 +467,7 @@ if _G.proxy == nil then -- don't do this on refresh
 				k = names[i+1]
 				if k == nil then return nil end
 				k = k.tostring
-				return k, rvalue_marshall(gm.variable_struct_get(id,k))
+				return k, rvalue_marshall_get(gm.variable_struct_get(id,k))
 			end,s,k
 		end
 	}
@@ -466,10 +480,10 @@ if _G.proxy == nil then -- don't do this on refresh
 
 	local global_variables_proxy_meta = {
 		__index = function(s,k)
-			return rvalue_marshall(gm.variable_global_get(k))
+			return rvalue_marshall_get(gm.variable_global_get(k))
 		end,
 		__newindex = function(s,k,v)
-			return gm.variable_global_set(k,v)
+			return gm.variable_global_set(k,rvalue_marshall_set(v))
 		end,
 		__next = function(s,k)
 			local names = gm.variable_instance_get_names(EVariableType.GLOBAL)
@@ -479,7 +493,7 @@ if _G.proxy == nil then -- don't do this on refresh
 			k = names[i+1]
 			if k == nil then return nil end
 			k = k.tostring
-			return k, rvalue_marshall(gm.variable_global_get(k))
+			return k, rvalue_marshall_get(gm.variable_global_get(k))
 		end,
 		__pairs = function(s,k)
 			local names = gm.variable_instance_get_names(EVariableType.GLOBAL)
@@ -491,23 +505,23 @@ if _G.proxy == nil then -- don't do this on refresh
 				k = names[i+1]
 				if k == nil then return nil end
 				k = k.tostring
-				return k, rvalue_marshall(gm.variable_global_get(k))
+				return k, rvalue_marshall_get(gm.variable_global_get(k))
 			end,s,k
 		end
 	}
 
 	proxy.globals = setmetatable({},global_variables_proxy_meta)
-	
+
 	local function get_asset(asset_name,asset_type)
 		if asset_type == 'script' then return gm[asset_name] end
 		--return gm.asset_get_index(asset_name)
 		return gm.constants[asset_name]
 	end
-	
+
 	proxy.constants = {}
 	local constants_lookup = {}
 	local constants_proxy_meta = {}
-	
+
 	for t,v in pairs(gm.constants_type_sorted) do
 		constants_lookup[t] = util.build_lookup(v)
 		constants_proxy_meta[t] = {
@@ -530,7 +544,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		}
 		proxy.constants[t] = setmetatable({},constants_proxy_meta[t])
 	end
-	
+
 end
 
 if ImGui.GetStyleVar == nil then -- don't do this on refresh
@@ -612,8 +626,12 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 		local gm_instance_list = gm.CInstance.instances_all
 		local gm_instance = gm_instance_list[1]
 		if not gm_instance then return false end
+		local gm_container = gm.variable_global_get("_damage_color_array")
+		if not gm_container then return false end
+		local gm_container_t = gm_container.array[1]
+		if not gm_container_t then return false end
 		local gm_rvalue = gm.variable_global_get("mouse_x")
-		
+
 		local imgui_style = ImGui.GetStyle() -- sol.ImGuiStyle*
 		local imgui_vector = imgui_style["WindowPadding"] -- sol.ImVec2*
 		endow_with_pairs_and_next(imgui_style)
@@ -621,18 +639,27 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 
 		endow_with_pairs_and_next(gm_instance_list)
 		endow_with_pairs_and_next(gm_instance)
+		endow_with_pairs_and_next(gm_container_t)
 		endow_with_pairs_and_next(gm_rvalue)
 		endow_with_pairs_and_next(RValueType)
-		
+
 		local rvalue_lookup = util.build_lookup(RValueType)
+		local get_type_name = function(s) return rvalue_lookup[s.type] end
+		
 		endow_with_new_properties(gm_rvalue,{
-			type_name = function(s) return rvalue_lookup[s.type] end,
-			lua_value = rvalue_marshall
+			type_name = get_type_name,
+			lua_value = rvalue_marshall,
+			struct = proxy.struct
+		})
+		endow_with_new_properties(gm_container_t,{
+			type_name = get_type_name,
+			lua_value = rvalue_marshall,
+			struct = proxy.struct
 		})
 		endow_with_new_properties(gm_instance,{
 			variables = proxy.variables
 		})
-		
+
 		if ImGui.GetStyleVar == nil then
 			local imgui_vector_meta = getmetatable(imgui_vector)
 			local imgui_stylevar_lookup = util.build_lookup(ImGuiStyleVar)
@@ -647,7 +674,7 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 				return s['x'],s['y']
 			end
 		end
-		
+
 		return true
 	end
 
