@@ -476,7 +476,9 @@ function imgui_on_render()
 						end
 						ImGui.SetClipboardText(text)
 					end
+					ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 					if ImGui.BeginListBox("##Box" .. ms,x,box_y) then
+						ImGui.PopStyleColor()
 						for li,ls in ipairs(md.lines_shown) do
 							local _, y = ImGui.CalcTextSize(ls)
 							md.lines_selected[li] = ImGui.Selectable("##Select" .. ms .. tostring(li), md.lines_selected[li] or false, ImGuiSelectableFlags.AllowDoubleClick, 0, y)
@@ -493,6 +495,8 @@ function imgui_on_render()
 							if color ~= nil then ImGui.PopStyleColor() end
 						end
 						ImGui.EndListBox()
+					else
+						ImGui.PopStyleColor()
 					end
 					ImGui.PushItemWidth(x_input)
 					ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, frame_padding_x, y_input)
