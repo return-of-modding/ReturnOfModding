@@ -1,262 +1,5 @@
--- BASE EXTENSIONS: Should be rolled into the base API if desired
-
-local unpack = table.unpack
-
-local function getname( )
-	return debug.getinfo( 2, "n" ).name or "UNKNOWN"
-end
-
-local function pusherror( f, ... )
-	local ret = table.pack( pcall( f, ... ) )
-	if ret[ 1 ] then return unpack( ret, 2, ret.n ) end
-	error( ret[ 2 ], 3 )
-end
-
--- doesn't invoke __index
-rawnext = next
-
--- invokes __next
-function next( t, k )
-	local m = debug.getmetatable( t )
-	local f = m and rawget(m,'__next') or rawnext
-	return pusherror( f, t, k )
-end
-
--- truly raw pairs, ignores __next and __pairs
-function rawpairs( t )
-	return rawnext, t, nil
-end
-
---[[
-
--- quasi-raw pairs, invokes __next but ignores __pairs
-function qrawpairs( t )
-    return next, t, nil
-end
-
---]]
-
--- doesn't invoke __index just like rawnext
-function rawinext( t, i )
-
-	if type( t ) ~= "table" then
-		error( "bad argument #1 to '" .. getname( ) .. "'(table expected got " .. type( i ) ..")", 2 )
-	end
-
-	if i == nil then
-		i = 0
-	elseif type( i ) ~= "number" then
-		error( "bad argument #2 to '" .. getname( ) .. "'(number expected got " .. type( i ) ..")", 2 )
-	elseif i < 0 then
-		error( "bad argument #2 to '" .. getname( ) .. "'(index out of bounds, too low)", 2 )
-	end
-
-	i = i + 1
-	local v = rawget( t, i )
-	if v ~= nil then
-		return i, v
-	end
-end
-
--- invokes __inext
-function inext( t, i )
-	local m = debug.getmetatable( t )
-	local f = m and rawget(m,'__inext') or rawinext
-	return pusherror( f, t, i )
-end
-
--- truly raw ipairs, ignores __inext and __ipairs
-function rawipairs( t )
-	return function( self, key )
-		return rawinext( self, key )
-	end, t, nil
-end
-
---[[
-
--- quasi-raw ipairs, invokes __inext but ignores __ipairs
-function qrawipairs( t )
-	return function( self, key )
-		return inext( self, key )
-	end, t, nil
-end
-
---]]
-
---[[
-
-table.rawinsert = table.insert
-local rawinsert = table.rawinsert
--- table.insert that respects metamethods
-function table.insert( list, pos, value )
-	local last = #list
-	if value == nil then
-		value = pos
-		pos = last + 1
-	end
-	if pos < 1 or pos > last + 1 then
-		error( "bad argument #2 to '" .. getname( ) .. "' (position out of bounds)", 2 )
-	end
-	if pos <= last then
-		local i = last
-		repeat
-			list[ i + 1 ] = list[ i ]
-			i = i - 1
-		until i < pos
-	end
-	list[ pos ] = value
-end
-
-table.rawremove = table.remove
--- table.remove that respects metamethods
-function table.remove( list, pos )
-	local last = #list
-	if pos == nil then
-		pos = last
-	end
-	if pos < 1 or pos > last then
-		error( "bad argument #2 to '" .. getname( ) .. "' (position out of bounds)", 2 )
-	end
-	local value = list[ pos ]
-	if pos <= last then
-		local i = pos
-		repeat
-			list[ i ] = list[ i + 1 ]
-			i = i + 1
-		until i > last
-	end
-	return value
-end
-
-table.rawunpack = table.unpack
--- table.unpack that respects metamethods
-do
-	local function unpack( t, m, i, ... )
-		if i < m then return ... end
-		return unpack( t, m, i - 1, t[ i ], ... )
-	end
-	
-	function table.unpack( list, i, j )
-		return unpack( list, i or 1, j or list.n or #list or 1 )
-	end
-end
-
-local rawconcat = table.concat
-table.rawconcat = rawconcat
--- table.concat that respects metamethods and includes more values
-do
-	local wt = setmetatable( { }, { __mode = 'v' } )
-	function table.concat( tbl, sep, i, j )
-		i = i or 1
-		j = j or tbl.n or #tbl
-		if i > j then return "" end
-		sep = sep or ""
-		local t = rawnext( wt ) or { }
-		rawset( wt, 1, t )
-		for k = i, j, 1 do
-			rawset( t, k, tostring( tbl[ k ] ) )
-		end
-		return rawconcat( t, sep, i, j )
-	end
-end
-
---[[
-	NOTE: Other table functions that need to get updated to respect metamethods
-	- table.sort
---]]
-
---]]
-
-function setfenv( fn, env )
-	if type( fn ) ~= "function" then
-		fn = debug.getinfo( ( fn or 1 ) + 1, "f" ).func
-	end
-	local i = 0
-	repeat
-		i = i + 1
-		local name = debug.getupvalue( fn, i )
-		if name == "_ENV" then
-			debug.upvaluejoin( fn, i, ( function( )
-				return env
-			end ), 1 )
-			return env
-		end
-	until not name
-end
-
-function perform_lookup(t,s,f)
-	for k,v in pairs(t) do
-		if f ~= nil then v = f(v) end
-		if v == s then return k end
-	end
-	return nil
-end
-
-function build_lookup(t,f)
-	local l = {}
-	for k,v in pairs(t) do
-		if f ~= nil then v = f(v) end
-		if v ~= nil then l[v] = k end
-	end
-	return l
-end
-
-function clear(t)
-	for k in pairs(t) do
-		t[k] = nil
-	end
-end
-
-function iclear(...)
-	local n = 0
-	for _,t in vararg(...) do
-		local l = #t
-		if l > n then n = l end
-	end
-	if n == 0 then return end
-	for _,t in vararg(...) do
-		for i = 1, n do
-			t[i] = nil
-		end
-	end
-end
-
-function merge(m,...)
-	for _,t in vararg(...) do
-		for k,v in pairs(t) do
-			m[k] = v
-		end
-	end
-	return m
-end
-
---http://lua-users.org/wiki/VarargTheSecondClassCitizen
-do
-	function vararg(...)
-		local i, t, l = 0, {}
-		local function iter(...)
-			i = i + 1
-			if i > l then return end
-			return i, t[i]
-		end
-		
-		--i = 0
-		l = select("#", ...)
-		for n = 1, l do
-			t[n] = select(n, ...)
-		end
-		--[[
-		for n = l+1, #t do
-			t[n] = nil
-		end
-		--]]
-		return iter
-	end
-end
-
--- MOD SPECIFIC CODE:
-
-proxy = {}
+util.merge(_ENV,util)
+util.merge(_ENV,proxy)
 
 function find_instance(name)
 	for k,v in pairs(gm.CInstance.instances_active) do
@@ -269,12 +12,10 @@ function find_instance(name)
 end
 
 local _repl_globals = {}
-for k,v in pairs(_G) do
-	_repl_globals[k] = v
-end
-for k,v in pairs(_ENV) do
-	_repl_globals[k] = v
-end
+util.merge(_repl_globals,_G)
+util.merge(_repl_globals,_ENV)
+util.merge(_repl_globals,util)
+util.merge(_repl_globals,proxy)
 repl_globals = _repl_globals
 repl_environment = setmetatable({},{
 	__index = repl_globals,
@@ -312,7 +53,7 @@ end
 
 function vararg_tostring(raw, ...)
 	s = ""
-	for _,v in vararg(...) do
+	for _,v in util.vararg(...) do
 		v = raw and tostring(v) or tostring_literal(v)
 		s = s .. '\t' .. v
 	end
@@ -380,9 +121,7 @@ for _,lg in pairs(console_logger) do
 end
 
 function repl_execute_lua(md, env, text, ...)
-	for k,v in pairs(md.definitions) do
-		repl_globals[k] = v
-	end
+	util.merge(repl_globals,md.definitions)
 	local func, err = text, ''
 	if type(text) == "string" then
 		func, err = load( "return " .. text )
@@ -404,7 +143,7 @@ do
 	-- TODO: This needs to be improved regarding properly handling embedded and mixed quotes!
 	local parse_buffer = {}
 	function parse_command_text(text)
-		iclear(parse_buffer)
+		util.iclear(parse_buffer)
 		local spat, epat, buf, quoted = [=[^(['"])]=], [=[(['"])$]=]
 		for str in text:gmatch("%S+") do
 			local squoted = str:match(spat)
@@ -426,7 +165,7 @@ do
 		return true, table.unpack(parse_buffer)
 	end
 	function parse_multicommand_text(text)
-		iclear(parse_buffer)
+		util.iclear(parse_buffer)
 		for mstr in text:gmatch("[^\r\n]+") do
 			local pquoted, buf = 0
 			for str in mstr:gmatch("[^;]+") do
@@ -515,7 +254,7 @@ console_commands = {
 	end,
 	echo = function(md,...)
 		local text = ""
-		for _, arg in vararg(...) do
+		for _, arg in util.vararg(...) do
 			text = text .. ' ' .. arg
 		end
 		text = text:sub(2,#text)
@@ -523,7 +262,7 @@ console_commands = {
 	end,
 	lua = function(md,...)
 		local text = ""
-		for _, arg in vararg(...) do
+		for _, arg in util.vararg(...) do
 			text = text .. ' ' .. arg
 		end
 		text = text:sub(2,#text)
@@ -577,7 +316,7 @@ console_commands = {
 			return
 		end
 		local text = ""
-		for _, arg in vararg(...) do
+		for _, arg in util.vararg(...) do
 			text = text .. ' ' .. arg
 		end
 		text = text:sub(2,#text)
@@ -623,7 +362,7 @@ local function console_mode_definitions(get_md)
 			return console_logger.print(get_md(),true,...)
 		end,
 		tprint = function(...)
-			for _,o in vararg(...) do
+			for _,o in util.vararg(...) do
 				console_logger.print(get_md(),false,o)
 				if type(o) == "table" or type(o) == "userdata" then
 					for k,v in pairs(o) do
@@ -633,7 +372,7 @@ local function console_mode_definitions(get_md)
 			end
 		end,
 		mprint = function(m,...)
-			for _,o in vararg(...) do
+			for _,o in util.vararg(...) do
 				console_logger.print(get_md(),false,o)
 				if type(o) == "table" or type(o) == "userdata" then
 					for k,v in pairs(o) do
@@ -649,7 +388,7 @@ local function console_mode_definitions(get_md)
 end
 
 for mi,md in ipairs(console_modes) do
-	merge(md,{
+	util.merge(md,{
 		current_text = "",
 		enter_pressed = false,
 		history_offset = 0,
@@ -665,7 +404,7 @@ for mi,md in ipairs(console_modes) do
 end
 
 console_mode = console_modes[1]
-merge(_ENV,console_mode_definitions(function() return console_mode end))
+util.merge(_ENV,console_mode_definitions(function() return console_mode end))
 
 do
 	local calculate_text_sizes_x_buffer = {}
@@ -678,7 +417,7 @@ do
 		local my = 0 -- maximum y value in this row
 		local sx = 0 -- sum of x values in this row
 		local n -- number of items in this row
-		for i,t in vararg(...) do
+		for i,t in util.vararg(...) do
 			n = i
 			local x,y = ImGui.CalcTextSize(t)
 			x = x + frame_padding_x_2
@@ -691,390 +430,7 @@ do
 	end
 end
 
-function endow_with_pairs_and_next(sol_object)
-	-- this should be idempotent (does nothing extra when applied more than once)
-	--[[
-	context behind this approach:
-		sol objects are userdata or tables that have sol classes as metatables
-		sol object attributes are functions in their sol class as the same field
-		sol class __index function fallsback to itself so objects inherit class members
-		sol __index generates a new 'new' function whenever it is requested
-		sol classes have stub __pairs that just errors when called
-		sol overrides next to error when that is used on a sol class
-	--]]
-	local sol_meta = getmetatable(sol_object)
-	if not sol_meta then return end
-	local status, sol_next
-	if rawget(sol_meta,'__pairs') or rawget(sol_meta,'__next') then
-		status, sol_next = pcall(pairs,sol_object)
-	end
-	if not status then
-		local sol_index = rawget(sol_meta,'__index')
-		if not sol_index then return end
-		if type(sol_index) ~= 'function' then
-            function sol_next(s,k)
-                return next(sol_index,k)
-            end
-        else
-			function sol_next(s,k)
-				local v,u,w
-				while v == nil do
-					k,u = rawnext(sol_meta,k)
-					if k == nil then return nil end
-					-- ignore 'new' and metatable fields
-					if k ~= 'new' and k:sub(1,2) ~= '__' then
-						w = s[k]
-						-- if the object reports a value different to the class
-						if u ~= w then
-							-- assume it's actually that object's attribute
-							v = w
-						end
-					end
-				end
-				return k,v
-			end
-		end
-		rawset(sol_meta,'__pairs',function(s,k)
-			return sol_next,s,k
-		end)
-	end
-	-- __next is implemented by a custom implementation of next
-	local status = pcall(rawnext,sol_object)
-	if not status and sol_next ~= nil and rawget(sol_meta,'__next') == nil then
-		rawset(sol_meta,'__next',sol_next)
-	end
-end
-
-function endow_with_new_properties(sol_object,properties)
-	local meta = getmetatable(sol_object)
-	local new_properties = {}
-	for k,v in pairs(properties) do
-		if not rawget(meta,k) then
-			new_properties[k] = v
-			rawset(meta,k,v)
-		end
-	end
-	local index = meta.__index
-	meta.__index = function(s,k)
-		local v = new_properties[k]
-		if v then return v(s) end
-		return index(s,k)
-	end
-end
-
-do
-	local function getstring(o)
-		return o.tostring
-	end
-	
-	local function getnumber(o)
-		return tonumber(o.tostring)
-	end
-
-	local function peval(o)
-		local func = load("return " .. o.tostring)
-		if not func then return nil end
-		local status, value = pcall(func)
-		if not status then return nil end
-		return value
-	end
-	
-	local function null()
-		return nil
-	end
-	
-	local function istrue(o)
-		return o.tostring == 'true'
-	end
-
-	local function getarray(o)
-		return o.array
-	end
-
-	rvalue_marshallers = {
-		[RValueType.REAL] = getnumber,
-		[RValueType.STRING] = getstring,
-		[RValueType.ARRAY] = getarray,
-		[RValueType.PTR] = nil,
-		[RValueType.VEC3] = nil,
-		[RValueType.UNDEFINED] = null,
-		[RValueType.OBJECT] = nil,
-		[RValueType.INT32] = getnumber,
-		[RValueType.VEC4] = nil,
-		[RValueType.MATRIX] = nil,
-		[RValueType.INT64] = getnumber,
-		[RValueType.ACCESSOR] = nil,
-		[RValueType.JSNULL] = null,
-		[RValueType.BOOL] = istrue,
-		[RValueType.ITERATOR] = nil,
-		[RValueType.REF] = nil,
-		[RValueType.UNSET] = null
-	}
-
-	function rvalue_marshall(rvalue)
-		local m = rvalue_marshallers[rvalue.type]
-		if m == nil then return rvalue end
-		return m(rvalue)
-	end
-
-	local function get_name(rvalue)
-		return rvalue.tostring
-	end
-
-	local instance_variables_id_register = setmetatable({},{__mode = "k"})
-
-	local instance_variables_proxy_meta = {
-		__index = function(s,k)
-			local id = instance_variables_id_register[s]
-			return rvalue_marshall(gm.variable_instance_get(id,k))
-		end,
-		__newindex = function(s,k,v)
-			local id = instance_variables_id_register[s]
-			return gm.variable_instance_set(id,k,v)
-		end,
-		__next = function(s,k)
-			local id = instance_variables_id_register[s]
-			local names = gm.variable_instance_get_names(id)
-			if names.type ~= RValueType.ARRAY then return nil end
-			names = names.array
-			local i = k and perform_lookup(names,k,get_name) or 0
-			k = names[i+1]
-			if k == nil then return nil end
-			k = k.tostring
-			return k, rvalue_marshall(gm.variable_instance_get(id,k))
-		end,
-		__pairs = function(s,k)
-			local id = instance_variables_id_register[s]
-			local names = gm.variable_instance_get_names(id)
-			if names.type ~= RValueType.ARRAY then return nil end
-			names = names.array
-			local names_lookup = build_lookup(names,get_name)
-			return function(_,k)
-				local i = k and names_lookup[k] or 0
-				k = names[i+1]
-				if k == nil then return nil end
-				k = k.tostring
-				return k, rvalue_marshall(gm.variable_instance_get(id,k))
-			end,s,k
-		end
-	}
-
-	function proxy.variables(cinstance_or_id)
-		if type(cinstance_or_id) ~= 'number' then cinstance_or_id = cinstance_or_id.id end
-		local proxy = setmetatable({},instance_variables_proxy_meta)
-		instance_variables_id_register[proxy] = cinstance_or_id
-		return proxy
-	end
-
-	local struct_id_register = setmetatable({},{__mode = "k"})
-
-	local struct_proxy_meta = {
-		__index = function(s,k)
-			local id = struct_id_register[s]
-			return rvalue_marshall(gm.struct_get(id,k))
-		end,
-		__newindex = function(s,k,v)
-			local id = struct_id_register[s]
-			return gm.struct_set(id,k,v)
-		end,
-		__next = function(s,k)
-			local id = struct_id_register[s]
-			local names = gm.struct_get_names(id)
-			if names.type ~= RValueType.ARRAY then return nil end
-			names = names.array
-			local i = k and perform_lookup(names,k,get_name) or 0
-			k = names[i+1]
-			if k == nil then return nil end
-			k = k.tostring
-			return k, rvalue_marshall(gm.struct_get(id,k))
-		end,
-		__pairs = function(s,k)
-			local id = struct_id_register[s]
-			local names = gm.struct_get_names(id)
-			if names.type ~= RValueType.ARRAY then return nil end
-			names = names.array
-			local names_lookup = build_lookup(names,get_name)
-			return function(_,k)
-				local i = k and names_lookup[k] or 0
-				k = names[i+1]
-				if k == nil then return nil end
-				k = k.tostring
-				return k, rvalue_marshall(gm.struct_get(id,k))
-			end,s,k
-		end
-	}
-
-	proxy.struct = setmetatable({},{
-		__call = function(_,id)
-			local proxy = setmetatable({},struct_proxy_meta)
-			struct_id_register[proxy] = id
-			return proxy
-		end
-	})
-	
-	local struct_variables_id_register = setmetatable({},{__mode = "k"})
-	
-	local struct_variables_proxy_meta = {
-		__index = function(s,k)
-			local id = struct_variables_id_register[s]
-			return rvalue_marshall(gm.variable_struct_get(id,k))
-		end,
-		__newindex = function(s,k,v)
-			local id = struct_variables_id_register[s]
-			return gm.variable_struct_set(id,k,v)
-		end,
-		__next = function(s,k)
-			local id = struct_variables_id_register[s]
-			local names = gm.variable_struct_get_names(id)
-			if names.type ~= RValueType.ARRAY then return nil end
-			names = names.array
-			local i = k and perform_lookup(names,k,get_name) or 0
-			k = names[i+1]
-			if k == nil then return nil end
-			k = k.tostring
-			return k, rvalue_marshall(gm.variable_struct_get(id,k))
-		end,
-		__pairs = function(s,k)
-			local id = struct_variables_id_register[s]
-			local names = gm.variable_struct_get_names(id)
-			if names.type ~= RValueType.ARRAY then return nil end
-			names = names.array
-			local names_lookup = build_lookup(names,get_name)
-			return function(_,k)
-				local i = k and names_lookup[k] or 0
-				k = names[i+1]
-				if k == nil then return nil end
-				k = k.tostring
-				return k, rvalue_marshall(gm.variable_struct_get(id,k))
-			end,s,k
-		end
-	}
-
-	function proxy.struct.variables(id)
-		local proxy = setmetatable({},struct_variables_proxy_meta)
-		struct_variables_id_register[proxy] = id
-		return proxy
-	end
-
-	local global_variables_proxy_meta = {
-		__index = function(s,k)
-			return rvalue_marshall(gm.variable_global_get(k))
-		end,
-		__newindex = function(s,k,v)
-			return gm.variable_global_set(k,v)
-		end,
-		__next = function(s,k)
-			local names = gm.variable_instance_get_names(EVariableType.GLOBAL)
-			if names.type ~= RValueType.ARRAY then return nil end
-			names = names.array
-			local i = k and perform_lookup(names,k,get_name) or 0
-			k = names[i+1]
-			if k == nil then return nil end
-			k = k.tostring
-			return k, rvalue_marshall(gm.variable_global_get(k))
-		end,
-		__pairs = function(s,k)
-			local names = gm.variable_instance_get_names(EVariableType.GLOBAL)
-			if names.type ~= RValueType.ARRAY then return nil end
-			names = names.array
-			local names_lookup = build_lookup(names,get_name)
-			return function(_,k)
-				local i = k and names_lookup[k] or 0
-				k = names[i+1]
-				if k == nil then return nil end
-				k = k.tostring
-				return k, rvalue_marshall(gm.variable_global_get(k))
-			end,s,k
-		end
-	}
-
-	proxy.globals = setmetatable({},global_variables_proxy_meta)
-	
-	local function get_asset(asset_name,asset_type)
-		if asset_type == 'script' then return gm[asset_name] end
-		--return gm.asset_get_index(asset_name)
-		return gm.constants[asset_name]
-	end
-	
-	proxy.constants = {}
-	local constants_lookup = {}
-	local constants_proxy_meta = {}
-	
-	for t,v in pairs(gm.constants_type_sorted) do
-		constants_lookup[t] = build_lookup(v)
-		constants_proxy_meta[t] = {
-			__index = function(s,k)
-				return get_asset(k,t)
-			end,
-			__newindex = function(s,k,v)
-				error(2,"cannot override gamemaker asset.")
-			end,
-			__next = function(s,k)
-				local k = next(constants_lookup[t],k)
-				return k, get_asset(k,t)
-			end,
-			__pairs = function(s,k)
-				return function(s,k)
-					local k = next(constants_lookup[t],k)
-					return k, get_asset(k,t)
-				end,s,k
-			end
-		}
-		proxy.constants[t] = setmetatable({},constants_proxy_meta[t])
-	end
-	
-end
-
-function on_delayed_load()
-
-	local gm_instance_list = gm.CInstance.instances_all
-	local gm_instance = gm_instance_list[1]
-	if not gm_instance then return false end
-	local gm_rvalue = gm.variable_global_get("mouse_x")
-	
-	local imgui_style = ImGui.GetStyle() -- sol.ImGuiStyle*
-	local imgui_vector = imgui_style["WindowPadding"] -- sol.ImVec2*
-	endow_with_pairs_and_next(imgui_style)
-	endow_with_pairs_and_next(imgui_vector)
-
-	endow_with_pairs_and_next(gm_instance_list)
-	endow_with_pairs_and_next(gm_instance)
-	endow_with_pairs_and_next(gm_rvalue)
-	endow_with_pairs_and_next(RValueType)
-	
-	local rvalue_lookup = build_lookup(RValueType)
-	endow_with_new_properties(gm_rvalue,{
-		type_name = function(s) return rvalue_lookup[s.type] end,
-		lua_value = rvalue_marshall
-	})
-	endow_with_new_properties(gm_instance,{
-		variables = proxy.variables
-	})
-	
-	if ImGui.GetStyleVar == nil then
-		local imgui_vector_meta = getmetatable(imgui_vector)
-		local imgui_stylevar_lookup = build_lookup(ImGuiStyleVar)
-		imgui_stylevar_lookup[ImGuiStyleVar.COUNT] = nil
-
-		function ImGui.GetStyleVar(var)
-			if type(var) == "number" then
-				var = imgui_stylevar_lookup[var]
-			end
-			local s = ImGui.GetStyle()[var]
-			if getmetatable(s) ~= imgui_vector_meta then return s end
-			return s['x'],s['y']
-		end
-	end
-	
-	return true
-end
-
-local next_delayed_load = on_delayed_load
-
 function imgui_on_render()
-	if next_delayed_load and next_delayed_load() then
-		next_delayed_load = nil
-	end
 	if ImGui.Begin("Script Console") then
 		if ImGui.BeginTabBar("Mode",ImGuiTabBarFlags.Reorderable) then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
@@ -1103,7 +459,7 @@ function imgui_on_render()
 					ImGui.InvisibleButton("##Spacer" .. ms, x_bar, top_y_max)
 					ImGui.SameLine()
 					if ImGui.Button("Clear##" .. ms, x_clear, top_y_max) then
-						iclear(md.lines_shown,md.lines_raw,md.lines_selected,md.lines_colors)
+						util.iclear(md.lines_shown,md.lines_raw,md.lines_selected,md.lines_colors)
 					end
 					ImGui.SameLine()
 					if ImGui.Button("Copy##" .. ms, x_copy, top_y_max) then
