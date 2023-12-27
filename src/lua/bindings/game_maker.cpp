@@ -461,23 +461,23 @@ namespace lua::game_maker
 					    const auto res =
 					        gm::call("variable_instance_get", std::to_array<RValue, 2>({self.as<CInstance&>().id, key.as<const char*>()}));
 
-						switch (res.type & MASK_TYPE_RVALUE)
-						{
-						case STRING: return sol::make_object<const char*>(this_state_, res.ref_string->get());
-						case REAL:
-						case _BOOL:
-						case _INT32:
-						case _INT64: return sol::make_object<double>(this_state_, res.asReal());
-						case ARRAY:
-							return sol::make_object<std::span<RValue>>(this_state_,
-							    res.ref_array && res.isArray() ? res.ref_array->array() : dummy_rvalue_array);
-						case REF:
-						case PTR: return sol::make_object<void*>(this_state_, res.ptr);
-						case OBJECT: return sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr);
-						case UNDEFINED:
-						case UNSET: return sol::lua_nil;
-						default: return sol::make_object<RValue>(this_state_, res);
-						}
+					    switch (res.type & MASK_TYPE_RVALUE)
+					    {
+					    case STRING: return sol::make_object<const char*>(this_state_, res.ref_string->get());
+					    case REAL:
+					    case _BOOL:
+					    case _INT32:
+					    case _INT64: return sol::make_object<double>(this_state_, res.asReal());
+					    case ARRAY:
+						    return sol::make_object<std::span<RValue>>(this_state_,
+						        res.ref_array && res.isArray() ? res.ref_array->array() : dummy_rvalue_array);
+					    case REF:
+					    case PTR: return sol::make_object<void*>(this_state_, res.ptr);
+					    case OBJECT: return sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr);
+					    case UNDEFINED:
+					    case UNSET: return sol::lua_nil;
+					    default: return sol::make_object<RValue>(this_state_, res);
+					    }
 				    }
 			    },
 			    sol::meta_function::new_index,
@@ -624,12 +624,16 @@ namespace lua::game_maker
 			// Lua API: Field
 			// Class: CInstance
 			// Field: bbox: number[4] array
-			BIND_USERTYPE(type, CInstance, bbox);
+			type["bbox"] = sol::property([](CInstance& inst) {
+				return std::span(inst.bbox);
+			});
 
 			// Lua API: Field
 			// Class: CInstance
-			// Field: timer: number
-			BIND_USERTYPE(type, CInstance, timer);
+			// Field: timer: number[12] array
+			type["timer"] = sol::property([](CInstance& inst) {
+				return std::span(inst.timer);
+			});
 
 			// Lua API: Field
 			// Class: CInstance
