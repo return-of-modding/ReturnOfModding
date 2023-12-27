@@ -24,7 +24,6 @@ namespace big
 		RemoveVectoredExceptionHandler(m_exception_handler);
 	}
 
-	inline static stack_trace trace;
 	LONG vectored_exception_handler(EXCEPTION_POINTERS* exception_info)
 	{
 		const auto exception_code = exception_info->ExceptionRecord->ExceptionCode;
@@ -33,6 +32,7 @@ namespace big
 
 		static std::set<std::size_t> logged_exceptions;
 
+		stack_trace trace;
 		trace.new_stack_trace(exception_info);
 		const auto trace_hash = hash_stack_trace(trace.frame_pointers());
 		if (const auto it = logged_exceptions.find(trace_hash); it == logged_exceptions.end())
