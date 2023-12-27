@@ -666,14 +666,17 @@ namespace lua::game_maker
 
 			// Lua API: Function
 			// Class: CInstance
-			// Name: dump_vars
-			// Log dump to the console all the variable names of the given object, for example with an `oP` (Player) object instance you will be able to do `print(myoPInstance.user_name)`
-			type["dump_vars"] = [](CInstance& self) {
+			// Name: variable_instance_get_names
+			// Return all the game defined variable names of the given object, for example with an `oP` (Player) object instance you will be able to do `print(myoPInstance.user_name)`
+			type["variable_instance_get_names"] = [](CInstance& self) {
 				const auto var_names = gm::call("variable_instance_get_names", self.id).asArray();
+				// TODO: Cache it?
+				std::vector<std::string> res;
 				for (int i = 0; i < var_names->length; i++)
 				{
-					LOG(INFO) << var_names->m_Array[i].asString();
+					res.emplace_back(var_names->m_Array[i].asString());
 				}
+				return res;
 			};
 
 			auto CInstance_table = ns["CInstance"].get_or_create<sol::table>();
