@@ -7,7 +7,10 @@ namespace gm
 {
 	inline bool hook_Code_Execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags)
 	{
+		if (!big::g_gml_safe && !strcmp(code->name, "gml_Object_oLoadScreen_Step_0"))
+		{
 		big::g_gml_safe = true;
+		}
 
 		if (big::g_lua_manager)
 			big::g_lua_manager->pre_code_execute(self, other, code, result, flags);
