@@ -648,16 +648,6 @@ namespace lua::game_maker
 
 			// Lua API: Field
 			// Class: CInstance
-			// Field: m_pNext: CInstance
-			BIND_USERTYPE(type, CInstance, m_pNext);
-
-			// Lua API: Field
-			// Class: CInstance
-			// Field: m_pPrev: CInstance
-			BIND_USERTYPE(type, CInstance, m_pPrev);
-
-			// Lua API: Field
-			// Class: CInstance
 			// Field: depth: number
 			BIND_USERTYPE(type, CInstance, depth);
 
