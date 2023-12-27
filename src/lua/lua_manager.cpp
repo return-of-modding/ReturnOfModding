@@ -372,17 +372,26 @@ namespace big
 		lua::game_maker::bind(m_state);
 	}
 
-	void lua_manager::pre_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags)
+	bool lua_manager::pre_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags)
 	{
 		std::lock_guard guard(m_module_lock);
+
+		bool call_orig_if_true = true;
 
 		for (const auto& module : m_modules)
 		{
 			for (const auto& cb : module->m_pre_code_execute_callbacks)
 			{
-				cb(self, other, code, result, flags);
+				const auto new_call_orig_if_true = cb(self, other, code, result, flags);
+				if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
+				    && new_call_orig_if_true.get<bool>() == false)
+				{
+					call_orig_if_true = false;
+				}
 			}
 		}
+
+		return call_orig_if_true;
 	}
 
 	void lua_manager::post_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags)

@@ -39,7 +39,7 @@ namespace lua::game_maker
 	// Lua API: Function
 	// Table: gm
 	// Name: pre_code_execute
-	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) )
+	// Param: callback: function: callback that match signature function, return value can be True if the original method we are hooking should be called, false if it should be skipped ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) )
 	// Registers a callback that will be called right before any game function is called.
 	static void pre_code_execute(sol::protected_function cb, sol::this_environment env)
 	{

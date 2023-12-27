@@ -60,7 +60,7 @@ namespace big
 			return m_plugins_folder;
 		}
 
-		void pre_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags);
+		bool pre_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags);
 		void post_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags);
 
 		void draw_independent_gui();

@@ -23,7 +23,7 @@ Table containing helpers for interacting with the game maker engine.
 Registers a callback that will be called right before any game function is called.
 
 - **Parameters:**
-  - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) )
+  - `callback` (function): callback that match signature function, return value can be True if the original method we are hooking should be called, false if it should be skipped ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) )
 
 **Example Usage:**
 ```lua
