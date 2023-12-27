@@ -301,13 +301,18 @@ do
 end
 
 function render_tree(ed,filter,bid,ids)
+	local root = ids == nil
 	ids = (ids and (ids .. '.') or '') .. ed.index
 	local show = ed.path ~= "root"
 	local _unfolded = unfolded[ids] == true
 	if show then
+		ImGui.PushStyleColor(ImGuiCol.HeaderHovered,0)
+		ImGui.PushStyleColor(ImGuiCol.HeaderActive,0)
 		ImGui.Selectable("##Select" .. ids, false)
+		ImGui.PopStyleColor()
+		ImGui.PopStyleColor()
 		if ImGui.IsItemHovered() then
-			if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Left) then
+			if not root and ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Left) then
 				_unfolded = not _unfolded
 			end
 			if ImGui.IsItemClicked(ImGuiMouseButton.Middle) then
