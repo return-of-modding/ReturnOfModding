@@ -3748,30 +3748,10 @@ namespace lua::imgui
 		        {"MouseWheelX", ImGuiKey_MouseWheelX},
 		        {"MouseWheelY", ImGuiKey_MouseWheelY},
 
-		        // {"ReservedForModCtrl", ImGuiKey_ReservedForModCtrl},
-		        // {"ReservedForModShift", ImGuiKey_ReservedForModShift},
-		        // {"ReservedForModAlt", ImGuiKey_ReservedForModAlt},
-		        // {"ReservedForModSuper", ImGuiKey_ReservedForModSuper},
-
 		        {"COUNT", ImGuiKey_COUNT},
-
-		        // {"NamedKey_BEGIN", ImGuiKey_NamedKey_BEGIN},
-		        // {"NamedKey_END", ImGuiKey_NamedKey_END},
-		        // {"NamedKey_COUNT", ImGuiKey_NamedKey_COUNT},
-
-		        // {"KeysData_SIZE", ImGuiKey_KeysData_SIZE},
-		        // {"KeysData_OFFSET", ImGuiKey_KeysData_OFFSET},
-
-		        // WARNING: These keys are deprecated
-		        // Prefer to use imgui.Mod.Ctrl, etc..
-		        {"ModCtrl", ImGuiMod_Ctrl},
-		        {"ModShift", ImGuiMod_Shift},
-		        {"ModAlt", ImGuiMod_Alt},
-		        {"ModSuper", ImGuiMod_Super},
-		        {"KeyPadEnter", ImGuiKey_KeypadEnter}, // Prefer KeypadEnter with lower case p
 		    });
 
-		luaGlobals.new_enum<ImGuiKey>("ImGuiKey",
+		luaGlobals.new_enum<ImGuiKey>("ImGuiKeyMod",
 		    {
 		        {"None", ImGuiMod_None},
 		        {"Ctrl", ImGuiMod_Ctrl},
@@ -3782,7 +3762,6 @@ namespace lua::imgui
 		        {"Mask_", ImGuiMod_Mask_},
 		    });
 
-		// TODO: Document these!
 		ImGui.set_function("IsKeyDown", sol::resolve<bool(ImGuiKey)>(ImGui::IsKeyDown));
 		ImGui.set_function("IsKeyPressed",
 		    sol::overload(

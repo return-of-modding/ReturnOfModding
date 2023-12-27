@@ -1452,6 +1452,72 @@ selected, activated = ImGui.MenuItem("Label", "ALT+F4", selected, true)
   ImGui.ResetMouseDragDelta(ImGuiMouseButton.Middle)
 ```
 
+## Inputs Utilities: Keyboard
+```lua
+  -- ImGuiKey
+  -- ImGuiKey.None
+  -- ImGuiKey.Tab
+  -- ImGuiKey.LeftArrow
+  -- ImGuiKey.RightArrow
+  -- You get the idea, just check the source
+
+  -- ImGuiKeyMod
+  -- ImGuiKeyMod.None
+  -- ImGuiKeyMod.Ctrl
+  -- ImGuiKeyMod.Shift
+  -- ImGuiKeyMod.Alt
+  -- ImGuiKeyMod.Super
+  -- ImGuiKeyMod.Shortcut
+  -- ImGuiKeyMod.Mask_
+
+  -- ImGui.IsKeyDown(...)
+  -- Parameters: ImGuiKey
+  -- Returns: bool
+  bool = ImGui.IsKeyDown(key)
+
+  -- ImGui.IsKeyPressed(...)
+  -- Parameters: ImGuiKey, bool repeat = true
+  -- Returns: bool
+  bool = ImGui.IsKeyPressed(key)
+  bool = ImGui.IsKeyPressed(key, repeat)
+
+  -- ImGui.IsKeyReleased(...)
+  -- Parameters: ImGuiKey
+  -- Returns: bool
+  bool = ImGui.IsKeyReleased(key)
+
+  -- ImGui.GetKeyPressedAmount(...)
+  -- Parameters: ImGuiKey key, float repeat_delay, float repeat_rate
+  -- Returns: int
+  int = ImGui.GetKeyPressedAmount(key)
+
+  -- ImGui.GetKeyName(...)
+  -- Parameters: ImGuiKey key
+  -- Returns: string
+  name = ImGui.GetKeyName(key)
+
+  -- ImGui.SetNextFrameWantCaptureKeyboard(...)
+  -- Parameters: bool want_to_capture_keyboard
+  -- Returns: 
+  ImGui.SetNextFrameWantCaptureKeyboard(want_to_capture_keyboard)
+
+  -- ImGui.PushAllowKeyboardFocus(...)
+  -- Parameters: bool tab_stop
+  -- Returns: 
+  ImGui.PushAllowKeyboardFocus(tab_stop)
+
+  -- ImGui.PopAllowKeyboardFocus(...)
+  -- Parameters: 
+  -- Returns: 
+  ImGui.PopAllowKeyboardFocus()
+
+  -- ImGui.SetKeyboardFocusHere(...)
+  -- Parameters: int offset
+  -- Returns: 
+  ImGui.PopAllowKeyboardFocus()
+  ImGui.PopAllowKeyboardFocus(offset)
+```
+
 ## Clipboard Utilities
 ```lua
   -- ImGui.GetClipboardText()
