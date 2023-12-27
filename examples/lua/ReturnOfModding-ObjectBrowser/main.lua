@@ -37,8 +37,7 @@ function initial_entries()
 	local entries = {
 		entrify('globals',proxy.globals),
 		entrify('instances_all',gm.CInstance.instances_all),
-		entrify('instances_active',gm.CInstance.instances_active),
-		entrify('@test=',{["o34215u.h"]={}})
+		entrify('instances_active',gm.CInstance.instances_active)
 	}
 	for i,e in ipairs(entries) do
 		e.index = i

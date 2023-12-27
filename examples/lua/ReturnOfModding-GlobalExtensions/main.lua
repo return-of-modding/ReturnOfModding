@@ -343,6 +343,7 @@ if _G.proxy == nil then -- don't do this on refresh
 	end
 
 	local instance_variables_id_register = setmetatable({},{__mode = "k"})
+	local instance_variables_proxy_register = setmetatable({},{__mode = "v"})
 
 	local instance_variables_proxy_meta = {
 		__index = function(s,k)
@@ -381,14 +382,19 @@ if _G.proxy == nil then -- don't do this on refresh
 	}
 
 	function proxy.variables(id)
+		local meta = getmetatable(id)
+		if meta and meta.__name and meta.__name:match('CInstance') then id = id.id end
+		local proxy = instance_variables_proxy_register[id]
+		if proxy then return proxy end
 		local proxy = setmetatable({},instance_variables_proxy_meta)
 		local meta = getmetatable(id)
-		if meta and meta.__name and meta.__name:match('*') then id = id.id end
+		instance_variables_proxy_register[id] = proxy
 		instance_variables_id_register[proxy] = id
 		return proxy
 	end
 
 	local struct_id_register = setmetatable({},{__mode = "k"})
+	local struct_proxy_register = setmetatable({},{__mode = "v"})
 
 	local struct_proxy_meta = {
 		__index = function(s,k)
@@ -428,13 +434,17 @@ if _G.proxy == nil then -- don't do this on refresh
 
 	proxy.struct = setmetatable({},{
 		__call = function(_,id)
-			local proxy = setmetatable({},struct_proxy_meta)
+			local proxy = struct_proxy_register[id]
+			if proxy then return proxy end
+			proxy = setmetatable({},struct_proxy_meta)
+			struct_proxy_register[id] = proxy
 			struct_id_register[proxy] = id
 			return proxy
 		end
 	})
 
 	local struct_variables_id_register = setmetatable({},{__mode = "k"})
+	local struct_variables_proxy_register = setmetatable({},{__mode = "v"})
 
 	local struct_variables_proxy_meta = {
 		__index = function(s,k)
@@ -473,7 +483,10 @@ if _G.proxy == nil then -- don't do this on refresh
 	}
 
 	function proxy.struct.variables(id)
-		local proxy = setmetatable({},struct_variables_proxy_meta)
+		local proxy = struct_variables_proxy_register[id]
+		if proxy then return proxy end
+		proxy = setmetatable({},struct_variables_proxy_meta)
+		struct_variables_proxy_register[id] = proxy
 		struct_variables_id_register[proxy] = id
 		return proxy
 	end
