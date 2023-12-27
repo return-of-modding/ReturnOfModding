@@ -23,6 +23,7 @@ do
 end
 
 browsers = {}
+unfolded = {}
 
 function new_browser_data(entry)
 	local id = #browsers + 1
@@ -33,16 +34,16 @@ function new_browser_data(entry)
 	})
 end
 
-function initial_entries()
-	local entries = {
-		entrify('globals',proxy.globals),
-		entrify('instances_all',gm.CInstance.instances_all),
-		entrify('instances_active',gm.CInstance.instances_active)
+function root_entries()
+	return { path = 'root', name = 'root',
+		data = function()
+			return {
+				entrify("globals",proxy.globals),
+				entrify("instances_all",gm.CInstance.instances_all),
+				entrify("instances_active",gm.CInstance.instances_active)
+			}
+		end
 	}
-	for i,e in ipairs(entries) do
-		e.index = i
-	end
-	return { entries = entries, path = 'root' }
 end
 
 do
@@ -61,46 +62,43 @@ do
 	
 	function len(t)
 		local s,v = pcall(_len,t)
-		if s then return v end
+		if s then return math.floor(v) end
 	end
 end
 
 function entrify(k,v)
-	local info = type(v)
+	local data_type = type(v)
 	local loop_type = nil
-	if info == "table" then
+	local info = nil
+	if data_type == "table" then
 		loop_type = pairs
-		info = "table[" .. #v .. "]"
-	elseif info == "userdata" then
-		info = get(v,"type_name")
-		local t = get(v,"type")
-		if t == RValueType.OBJECT then
+		local meta = getmetatable(v)
+		info = meta and meta.__name or data_type
+		local n = len(v)
+		if n then info = "table[" .. n .. "]" end
+	elseif data_type == "userdata" then
+		local rvalue_type = get(v,"type_name")
+		if rvalue_type == "OBJECT" then
+			info = rvalue_type
 			loop_type = pairs
-		elseif t == RValueType.ARRAY then
-			local n = tostring(gm.array_length(v).value)
-			n = n:sub(1,#n-2)
+		elseif rvalue_type == "ARRAY" then
+			local n = math.floor(gm.array_length(v).value)
 			v = v.array
-			info = info .. "[" .. n .. "]"
+			info = rvalue_type .. "[" .. n .. "]"
 			loop_type = ipairs
-		elseif info == nil then
+		elseif rvalue_type == nil then
 			if tostring(v):match('<') then
 				loop_type = ipairs
-				info = getmetatable(v).__name .. "[" .. #v .. "]"
+				info = getmetatable(v).__name or data_type
+				local n = math.floor(#v)
+				info = info .. "[" .. n .. "]"
 			elseif getmetatable(v).__next then
 				loop_type = pairs
-				info = getmetatable(v).__name
+				info = getmetatable(v).__name or data_type
 				local n = len(v)
 				if n then info = info .. "[" .. n .. "]" end
 			end
-		--elseif get(v,"lua_value") ~= nil then
-		--	info = info .. "(" .. tostring(v.lua_value) .. ")"
-		else
-			info = nil
 		end
-	--elseif info ~= "function" and info ~= "thread" then
-	--	info = info .. "(" .. tostring(v) .. ")"
-	else 
-		info = nil
 	end
 	if info == nil then return end
 	return {
@@ -152,93 +150,102 @@ local function path_part(ed)
 	return "<" .. ed.name .. ">"
 end
 
+toggle_refresh = true
+
 function unfold(ed)
-	if ed.frozen then
-		return ed.frozen
-	end
-	ed.path = ed.path or path_part(ed)
-	if ed.entries then
-		ed.frozen = ed.entries
-		return ed.entries
-	end
+	ed.path = ed.path or path_part(ed)	
 	local unfolder = ed.unfolder
+	local entries = {}
 	if unfolder then
-		ed.frozen = {}
-		local i = 0
 		for k,v in unfolder(ed.data) do
-			local sd = entrify(k,v)
+			sd = entrify(k,v)
 			if sd ~= nil then
-				i = i + 1
-				ed.frozen[i] = sd
-				sd.index = i
-				sd.parent = ed
-				sd.path = ed.path .. path_part(sd)
+				table.insert(entries,sd)
 			end
 		end
-		return ed.frozen
+	else
+		for _,sd in ipairs(ed.data()) do
+			table.insert(entries,sd)
+		end
 	end
+	for i,sd in ipairs(entries) do
+		sd.index = i
+		sd.parent = ed
+		sd.path = ed.path .. path_part(sd)
+	end
+	ed.entries = entries
+	return entries
 end
 
 function refresh(ed)
-	if not ed.frozen then return end
-	for _,ed in ipairs(ed.frozen) do
-		refresh(ed.frozen)
+	if ed == nil then return end
+	if ed.entries == nil then return end
+	for _,ed in ipairs(ed.entries) do
+		refresh(ed.entries)
 	end
-	ed.frozen = nil
+	ed.entries = nil
 end
 
 function expand(ed)
 	new_browser_data(ed)
 end
 
-function show_line(ed,ids,filter)
+function render_tree(ed,filter,bid,ids)
 	ids = (ids and (ids .. '.') or '') .. ed.index
-	local unfolded = ImGui.TreeNode("##Node" .. ids)
-	if not unfolded and #filter > 0 then
-		if not ed.name:match(filter) then
+	local show = ed.path ~= "root"
+	local _unfolded = unfolded[ids] == true
+	if show then
+		ImGui.Selectable("##Select" .. ids, false)
+		if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Left) then
+			_unfolded = not _unfolded
+		end
+		if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Right) then
+			expand(ed)
+		end
+		unfolded[ids] = _unfolded
+		ImGui.SetNextItemOpen(_unfolded)
+		ImGui.SameLine()
+		ImGui.TreeNode("##Node" .. ids)
+		ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFF20FF)
+		ImGui.SameLine()
+		ImGui.Text(ed.name)
+		ImGui.PopStyleColor()
+		if ed.info ~= nil then
+			ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
 			ImGui.SameLine()
-			ImGui.Text('...')
-			return
+			ImGui.Text(ed.info)
+			ImGui.PopStyleColor()
 		end
 	end
-	if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Right) then
-		expand(ed)
-		log.info("expand")
-	end
-	ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFF20FF)
-	ImGui.SameLine()
-	ImGui.Text(ed.name)
-	ImGui.PopStyleColor()
-	if ed.info ~= nil then
-		ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
-		ImGui.SameLine()
-		ImGui.Text(ed.info)
-		ImGui.PopStyleColor()
-	end
-	if unfolded then
+	if _unfolded then
 		local entries = unfold(ed)
 		if entries then
+			local skipped = false
 			for _,sd in ipairs(entries) do
-				show_line(sd,ids,filter)
+				if not unfolded[ids .. '.' .. sd.index] and #filter ~= 0 and not sd.name:match(filter) then
+					skipped = true
+				else
+					render_tree(sd,filter,bid,ids)
+				end
 			end
+			if skipped then ImGui.Text("...") end
 		end
-		ImGui.TreePop()
+		if show then ImGui.TreePop() end
 	end
 end
 
 function imgui_on_render()
 	for bid,bd in pairs(browsers) do
 		if bid == 1 and ImGui.Begin("Object Browser") or ImGui.Begin("Object Browser (" .. (bd.path or "???") .. ")", true) then
-			bid = tostring(bid)
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
-			local num, y_max, x_total, x_refresh = calculate_text_sizes('Refresh')
+			local num, y_max, x_total, x_pad = calculate_text_sizes('|')
 			local x,y = ImGui.GetContentRegionAvail()
 			-- height of InputText == font_size + frame_padding.y
 			-- and we're going to change frame_padding.y temporarily later on
 			-- such that InputText's height == max y
 			local y_input = y_max - ImGui.GetFontSize() - frame_padding_y 
-			local x_input = x - x_total - item_spacing_x*num
+			local x_input = x --- x_total - item_spacing_x*num
 			local y_box = y - y_max - item_spacing_y
 			local x_box = x
 			ImGui.PushItemWidth(x_input)
@@ -250,16 +257,11 @@ function imgui_on_render()
 			if enter_pressed then
 				bd.filter = bd.text
 			end
-			ImGui.SameLine()
-			if ImGui.Button("Refresh##" .. bid) then
-				refresh(bd)
-			end
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			if ImGui.BeginListBox("##Box" .. bid,x_box,y_box) then
 				ImGui.PopStyleColor()
-				for _,ed in ipairs(unfold(bd)) do
-					show_line(ed,bid,bd.filter)
-				end
+				unfolded[tostring(bid)] = true
+				render_tree(bd,bd.filter,bid)
 				ImGui.EndListBox()
 			else
 				ImGui.PopStyleColor()
@@ -271,5 +273,5 @@ function imgui_on_render()
 	end
 end
 
-new_browser_data(initial_entries())
+new_browser_data(root_entries())
 gui.add_imgui(imgui_on_render)
