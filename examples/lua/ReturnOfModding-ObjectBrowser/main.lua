@@ -291,7 +291,11 @@ do
 					end
 				end
 			end
-			if skipped then ImGui.Text(" ...") end
+			if skipped then
+				ImGui.Text("")
+				ImGui.SameLine()
+				ImGui.Text("...")
+			end
 		end
 	end
 end
@@ -341,7 +345,13 @@ function render_tree(ed,filter,bid,ids)
 					end
 				end
 			end
-			if skipped then ImGui.Text(" ...") end
+			if skipped then
+				ImGui.Text("")
+				ImGui.SameLine()
+				ImGui.Text("")
+				ImGui.SameLine()
+				ImGui.Text("...")
+			end
 		end
 		if show then ImGui.TreePop() end
 	end
