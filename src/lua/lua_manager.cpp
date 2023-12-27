@@ -239,11 +239,13 @@ namespace big
 				required_module_guid = lua_module::guid_from(this_env);
 			}
 
+			const auto path_stem = std::filesystem::path(path).stem();
+
 			for (const auto& entry : std::filesystem::recursive_directory_iterator(m_plugins_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
 			{
 				if (entry.path().extension() == ".lua")
 				{
-					if (entry.path().stem() == path)
+					if (entry.path().stem() == path_stem)
 					{
 						const auto full_path_ = entry.path().u8string();
 						const auto full_path  = (char*)full_path_.c_str();
@@ -261,37 +263,42 @@ namespace big
 							break;
 						}
 
-						auto result = m_loadfile(full_path);
-						if (!result.valid())
+						static std::unordered_map<std::string, sol::protected_function> required_module_cache;
+
+						if (!required_module_cache.contains(full_path))
 						{
-							LOG(FATAL) << "failed require: " << result.get<sol::error>().what();
-							Logger::FlushQueue();
-						}
-						else
-						{
-							bool found_the_other_module = false;
-							for (const auto& mod : m_modules)
+							auto fresh_result = m_loadfile(full_path);
+							if (!fresh_result.valid())
 							{
-								if (guid_from_path.value().m_guid == mod->guid())
-								{
-									env                    = mod->env();
-									found_the_other_module = true;
-
-									break;
-								}
+								LOG(FATAL) << "failed require: " << fresh_result.get<sol::error>().what();
+								Logger::FlushQueue();
+								break;
 							}
-
-							if (!found_the_other_module && is_non_local_require)
-							{
-								LOG(FATAL) << "You require'd a module called " << path << " but did not have a package manifest.json level dependency on it. Which lead to the owning package of that module to not be properly init yet. Expect unstable behaviors related to your dependencies.";
-							}
-
-							env.set_on(result);
-
-							return result.get<sol::protected_function>()(args);
+							required_module_cache[full_path] = fresh_result.get<sol::protected_function>();
 						}
 
-						break;
+						auto& result = required_module_cache[full_path];
+
+						bool found_the_other_module = false;
+						for (const auto& mod : m_modules)
+						{
+							if (guid_from_path.value().m_guid == mod->guid())
+							{
+								env                    = mod->env();
+								found_the_other_module = true;
+
+								break;
+							}
+						}
+
+						if (!found_the_other_module && is_non_local_require)
+						{
+							LOG(FATAL) << "You require'd a module called " << path << " but did not have a package manifest.json level dependency on it. Which lead to the owning package of that module to not be properly init yet. Expect unstable behaviors related to your dependencies.";
+						}
+
+						env.set_on(result);
+
+						return result(args);
 					}
 				}
 			}
