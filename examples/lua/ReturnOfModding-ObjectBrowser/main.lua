@@ -23,11 +23,21 @@ do
 end
 
 browsers = {}
+details = {}
 unfolded = {}
 
-function new_browser_data(entry)
+function create_browser(entry)
 	local id = #browsers + 1
 	browsers[id] = util.merge({},entry,{
+		index = id,
+		text = '',
+		filter = ''
+	})
+end
+
+function create_details(entry)
+	local id = #details + 1
+	details[id] = util.merge({},entry,{
 		index = id,
 		text = '',
 		filter = ''
@@ -113,7 +123,6 @@ end
 local excludedFieldNames = util.build_lookup{ "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while" }
 
 local function tostring_literal(value)
-	-- TODO: expand tables python-style?
 	if type(value) == "string" then
 		local lined, _lined = 0, value:gmatch("\n")
 		for _ in _lined do lined = lined + 1 end
@@ -150,9 +159,8 @@ local function path_part(ed)
 	return "<" .. ed.name .. ">"
 end
 
-toggle_refresh = true
-
 function unfold(ed)
+	if ed.entries then return ed.entries end
 	ed.path = ed.path or path_part(ed)	
 	local unfolder = ed.unfolder
 	local entries = {}
@@ -186,21 +194,22 @@ function refresh(ed)
 	ed.entries = nil
 end
 
-function expand(ed)
-	new_browser_data(ed)
-end
-
 function render_tree(ed,filter,bid,ids)
 	ids = (ids and (ids .. '.') or '') .. ed.index
 	local show = ed.path ~= "root"
 	local _unfolded = unfolded[ids] == true
 	if show then
 		ImGui.Selectable("##Select" .. ids, false)
-		if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Left) then
-			_unfolded = not _unfolded
-		end
-		if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Right) then
-			expand(ed)
+		if ImGui.IsItemHovered() then
+			if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Left) then
+				_unfolded = not _unfolded
+			end
+			if ImGui.IsItemClicked(ImGuiMouseButton.Middle) then
+				create_browser(ed)
+			end
+			if ImGui.IsItemClicked(ImGuiMouseButton.Right) then
+				create_details(ed)
+			end
 		end
 		unfolded[ids] = _unfolded
 		ImGui.SetNextItemOpen(_unfolded)
@@ -234,7 +243,16 @@ function render_tree(ed,filter,bid,ids)
 	end
 end
 
+local frameCounter = 0
+local framePeriod = 60
+
 function imgui_on_render()
+	local should_refresh = false
+	if frameCounter > framePeriod then
+		frameCounter = 0
+		should_refresh = true
+	end
+	frameCounter = frameCounter + 1
 	for bid,bd in pairs(browsers) do
 		if bid == 1 and ImGui.Begin("Object Browser") or ImGui.Begin("Object Browser (" .. (bd.path or "???") .. ")", true) then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
@@ -257,9 +275,13 @@ function imgui_on_render()
 			if enter_pressed then
 				bd.filter = bd.text
 			end
+			if should_refresh then
+				refresh(bd)
+			end
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			if ImGui.BeginListBox("##Box" .. bid,x_box,y_box) then
 				ImGui.PopStyleColor()
+				
 				unfolded[tostring(bid)] = true
 				render_tree(bd,bd.filter,bid)
 				ImGui.EndListBox()
@@ -273,5 +295,5 @@ function imgui_on_render()
 	end
 end
 
-new_browser_data(root_entries())
+create_browser(root_entries())
 gui.add_imgui(imgui_on_render)
