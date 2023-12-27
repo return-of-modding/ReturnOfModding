@@ -26,6 +26,12 @@ browsers = {}
 details = {}
 unfolded = {}
 
+detail_modes = {
+	0xFFFFFF20,
+	0xFF20FFFF,
+	0xFFFF20FF
+}
+
 function create_browser(entry)
 	local id = #browsers + 1
 	browsers[id] = util.merge({},entry,{
@@ -40,7 +46,9 @@ function create_details(entry)
 	details[id] = util.merge({},entry,{
 		index = id,
 		text = '',
-		filter = ''
+		filter = '',
+		texts = {},
+		mode = 1
 	})
 end
 
@@ -78,6 +86,7 @@ end
 
 function entrify(k,v)
 	local data_type = type(v)
+	local rvalue_type = nil
 	local loop_type = nil
 	local info = nil
 	if data_type == "table" then
@@ -87,7 +96,7 @@ function entrify(k,v)
 		local n = len(v)
 		if n then info = "table[" .. n .. "]" end
 	elseif data_type == "userdata" then
-		local rvalue_type = get(v,"type_name")
+		rvalue_type = get(v,"type_name")
 		if rvalue_type == "OBJECT" then
 			info = rvalue_type
 			loop_type = pairs
@@ -110,13 +119,14 @@ function entrify(k,v)
 			end
 		end
 	end
-	if info == nil then return end
 	return {
 		name = tostring(k),
 		info = info,
 		data = v,
 		key = k,
-		unfolder = loop_type
+		loop_type = loop_type,
+		data_type = data_type,
+		rvalue_type = rvalue_type
 	}
 end
 
@@ -156,16 +166,19 @@ local function path_part(ed)
 		end
 		return '.' .. key
 	end
+	if type(key) == "number" then
+		return '[' .. key .. ']' 
+	end
 	return "<" .. ed.name .. ">"
 end
 
 function unfold(ed)
 	if ed.entries then return ed.entries end
 	ed.path = ed.path or path_part(ed)	
-	local unfolder = ed.unfolder
+	local loop_type = ed.loop_type
 	local entries = {}
-	if unfolder then
-		for k,v in unfolder(ed.data) do
+	if loop_type then
+		for k,v in loop_type(ed.data) do
 			sd = entrify(k,v)
 			if sd ~= nil then
 				table.insert(entries,sd)
@@ -192,6 +205,95 @@ function refresh(ed)
 		refresh(ed.entries)
 	end
 	ed.entries = nil
+end
+
+
+do
+	local function peval(o)
+		local func = load("return " .. o.tostring)
+		if not func then return nil end
+		local status, value = pcall(func)
+		if not status then return nil end
+		return value
+	end
+
+	function render_details(dd,filter,did)
+		local entries = unfold(dd)
+		if entries then
+			local skipped = false
+			for _,sd in ipairs(entries) do
+				if #filter ~= 0 and not sd.name:match(filter) then
+					skipped = true
+				else
+					local id = did .. sd.path
+					if sd.info then
+						if dd.mode ~= 1 then 
+							-- iterable
+							ImGui.PushStyleColor(ImGuiCol.HeaderHovered,0)
+							ImGui.PushStyleColor(ImGuiCol.HeaderActive,0)
+							ImGui.Selectable("##Select" .. id, false)
+							ImGui.PopStyleColor()
+							ImGui.PopStyleColor()
+							if ImGui.IsItemHovered() then
+								if ImGui.IsItemClicked(ImGuiMouseButton.Middle) then
+									create_browser(sd)
+								end
+								if ImGui.IsItemClicked(ImGuiMouseButton.Right) then
+									create_details(sd)
+								end
+							end
+							ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFF20FF)
+							ImGui.SameLine()
+							ImGui.Text(sd.name)
+							ImGui.PopStyleColor()
+							ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
+							ImGui.SameLine()
+							ImGui.Text(sd.info)
+							ImGui.PopStyleColor()
+						end
+					else
+						if dd.mode ~= 3 then
+							-- not iterable
+							local value = sd.rvalue_type == nil and sd.data or sd.data.lua_value
+							ImGui.Text()
+							ImGui.SameLine()
+							ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFFFF20)
+							ImGui.Text(sd.name)
+							ImGui.PopStyleColor()
+							if
+								sd.data_type ~= "function" and sd.data_type ~= "thread" and
+								(sd.rvalue_type == "UNDEFINED" or (sd.rvalue_type ~= nil and sd.data.lua_value or sd.data))
+							then
+								local value_text = tostring_literal(value)
+								ImGui.SameLine()
+								ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
+								ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
+								ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
+								ImGui.PushItemWidth(ImGui.GetContentRegionAvail() - ImGui.CalcTextSize('|'))
+								local text, enter_pressed = ImGui.InputText("##Text" .. id, dd.texts[id] or value_text, 65535, ImGuiInputTextFlags.EnterReturnsTrue)
+								ImGui.PopItemWidth()
+								ImGui.PopStyleColor()
+								ImGui.PopStyleColor()
+								ImGui.PopStyleVar()
+								if enter_pressed then
+									dd.data[sd.key] = peval(text)
+									dd.texts[id] = nil
+								else
+									dd.texts[id] = text
+								end
+							else
+								ImGui.PushStyleColor(ImGuiCol.Text, 0xFF2020FF)
+								ImGui.SameLine()
+								ImGui.Text(tostring(sd.value))
+								ImGui.PopStyleColor()
+							end
+						end
+					end
+				end
+			end
+			if skipped then ImGui.Text(" ...") end
+		end
+	end
 end
 
 function render_tree(ed,filter,bid,ids)
@@ -231,13 +333,15 @@ function render_tree(ed,filter,bid,ids)
 		if entries then
 			local skipped = false
 			for _,sd in ipairs(entries) do
-				if not unfolded[ids .. '.' .. sd.index] and #filter ~= 0 and not sd.name:match(filter) then
-					skipped = true
-				else
-					render_tree(sd,filter,bid,ids)
+				if sd.info then 
+					if not unfolded[ids .. '.' .. sd.index] and #filter ~= 0 and not sd.name:match(filter) then
+						skipped = true
+					else
+						render_tree(sd,filter,bid,ids)
+					end
 				end
 			end
-			if skipped then ImGui.Text("...") end
+			if skipped then ImGui.Text(" ...") end
 		end
 		if show then ImGui.TreePop() end
 	end
@@ -254,7 +358,7 @@ function imgui_on_render()
 	end
 	frameCounter = frameCounter + 1
 	for bid,bd in pairs(browsers) do
-		if bid == 1 and ImGui.Begin("Object Browser") or ImGui.Begin("Object Browser (" .. (bd.path or "???") .. ")", true) then
+		if bid == 1 and ImGui.Begin("Object Browser") or ImGui.Begin("Object Browser (" .. (bd.path or "???") .. ")##" .. bid, true) then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
 			local num, y_max, x_total, x_pad = calculate_text_sizes('|')
@@ -281,7 +385,6 @@ function imgui_on_render()
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			if ImGui.BeginListBox("##Box" .. bid,x_box,y_box) then
 				ImGui.PopStyleColor()
-				
 				unfolded[tostring(bid)] = true
 				render_tree(bd,bd.filter,bid)
 				ImGui.EndListBox()
@@ -290,6 +393,50 @@ function imgui_on_render()
 			end
 		else
 			browsers[bid] = nil
+		end
+		ImGui.End()
+	end
+	for did,dd in pairs(details) do
+		if ImGui.Begin("Object Details (" .. (dd.path or "???") .. ")##" .. did, true) then
+			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
+			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
+			local num, y_max, x_total, x_swap = calculate_text_sizes('    ')
+			local x,y = ImGui.GetContentRegionAvail()
+			-- height of InputText == font_size + frame_padding.y
+			-- and we're going to change frame_padding.y temporarily later on
+			-- such that InputText's height == max y
+			local y_input = y_max - ImGui.GetFontSize() - frame_padding_y 
+			local x_input = x - x_total - item_spacing_x*num
+			local y_box = y - y_max - item_spacing_y
+			local x_box = x
+			ImGui.PushItemWidth(x_input)
+			ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, frame_padding_x, y_input)
+			local enter_pressed
+			dd.text, enter_pressed = ImGui.InputText("##Text" .. did, dd.text, 65535, ImGuiInputTextFlags.EnterReturnsTrue)
+			ImGui.PopStyleVar()
+			ImGui.PopItemWidth()
+			ImGui.PushStyleColor(ImGuiCol.Button, detail_modes[dd.mode])
+			ImGui.SameLine()
+			if ImGui.Button("    ##Swap" .. did) then
+				dd.mode = dd.mode%#detail_modes + 1
+			end
+			ImGui.PopStyleColor()
+			if enter_pressed then
+				dd.filter = dd.text
+			end
+			if should_refresh then
+				refresh(dd)
+			end
+			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
+			if ImGui.BeginListBox("##Box" .. did,x_box,y_box) then
+				ImGui.PopStyleColor()
+				render_details(dd,dd.filter,did)
+				ImGui.EndListBox()
+			else
+				ImGui.PopStyleColor()
+			end
+		else
+			details[did] = nil
 		end
 		ImGui.End()
 	end
