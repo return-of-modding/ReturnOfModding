@@ -37,12 +37,13 @@ function initial_entries()
 	local entries = {
 		entrify('globals',proxy.globals),
 		entrify('instances_all',gm.CInstance.instances_all),
-		entrify('instances_active',gm.CInstance.instances_active)
+		entrify('instances_active',gm.CInstance.instances_active),
+		entrify('@test=',{["o34215u.h"]={}})
 	}
 	for i,e in ipairs(entries) do
 		e.index = i
 	end
-	return { entries = entries }
+	return { entries = entries, path = 'root' }
 end
 
 do
@@ -67,26 +68,27 @@ end
 
 function entrify(k,v)
 	local info = type(v)
-	local type = nil
+	local loop_type = nil
 	if info == "table" then
-		type = "key"
+		loop_type = pairs
 		info = "table[" .. #v .. "]"
 	elseif info == "userdata" then
 		info = get(v,"type_name")
-		if get(v,"type") == RValueType.OBJECT then
-			type = "key"
-		elseif get(v,"type") == RValueType.ARRAY then
+		local t = get(v,"type")
+		if t == RValueType.OBJECT then
+			loop_type = pairs
+		elseif t == RValueType.ARRAY then
 			local n = tostring(gm.array_length(v).value)
 			n = n:sub(1,#n-2)
 			v = v.array
 			info = info .. "[" .. n .. "]"
-			type = "index"
+			loop_type = ipairs
 		elseif info == nil then
 			if tostring(v):match('<') then
-				type = "index"
+				loop_type = ipairs
 				info = getmetatable(v).__name .. "[" .. #v .. "]"
 			elseif getmetatable(v).__next then
-				type = "key"
+				loop_type = pairs
 				info = getmetatable(v).__name
 				local n = len(v)
 				if n then info = info .. "[" .. n .. "]" end
@@ -106,50 +108,75 @@ function entrify(k,v)
 		name = tostring(k),
 		info = info,
 		data = v,
-		type = type
+		key = k,
+		unfolder = loop_type
 	}
 end
 
-do
-	local unfold_type = {
-		key = function(data)
-			local entries = {}
-			local i = 0
-			for k,v in pairs(data) do
-				local ed = entrify(k,v)
-				if ed ~= nil then
-					i = i + 1
-					ed.index = i
-					entries[i] = ed
-				end
+local excludedFieldNames = util.build_lookup{ "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while" }
+
+local function tostring_literal(value)
+	-- TODO: expand tables python-style?
+	if type(value) == "string" then
+		local lined, _lined = 0, value:gmatch("\n")
+		for _ in _lined do lined = lined + 1 end
+		local dquoted, _dquoted = 0, value:gmatch([=["]=])
+		for _ in _dquoted do dquoted = dquoted + 1 end
+		local squoted, _squoted = 0, value:gmatch([=[']=])
+		for _ in _squoted do squoted = squoted + 1 end
+		local edquoted, _edquoted = 0, value:gmatch([=[\"]=])
+		if lined > 0 or (dquoted > 0 and squoted > 0) then
+			local special, _special = 0, value:gmatch([=[[=]]=])
+			for _ in _special do special = special + 1 end
+			local eq = "="
+			for i = 1, special do
+				eq = eq .. '='
 			end
-			return entries
-		end,
-		index = function(data)
-			local entries = {}
-			local i = 0
-			for k,v in ipairs(data) do
-				local ed = entrify(k,v)
-				if ed ~= nil then
-					i = i + 1
-					ed.index = i
-					entries[i] = ed
-				end
-			end
-			return entries
+			return '['..eq..'[' .. value .. ']'..eq..']'
+		elseif squoted > 0 then
+			return '"' .. value .. '"'
+		else
+			return "'" .. value .. "'"
 		end
-	}
-	
-	function unfold(ed)
-		if ed.frozen then return ed.frozen end
-		if ed.unfold then return ed.unfold() end
-		if ed.type then 
-			local unfolder = unfold_type[ed.type]
-			if unfolder then
-				return unfolder(ed.data)
-			end
+	end
+	return tostring(value)
+end
+
+local function path_part(ed)
+	local key = ed.key
+	if type(key) == "string" then
+		if excludedFieldNames[key] or not key:match("^[_%a][_%w]*$") then
+			return '[' .. tostring_literal(key) .. ']' 
 		end
+		return '.' .. key
+	end
+	return "<" .. ed.name .. ">"
+end
+
+function unfold(ed)
+	if ed.frozen then
+		return ed.frozen
+	end
+	ed.path = ed.path or path_part(ed)
+	if ed.entries then
+		ed.frozen = ed.entries
 		return ed.entries
+	end
+	local unfolder = ed.unfolder
+	if unfolder then
+		ed.frozen = {}
+		local i = 0
+		for k,v in unfolder(ed.data) do
+			local sd = entrify(k,v)
+			if sd ~= nil then
+				i = i + 1
+				ed.frozen[i] = sd
+				sd.index = i
+				sd.parent = ed
+				sd.path = ed.path .. path_part(sd)
+			end
+		end
+		return ed.frozen
 	end
 end
 
@@ -175,7 +202,6 @@ function show_line(ed,ids,filter)
 			return
 		end
 	end
-	ed.path = ed.path or ed.name
 	if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Right) then
 		expand(ed)
 		log.info("expand")
@@ -192,10 +218,8 @@ function show_line(ed,ids,filter)
 	end
 	if unfolded then
 		local entries = unfold(ed)
-		ed.frozen = entries
 		if entries then
 			for _,sd in ipairs(entries) do
-				sd.path = ed.path .. '/' .. sd.name
 				show_line(sd,ids,filter)
 			end
 		end
