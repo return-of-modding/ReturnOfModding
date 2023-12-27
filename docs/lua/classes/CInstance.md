@@ -6,7 +6,7 @@ You can use most if not all of the builtin game maker variables (For example `my
 
 To know the specific instance variables of a given object defined by the game call dump_vars() on the instance
 
-## Fields (33)
+## Fields (31)
 
 ### `id`
 
@@ -106,7 +106,7 @@ To know the specific instance variables of a given object defined by the game ca
 
 ### `timer`
 
-- Type: `number`
+- Type: `number[12] array`
 
 ### `layer`
 
@@ -119,14 +119,6 @@ To know the specific instance variables of a given object defined by the game ca
 ### `m_nMouseOver`
 
 - Type: `number`
-
-### `m_pNext`
-
-- Type: `CInstance`
-
-### `m_pPrev`
-
-- Type: `CInstance`
 
 ### `depth`
 
@@ -142,13 +134,13 @@ To know the specific instance variables of a given object defined by the game ca
 
 ## Functions (1)
 
-### `dump_vars()`
+### `variable_instance_get_names()`
 
-Log dump to the console all the variable names of the given object, for example with an `oP` (Player) object instance you will be able to do `print(myoPInstance.user_name)`
+Return all the game defined variable names of the given object, for example with an `oP` (Player) object instance you will be able to do `print(myoPInstance.user_name)`
 
 **Example Usage:**
 ```lua
-CInstance:dump_vars()
+CInstance:variable_instance_get_names()
 ```
 
 
