@@ -3606,6 +3606,204 @@ namespace lua::imgui
 		ImGui.set_function("ResetMouseDragDelta", sol::overload(sol::resolve<void()>(ResetMouseDragDelta), sol::resolve<void(int)>(ResetMouseDragDelta)));
 #pragma endregion Inputs Utilities : Mouse
 
+		luaGlobals.new_enum<ImGuiKey>("ImGuiKey",
+		    {
+		        {"None", ImGuiKey_None},
+		        {"Tab", ImGuiKey_Tab},
+		        {"LeftArrow", ImGuiKey_LeftArrow},
+		        {"RightArrow", ImGuiKey_RightArrow},
+		        {"UpArrow", ImGuiKey_UpArrow},
+		        {"DownArrow", ImGuiKey_DownArrow},
+		        {"PageUp", ImGuiKey_PageUp},
+		        {"PageDown", ImGuiKey_PageDown},
+		        {"Home", ImGuiKey_Home},
+		        {"End", ImGuiKey_End},
+		        {"Insert", ImGuiKey_Insert},
+		        {"Delete", ImGuiKey_Delete},
+		        {"Backspace", ImGuiKey_Backspace},
+		        {"Space", ImGuiKey_Space},
+		        {"Enter", ImGuiKey_Enter},
+		        {"Escape", ImGuiKey_Escape},
+		        {"LeftCtrl", ImGuiKey_LeftCtrl},
+		        {"LeftShift", ImGuiKey_LeftShift},
+		        {"LeftAlt", ImGuiKey_LeftAlt},
+		        {"LeftSuper", ImGuiKey_LeftSuper},
+		        {"RightCtrl", ImGuiKey_RightCtrl},
+		        {"RightShift", ImGuiKey_RightShift},
+		        {"RightAlt", ImGuiKey_RightAlt},
+		        {"RightSuper", ImGuiKey_RightSuper},
+		        {"Menu", ImGuiKey_Menu},
+		        {"_0", ImGuiKey_0},
+		        {"_1", ImGuiKey_1},
+		        {"_2", ImGuiKey_2},
+		        {"_3", ImGuiKey_3},
+		        {"_4", ImGuiKey_4},
+		        {"_5", ImGuiKey_5},
+		        {"_6", ImGuiKey_6},
+		        {"_7", ImGuiKey_7},
+		        {"_8", ImGuiKey_8},
+		        {"_9", ImGuiKey_9},
+		        {"A", ImGuiKey_A},
+		        {"B", ImGuiKey_B},
+		        {"C", ImGuiKey_C},
+		        {"D", ImGuiKey_D},
+		        {"E", ImGuiKey_E},
+		        {"F", ImGuiKey_F},
+		        {"G", ImGuiKey_G},
+		        {"H", ImGuiKey_H},
+		        {"I", ImGuiKey_I},
+		        {"J", ImGuiKey_J},
+		        {"K", ImGuiKey_K},
+		        {"L", ImGuiKey_L},
+		        {"M", ImGuiKey_M},
+		        {"N", ImGuiKey_N},
+		        {"O", ImGuiKey_O},
+		        {"P", ImGuiKey_P},
+		        {"Q", ImGuiKey_Q},
+		        {"R", ImGuiKey_R},
+		        {"S", ImGuiKey_S},
+		        {"T", ImGuiKey_T},
+		        {"U", ImGuiKey_U},
+		        {"V", ImGuiKey_V},
+		        {"W", ImGuiKey_W},
+		        {"X", ImGuiKey_X},
+		        {"Y", ImGuiKey_Y},
+		        {"Z", ImGuiKey_Z},
+		        {"F1", ImGuiKey_F1},
+		        {"F2", ImGuiKey_F2},
+		        {"F3", ImGuiKey_F3},
+		        {"F4", ImGuiKey_F4},
+		        {"F5", ImGuiKey_F5},
+		        {"F6", ImGuiKey_F6},
+		        {"F7", ImGuiKey_F7},
+		        {"F8", ImGuiKey_F8},
+		        {"F9", ImGuiKey_F9},
+		        {"F10", ImGuiKey_F10},
+		        {"F11", ImGuiKey_F11},
+		        {"F12", ImGuiKey_F12},
+		        {"Apostrophe", ImGuiKey_Apostrophe},
+		        {"Comma", ImGuiKey_Comma},
+		        {"Minus", ImGuiKey_Minus},
+		        {"Period", ImGuiKey_Period},
+		        {"Slash", ImGuiKey_Slash},
+		        {"Semicolon", ImGuiKey_Semicolon},
+		        {"Equal", ImGuiKey_Equal},
+		        {"LeftBracket", ImGuiKey_LeftBracket},
+		        {"Backslash", ImGuiKey_Backslash},
+		        {"RightBracket", ImGuiKey_RightBracket},
+		        {"GraveAccent", ImGuiKey_GraveAccent},
+		        {"CapsLock", ImGuiKey_CapsLock},
+		        {"ScrollLock", ImGuiKey_ScrollLock},
+		        {"NumLock", ImGuiKey_NumLock},
+		        {"PrintScreen", ImGuiKey_PrintScreen},
+		        {"Pause", ImGuiKey_Pause},
+		        {"Keypad0", ImGuiKey_Keypad0},
+		        {"Keypad1", ImGuiKey_Keypad1},
+		        {"Keypad2", ImGuiKey_Keypad2},
+		        {"Keypad3", ImGuiKey_Keypad3},
+		        {"Keypad4", ImGuiKey_Keypad4},
+		        {"Keypad5", ImGuiKey_Keypad5},
+		        {"Keypad6", ImGuiKey_Keypad6},
+		        {"Keypad7", ImGuiKey_Keypad7},
+		        {"Keypad8", ImGuiKey_Keypad8},
+		        {"Keypad9", ImGuiKey_Keypad9},
+		        {"KeypadDecimal", ImGuiKey_KeypadDecimal},
+		        {"KeypadDivide", ImGuiKey_KeypadDivide},
+		        {"KeypadMultiply", ImGuiKey_KeypadMultiply},
+		        {"KeypadSubtract", ImGuiKey_KeypadSubtract},
+		        {"KeypadAdd", ImGuiKey_KeypadAdd},
+		        {"KeypadEnter", ImGuiKey_KeypadEnter},
+		        {"KeypadEqual", ImGuiKey_KeypadEqual},
+
+		        {"GamepadStart", ImGuiKey_GamepadStart},
+		        {"GamepadBack", ImGuiKey_GamepadBack},
+		        {"GamepadFaceLeft", ImGuiKey_GamepadFaceLeft},
+		        {"GamepadFaceRight", ImGuiKey_GamepadFaceRight},
+		        {"GamepadFaceUp", ImGuiKey_GamepadFaceUp},
+		        {"GamepadFaceDown", ImGuiKey_GamepadFaceDown},
+		        {"GamepadDpadLeft", ImGuiKey_GamepadDpadLeft},
+		        {"GamepadDpadRight", ImGuiKey_GamepadDpadRight},
+		        {"GamepadDpadUp", ImGuiKey_GamepadDpadUp},
+		        {"GamepadDpadDown", ImGuiKey_GamepadDpadDown},
+		        {"GamepadL1", ImGuiKey_GamepadL1},
+		        {"GamepadR1", ImGuiKey_GamepadR1},
+		        {"GamepadL2", ImGuiKey_GamepadL2},
+		        {"GamepadR2", ImGuiKey_GamepadR2},
+		        {"GamepadL3", ImGuiKey_GamepadL3},
+		        {"GamepadR3", ImGuiKey_GamepadR3},
+		        {"GamepadLStickLeft", ImGuiKey_GamepadLStickLeft},
+		        {"GamepadLStickRight", ImGuiKey_GamepadLStickRight},
+		        {"GamepadLStickUp", ImGuiKey_GamepadLStickUp},
+		        {"GamepadLStickDown", ImGuiKey_GamepadLStickDown},
+		        {"GamepadRStickLeft", ImGuiKey_GamepadRStickLeft},
+		        {"GamepadRStickRight", ImGuiKey_GamepadRStickRight},
+		        {"GamepadRStickUp", ImGuiKey_GamepadRStickUp},
+		        {"GamepadRStickDown", ImGuiKey_GamepadRStickDown},
+
+		        {"MouseLeft", ImGuiKey_MouseLeft},
+		        {"MouseRight", ImGuiKey_MouseRight},
+		        {"MouseMiddle", ImGuiKey_MouseMiddle},
+		        {"MouseX1", ImGuiKey_MouseX1},
+		        {"MouseX2", ImGuiKey_MouseX2},
+		        {"MouseWheelX", ImGuiKey_MouseWheelX},
+		        {"MouseWheelY", ImGuiKey_MouseWheelY},
+
+		        // {"ReservedForModCtrl", ImGuiKey_ReservedForModCtrl},
+		        // {"ReservedForModShift", ImGuiKey_ReservedForModShift},
+		        // {"ReservedForModAlt", ImGuiKey_ReservedForModAlt},
+		        // {"ReservedForModSuper", ImGuiKey_ReservedForModSuper},
+
+		        {"COUNT", ImGuiKey_COUNT},
+
+		        // {"NamedKey_BEGIN", ImGuiKey_NamedKey_BEGIN},
+		        // {"NamedKey_END", ImGuiKey_NamedKey_END},
+		        // {"NamedKey_COUNT", ImGuiKey_NamedKey_COUNT},
+
+		        // {"KeysData_SIZE", ImGuiKey_KeysData_SIZE},
+		        // {"KeysData_OFFSET", ImGuiKey_KeysData_OFFSET},
+
+		        // WARNING: These keys are deprecated
+		        // Prefer to use imgui.Mod.Ctrl, etc..
+		        {"ModCtrl", ImGuiMod_Ctrl},
+		        {"ModShift", ImGuiMod_Shift},
+		        {"ModAlt", ImGuiMod_Alt},
+		        {"ModSuper", ImGuiMod_Super},
+		        {"KeyPadEnter", ImGuiKey_KeypadEnter}, // Prefer KeypadEnter with lower case p
+		    });
+
+		luaGlobals.new_enum<ImGuiKey>("ImGuiKey",
+		    {
+		        {"None", ImGuiMod_None},
+		        {"Ctrl", ImGuiMod_Ctrl},
+		        {"Shift", ImGuiMod_Shift},
+		        {"Alt", ImGuiMod_Alt},
+		        {"Super", ImGuiMod_Super},
+		        {"Shortcut", ImGuiMod_Shortcut},
+		        {"Mask_", ImGuiMod_Mask_},
+		    });
+
+		// TODO: Document these!
+		ImGui.set_function("IsKeyDown", sol::resolve<bool(ImGuiKey)>(ImGui::IsKeyDown));
+		ImGui.set_function("IsKeyPressed",
+		    sol::overload(
+		        [](ImGuiKey key) {
+			        return ImGui::IsKeyPressed(key);
+		        },
+		        sol::resolve<bool(ImGuiKey, bool)>(ImGui::IsKeyPressed)));
+		ImGui.set_function("IsKeyReleased", sol::resolve<bool(ImGuiKey)>(ImGui::IsKeyReleased));
+		ImGui.set_function("GetKeyPressedAmount", sol::resolve<int(ImGuiKey, float, float)>(ImGui::GetKeyPressedAmount));
+		ImGui.set_function("GetKeyName", sol::resolve<const char*(ImGuiKey)>(ImGui::GetKeyName));
+		ImGui.set_function("SetNextFrameWantCaptureKeyboard", sol::resolve<void(bool)>(ImGui::SetNextFrameWantCaptureKeyboard));
+
+		ImGui.set_function("PushAllowKeyboardFocus", sol::resolve<void(bool)>(ImGui::PushAllowKeyboardFocus));
+		ImGui.set_function("PopAllowKeyboardFocus", sol::resolve<void()>(ImGui::PopAllowKeyboardFocus));
+		ImGui.set_function("SetKeyboardFocusHere",
+		    sol::overload(
+		        []() {
+			        return ImGui::SetKeyboardFocusHere();
+		        },
+		        sol::resolve<void(int)>(ImGui::SetKeyboardFocusHere)));
+
 #pragma region Clipboard Utilities
 		ImGui.set_function("GetClipboardText", GetClipboardText);
 		ImGui.set_function("SetClipboardText", SetClipboardText);
