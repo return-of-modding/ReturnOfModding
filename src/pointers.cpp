@@ -130,6 +130,15 @@ namespace big
                 auto instance = ptr.add(3).rip().as<__int64**>();
 				g_pointers->m_rorr.m_debug_console_output = (*((void(__fastcall**)(void*, const char*, ...)) * instance[0] + 2));
             }
+        },
+        // IO_UpdateM
+        {
+            "IOUM",
+            "48 8B CF 89 05",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_io_update_m = ptr.sub(0x8A).as<gm::IO_UpdateM_t>();
+            }
         }
         >(); // don't leave a trailing comma at the end
 		// clang-format on

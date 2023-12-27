@@ -1,10 +1,11 @@
 #pragma once
+#include "gm/CInstance_hooks.hpp"
+#include "gm/CRoom.hpp"
 #include "gm/Code_Execute.hpp"
 #include "gm/Code_Function_GET_the_function_t.hpp"
 #include "gm/RVariableRoutine.hpp"
-#include "gm/CRoom.hpp"
-#include "gm/CInstance_hooks.hpp"
 #include "gm/debug_console.hpp"
+#include "gm/inputs.hpp"
 
 #include <memory/handle.hpp>
 
@@ -38,6 +39,8 @@ namespace big
 		COPY_RValue_do__Post_t m_copy_rvalue_do_post;
 
 		gm::debug_console_output_t m_debug_console_output;
+
+		gm::IO_UpdateM_t m_io_update_m;
 	};
 #pragma pack(pop)
 	static_assert(sizeof(rorr_pointers) % 8 == 0, "Pointers are not properly aligned");

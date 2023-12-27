@@ -2,6 +2,8 @@
 
 #include "hooks/hooking.hpp"
 
+struct CInstance;
+
 namespace gm
 {
 	inline std::vector<CInstance*> CInstances_all;
