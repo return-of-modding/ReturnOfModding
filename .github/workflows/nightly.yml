@@ -22,10 +22,10 @@ jobs:
           arch: amd64
           
       - name: Generate CMake project
-        run: cmake -D CMAKE_BUILD_TYPE=Release -S. -Bbuild -G Ninja
+        run: cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo -S. -Bbuild -G Ninja
 
       - name: Build 64bit release DLL
-        run: cmake --build ./build --config Release --target ReturnOfModding --
+        run: cmake --build ./build --config RelWithDebInfo --target ReturnOfModding --
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
