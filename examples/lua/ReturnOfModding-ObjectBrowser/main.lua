@@ -255,7 +255,7 @@ do
 						if dd.mode ~= 3 then
 							-- not iterable
 							local value = sd.rvalue_type == nil and sd.data or sd.data.lua_value
-							ImGui.Text()
+							ImGui.Text("")
 							ImGui.SameLine()
 							ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFFFF20)
 							ImGui.Text(sd.name)
