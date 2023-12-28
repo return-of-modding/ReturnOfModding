@@ -62,14 +62,18 @@ namespace lua::log
 		log_internal(args, env, VERBOSE);
 	}
 
+	static sol::protected_function original_error_func;
+
 	// Lua API: Function
 	// Table: log
 	// Name: error
 	// Param: args: any
 	// Logs an error message.
-	static void error(sol::variadic_args args, sol::this_environment env)
+	static sol::reference error(sol::variadic_args args, sol::this_environment env)
 	{
 		log_internal(args, env, FATAL);
+
+		return original_error_func(args);
 	}
 
 	void bind(sol::state& state)
@@ -77,6 +81,7 @@ namespace lua::log
 		tostring = state["tostring"];
 
 		state["print"] = info;
+		original_error_func = state["error"];
 		state["error"] = error;
 
 		auto ns       = state["log"].get_or_create<sol::table>();

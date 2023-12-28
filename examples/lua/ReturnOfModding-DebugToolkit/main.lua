@@ -1,7 +1,7 @@
 -- Load the module
 demo = require("./lib_debug", 5, 2)
 
-error("Initializing", nil, 5, "", 5.00000)
+print("Initializing", nil, 5, "", 5.00000)
 
 demo.hello()
 
@@ -157,7 +157,7 @@ gui.add_imgui(function()
             -- print(collectgarbage("count"))
             -- print(collectgarbage("collect"))
             -- print(collectgarbage("count"))
-            -- error(tostring(myArray))
+            -- print(tostring(myArray))
 			gm.array_push(myArray, 8)
 			log.info(myArray.tostring)
 			log.info(string.format("%x", myArray.value * 256) )
