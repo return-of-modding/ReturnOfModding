@@ -102,7 +102,8 @@ namespace big
 		       << "R12: " << HEX_TO_UPPER(context->R12) << '\n'
 		       << "R13: " << HEX_TO_UPPER(context->R13) << '\n'
 		       << "R14: " << HEX_TO_UPPER(context->R14) << '\n'
-		       << "R15: " << HEX_TO_UPPER(context->R15) << '\n';
+		       << "R15: " << HEX_TO_UPPER(context->R15) << '\n'
+		       << "RIP: " << HEX_TO_UPPER(context->Rip) << '\n';
 	}
 
 	void stack_trace::dump_stacktrace()
