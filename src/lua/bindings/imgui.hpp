@@ -3751,7 +3751,7 @@ namespace lua::imgui
 		        {"COUNT", ImGuiKey_COUNT},
 		    });
 
-		luaGlobals.new_enum<ImGuiKey>("ImGuiKeyMod",
+		luaGlobals.new_enum<int>("ImGuiKeyMod",
 		    {
 		        {"None", ImGuiMod_None},
 		        {"Ctrl", ImGuiMod_Ctrl},
