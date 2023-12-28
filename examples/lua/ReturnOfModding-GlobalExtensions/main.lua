@@ -358,7 +358,8 @@ if _G.proxy == nil then -- don't do this on refresh
 					k = names[k]
 					if k == nil then return nil end
 					k = k.tostring
-					return s[k]
+					local id = id_register[s]
+					return rvalue_marshall_get(get(id,k))
 				end
 				if not exists(id,k).lua_value then return nil end
 				local id = id_register[s]
@@ -371,8 +372,8 @@ if _G.proxy == nil then -- don't do this on refresh
 					k = names[k]
 					if k == nil then return end
 					k = k.tostring
-					s[k] = v
-					return
+					local id = id_register[s]
+					return set(id,k,rvalue_marshall_set(v))
 				end
 				if not exists(id,k).lua_value then return end
 				local id = id_register[s]
@@ -416,6 +417,41 @@ if _G.proxy == nil then -- don't do this on refresh
 					if k == nil then return nil end
 					k = k.tostring
 					return k, rvalue_marshall_get(get(id,k))
+				end,s,k
+			end,
+			__inext = function(s,k)
+				local names = _get_names(s)
+				if not names then return nil end
+				local i
+				if k == nil then
+					i = 0
+				elseif type(k) ~= "number" then
+					i = util.perform_lookup(names,k,get_name)
+				end
+				if i == nil then return nil end
+				k = names[i+1]
+				if k == nil then return nil end
+				k = k.tostring
+				local id = id_register[s]
+				return i, rvalue_marshall_get(get(id,k))
+			end,
+			__ipairs = function(s,k)
+				local names = _get_names(s)
+				if not names then return null end
+				local names_lookup = util.build_lookup(names,get_name)
+				local id = id_register[s]
+				return function(_,k)
+					local i
+					if k == nil then
+						i = 0
+					elseif type(k) ~= "number" then
+						i = names_lookup[k]
+					end
+					if i == nil then return nil end
+					k = names[i+1]
+					if k == nil then return nil end
+					k = k.tostring
+					return i, rvalue_marshall_get(get(id,k))
 				end,s,k
 			end
 		}
@@ -648,10 +684,12 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 		local gm_container = gm.variable_global_get("_damage_color_array")
 		local gm_container_t = gm_container.array[1]
 		local gm_instance_list = gm.CInstance.instances_all
-		local gm_instance = gm_instance_list[1]
+		local gm_instance = gm.variable_global_get("__input_blacklist_dictionary").cinstance
+		local gm_instance_variables = gm_instance:variable_instance_get_names()
 
 		endow_with_pairs_and_next(getmetatable(gm_instance_list))
 		endow_with_pairs_and_next(getmetatable(gm_instance))
+		endow_with_pairs_and_next(getmetatable(gm_instance_variables))
 		endow_with_pairs_and_next(getmetatable(gm_object))
 		endow_with_pairs_and_next(getmetatable(gm_container_t))
 		endow_with_pairs_and_next(getmetatable(gm_rvalue))
