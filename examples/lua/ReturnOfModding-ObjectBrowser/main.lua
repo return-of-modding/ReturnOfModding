@@ -53,7 +53,9 @@ function create_details(entry)
 end
 
 root = {
+	lua = _G,
 	globals = proxy.globals,
+	constants = proxy.constants,
 	instances = {
 		all = gm.CInstance.instances_all,
 		active = gm.CInstance.instances_active
@@ -91,9 +93,9 @@ function entrify(k,v)
 	local loop_type = nil
 	local keys = nil
 	local info = nil
+	local meta = getmetatable(v)
 	if data_type == "table" then
 		loop_type = pairs
-		local meta = getmetatable(v)
 		info = meta and meta.__name or data_type
 		local n = len(v)
 		if n then info = "table[" .. n .. "]" end
@@ -114,12 +116,12 @@ function entrify(k,v)
 		elseif rvalue_type == nil then
 			if tostring(v):match('<') then
 				loop_type = ipairs
-				info = getmetatable(v).__name or data_type
+				info = meta.__name or data_type
 				local n = math.floor(#v)
 				info = info .. "[" .. n .. "]"
-			elseif getmetatable(v).__next then
+			elseif meta and meta.__next then
 				loop_type = pairs
-				info = getmetatable(v).__name or data_type
+				info = meta.__name or data_type
 				if info:match("CInstance") then
 					info = v.object_name .." (" .. v.object_index .. " @ " .. v.id .. ")"
 				end
@@ -280,7 +282,7 @@ do
 							ImGui.PopStyleColor()
 							if
 								sd.data_type ~= "function" and sd.data_type ~= "thread" and
-								(sd.rvalue_type == "UNDEFINED" or (sd.rvalue_type ~= nil and sd.data.lua_value or sd.data))
+								(sd.rvalue_type == "UNDEFINED" or (sd.rvalue_type ~= nil and sd.data.lua_value ~= nil) or (sd.data_type ~= "userdata" and sd.data))
 							then
 								local value_text = tostring_literal(value)
 								ImGui.SameLine()
@@ -302,7 +304,7 @@ do
 							else
 								ImGui.PushStyleColor(ImGuiCol.Text, 0xFF2020FF)
 								ImGui.SameLine()
-								ImGui.Text(tostring(sd.value))
+								ImGui.Text(tostring(sd.rvalue_type or sd.data))
 								ImGui.PopStyleColor()
 							end
 						end
