@@ -1470,29 +1470,35 @@ selected, activated = ImGui.MenuItem("Label", "ALT+F4", selected, true)
   -- ImGuiKeyMod.Shortcut
   -- ImGuiKeyMod.Mask_
 
+  -- Classic way of checking for a key press combination
+  -- Use IsKeyDown for KeyMods, works better.
+  if ImGui.IsKeyDown(ImGuiKeyMod.Shift) and ImGui.IsKeyPressed(ImGuiKey.A) then
+      print("yes")
+  end
+
   -- ImGui.IsKeyDown(...)
-  -- Parameters: ImGuiKey
+  -- Parameters: ImGuiKey or ImGuiKeyMod
   -- Returns: bool
   bool = ImGui.IsKeyDown(key)
 
   -- ImGui.IsKeyPressed(...)
-  -- Parameters: ImGuiKey, bool repeat = true
+  -- Parameters: ImGuiKey or ImGuiKeyMod, bool repeat = true
   -- Returns: bool
   bool = ImGui.IsKeyPressed(key)
   bool = ImGui.IsKeyPressed(key, repeat)
 
   -- ImGui.IsKeyReleased(...)
-  -- Parameters: ImGuiKey
+  -- Parameters: ImGuiKey or ImGuiKeyMod
   -- Returns: bool
   bool = ImGui.IsKeyReleased(key)
 
   -- ImGui.GetKeyPressedAmount(...)
-  -- Parameters: ImGuiKey key, float repeat_delay, float repeat_rate
+  -- Parameters: ImGuiKey/ImGuiKeyMod key, float repeat_delay, float repeat_rate
   -- Returns: int
   int = ImGui.GetKeyPressedAmount(key)
 
   -- ImGui.GetKeyName(...)
-  -- Parameters: ImGuiKey key
+  -- Parameters: ImGuiKey/ImGuiKeyMod key
   -- Returns: string
   name = ImGui.GetKeyName(key)
 
