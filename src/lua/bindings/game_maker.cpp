@@ -473,7 +473,10 @@ namespace lua::game_maker
 						        res.ref_array && res.isArray() ? res.ref_array->array() : dummy_rvalue_array);
 					    case REF:
 					    case PTR: return sol::make_object<void*>(this_state_, res.ptr);
-					    case OBJECT: return sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr);
+					    case OBJECT:
+						    return res.yy_object_base->type == YYObjectBaseType::CINSTANCE ?
+						        sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr) :
+						        sol::make_object<YYObjectBase*>(this_state_, res.yy_object_base);
 					    case UNDEFINED:
 					    case UNSET: return sol::lua_nil;
 					    default: return sol::make_object<RValue>(this_state_, res);
