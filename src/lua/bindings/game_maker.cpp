@@ -4,6 +4,9 @@
 #include "rorr/gm/EVariableType.hpp"
 #include "rorr/gm/Variable_BuiltIn.hpp"
 
+#include <rorr/gm/CScript.hpp>
+#include <rorr/gm/CScriptRef.hpp>
+
 #define BIND_USERTYPE(lua_variable, type_name, field_name) lua_variable[#field_name] = &type_name::field_name;
 
 static RValue parse_sol_object(sol::object arg)
@@ -221,11 +224,17 @@ namespace lua::game_maker
 			// Lua API: Field
 			// Class: YYObjectBase
 			// Field: cinstance: CInstance
-			type["cinstance"] = sol::property([](YYObjectBase& inst) {
-				return (CInstance*)&inst;
+			type["cinstance"] = sol::property([](YYObjectBase& inst, sol::this_state this_state_) {
+				return inst.type == YYObjectBaseType::CINSTANCE ? sol::make_object(this_state_, (CInstance*)&inst) : sol::lua_nil;
+			});
+
+			// Lua API: Field
+			// Class: YYObjectBase
+			// Field: script_name: string
+			type["script_name"] = sol::property([](YYObjectBase& inst, sol::this_state this_state_) {
+				return inst.type == YYObjectBaseType::SCRIPTREF ? ((CScriptRef*)&inst)->m_call_script->m_script_name : "";
 			});
 		}
-
 
 		// Lua API: Class
 		// Name: RValue

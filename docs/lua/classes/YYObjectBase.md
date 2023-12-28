@@ -2,7 +2,7 @@
 
 Class representing an object coming from the game maker engine
 
-## Fields (2)
+## Fields (3)
 
 ### `type`
 
@@ -11,4 +11,8 @@ Class representing an object coming from the game maker engine
 ### `cinstance`
 
 - Type: `CInstance`
+
+### `script_name`
+
+- Type: `string`
 
