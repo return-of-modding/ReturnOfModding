@@ -316,7 +316,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		[RValueType.MATRIX] = nil,
 		[RValueType.INT64] = getnumber,
 		[RValueType.ACCESSOR] = nil,
-		[RValueType.JSNULL] = null,
+		[RValueType.JSNULL] = nil,
 		[RValueType.BOOL] = istrue,
 		[RValueType.ITERATOR] = nil,
 		[RValueType.REF] = nil,
@@ -330,11 +330,12 @@ if _G.proxy == nil then -- don't do this on refresh
 	end
 	
 	local function rvalue_marshall_get(rvalue)
-		--return rvalue_marshall(rvalue)
+		--in case some massaging is needed
 		return rvalue
 	end
 	
 	local function rvalue_marshall_set(rvalue)
+		--in case some massaging is needed
 		return rvalue
 	end
 
@@ -355,6 +356,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		__index = function(s,k)
 			if type(k) == number then
 				local names = getmetatable(s).__names(s)
+				if not names then return nil end
 				k = names[k]
 				if k == nil then return nil end
 				k = k.tostring
@@ -366,6 +368,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		__newindex = function(s,k,v)
 			if type(k) == number then
 				local names = getmetatable(s).__names(s)
+				if not names then return end
 				k = names[k]
 				if k == nil then return end
 				k = k.tostring
@@ -376,10 +379,13 @@ if _G.proxy == nil then -- don't do this on refresh
 			return gm.variable_instance_set(id,k,rvalue_marshall_set(v))
 		end,
 		__len = function(s)
-			return #getmetatable(s).__names(s)
+			local names = getmetatable(s).__names(s)
+			if not names then return 0 end
+			return #names
 		end,
 		__next = function(s,k)
 			local names = getmetatable(s).__names(s)
+			if not names then return nil end
 			local i = k
 			if type(k) ~= "number" then
 				i = k and util.perform_lookup(names,k,get_name) or 0
@@ -391,6 +397,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		end,
 		__pairs = function(s,k)
 			local names = getmetatable(s).__names(s)
+			if not names then return null end
 			local names_lookup = util.build_lookup(names,get_name)
 			return function(_,k)
 				local i = k
@@ -430,6 +437,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		__index = function(s,k)
 			if type(k) == number then
 				local names = getmetatable(s).__names(s)
+				if not names then return nil end
 				k = names[k]
 				if k == nil then return nil end
 				k = k.tostring
@@ -441,6 +449,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		__newindex = function(s,k,v)
 			if type(k) == number then
 				local names = getmetatable(s).__names(s)
+				if not names then return end
 				k = names[k]
 				if k == nil then return end
 				k = k.tostring
@@ -451,10 +460,13 @@ if _G.proxy == nil then -- don't do this on refresh
 			return gm.struct_set(id,k,rvalue_marshall_set(v))
 		end,
 		__len = function(s)
-			return #getmetatable(s).__names(s)
+			local names = getmetatable(s).__names(s)
+			if not names then return 0 end
+			return #names
 		end,
 		__next = function(s,k)
 			local names = getmetatable(s).__names(s)
+			if not names then return nil end
 			local i = k
 			if type(k) ~= "number" then
 				i = k and util.perform_lookup(names,k,get_name) or 0
@@ -466,6 +478,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		end,
 		__pairs = function(s,k)
 			local names = getmetatable(s).__names(s)
+			if not names then return null end
 			local names_lookup = util.build_lookup(names,get_name)
 			return function(_,k)
 				local i = k
@@ -504,6 +517,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		__index = function(s,k)
 			if type(k) == number then
 				local names = getmetatable(s).__names(s)
+				if not names then return nil end
 				k = names[k]
 				if k == nil then return nil end
 				k = k.tostring
@@ -515,6 +529,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		__newindex = function(s,k,v)
 			if type(k) == number then
 				local names = getmetatable(s).__names(s)
+				if not names then return end
 				k = names[k]
 				if k == nil then return end
 				k = k.tostring
@@ -525,10 +540,13 @@ if _G.proxy == nil then -- don't do this on refresh
 			return gm.variable_struct_set(id,k,rvalue_marshall_set(v))
 		end,
 		__len = function(s)
-			return #getmetatable(s).__names(s)
+			local names = getmetatable(s).__names(s)
+			if not names then return 0 end
+			return #names
 		end,
 		__next = function(s,k)
 			local names = getmetatable(s).__names(s)
+			if not names then return nil end
 			local i = k
 			if type(k) ~= "number" then
 				i = k and util.perform_lookup(names,k,get_name) or 0
@@ -540,6 +558,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		end,
 		__pairs = function(s,k)
 			local names = getmetatable(s).__names(s)
+			if not names then return null end
 			local names_lookup = util.build_lookup(names,get_name)
 			return function(_,k)
 				local i = k
@@ -572,6 +591,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		__index = function(s,k)
 			if type(k) == "number" then
 				local names = getmetatable(s).__names(s)
+				if not names then return nil end
 				k = names[k]
 				if k == nil then return nil end
 				k = k.tostring
@@ -582,6 +602,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		__newindex = function(s,k,v)
 			if type(k) == "number" then
 				local names = getmetatable(s).__names(s)
+				if not names then return end
 				k = names[k]
 				if k == nil then return end
 				k = k.tostring
@@ -591,10 +612,13 @@ if _G.proxy == nil then -- don't do this on refresh
 			return gm.variable_global_set(k,rvalue_marshall_set(v))
 		end,
 		__len = function(s)
-			return #getmetatable(s).__names(s)
+			local names = getmetatable(s).__names(s)
+			if not names then return 0 end
+			return #names
 		end,
 		__next = function(s,k)
 			local names = getmetatable(s).__names(s)
+			if not names then return nil end
 			local i = k
 			if type(k) ~= "number" then
 				i = k and util.perform_lookup(names,k,get_name) or 0
@@ -606,6 +630,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		end,
 		__pairs = function(s,k)
 			local names = getmetatable(s).__names(s)
+			if not names then return null end
 			local names_lookup = util.build_lookup(names,get_name)
 			return function(_,k)
 				local i = k
