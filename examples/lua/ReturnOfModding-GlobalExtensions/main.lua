@@ -698,8 +698,7 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 
 	-- GLOBAL OBJECT EXTENSIONS
 
-	local function endow_with_pairs_and_next(sol_object)
-		-- this should be idempotent (does nothing extra when applied more than once)
+	local function endow_with_pairs_and_next(meta)
 		--[[
 		context behind this approach:
 			sol objects are userdata or tables that have sol classes as metatables
@@ -709,24 +708,23 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 			sol classes have stub __pairs that just errors when called
 			sol overrides next to error when that is used on a sol class
 		--]]
-		local sol_meta = getmetatable(sol_object)
-		if not sol_meta then return end
-		local status, sol_next
-		if rawget(sol_meta,'__pairs') or rawget(sol_meta,'__next') then
-			status, sol_next = pcall(pairs,sol_object)
-		end
+		if not meta then return end
+		local status, _next
+		--if rawget(meta,'__pairs') or rawget(meta,'__next') then
+		--	status, _next = false--pcall(pairs,object)
+		--end
 		if not status then
-			local sol_index = rawget(sol_meta,'__index')
-			if not sol_index then return end
-			if type(sol_index) ~= 'function' then
-				function sol_next(s,k)
-					return next(sol_index,k)
+			local _index = rawget(meta,'__index')
+			if not _index then return end
+			if type(_index) ~= 'function' then
+				function _next(s,k)
+					return next(_index,k)
 				end
 			else
-				function sol_next(s,k)
+				function _next(s,k)
 					local v,u,w
 					while v == nil do
-						k,u = rawnext(sol_meta,k)
+						k,u = rawnext(meta,k)
 						if k == nil then return nil end
 						-- ignore 'new' and metatable fields
 						if k ~= 'new' and k:sub(1,2) ~= '__' then
@@ -741,19 +739,18 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 					return k,v
 				end
 			end
-			rawset(sol_meta,'__pairs',function(s,k)
-				return sol_next,s,k
+			rawset(meta,'__pairs',function(s,k)
+				return _next,s,k
 			end)
 		end
 		-- __next is implemented by a custom implementation of next
-		local status = pcall(rawnext,sol_object)
-		if not status and sol_next ~= nil and rawget(sol_meta,'__next') == nil then
-			rawset(sol_meta,'__next',sol_next)
+		local status = false--pcall(rawnext,object)
+		if not status and _next ~= nil and rawget(meta,'__next') == nil then
+			rawset(meta,'__next',_next)
 		end
 	end
 
-	local function endow_with_new_properties(sol_object,properties)
-		local meta = getmetatable(sol_object)
+	local function endow_with_new_properties(meta,properties)
 		local new_properties = {}
 		for k,v in pairs(properties) do
 			if not rawget(meta,k) then
@@ -769,52 +766,13 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 		end
 	end
 
-	local function on_delayed_load()
-		local gm_instance_list = gm.CInstance.instances_all
-		local gm_instance = gm_instance_list[1]
-		if not gm_instance then return false end
-		local gm_container = gm.variable_global_get("_damage_color_array")
-		if not gm_container then return false end
-		local gm_container_t = gm_container.array[1]
-		if not gm_container_t then return false end
-		local gm_rvalue = gm.variable_global_get("mouse_x")
-		local gm_object = gm.variable_global_get("init_player").object
+	local function imgui_next_delayed_load()
 
 		local imgui_style = ImGui.GetStyle() -- sol.ImGuiStyle*
 		local imgui_vector = imgui_style["WindowPadding"] -- sol.ImVec2*
-		endow_with_pairs_and_next(imgui_style)
-		endow_with_pairs_and_next(imgui_vector)
-
-		endow_with_pairs_and_next(gm_instance_list)
-		endow_with_pairs_and_next(gm_instance)
-		endow_with_pairs_and_next(gm_object)
-		endow_with_pairs_and_next(gm_container_t)
-		endow_with_pairs_and_next(gm_rvalue)
-		endow_with_pairs_and_next(RValueType)
-		endow_with_pairs_and_next(YYObjectBaseType)
-
-		local rvalue_lookup = util.build_lookup(RValueType)
-		local object_lookup = util.build_lookup(YYObjectBaseType)
-		local get_rvalue_type_name = function(s) return rvalue_lookup[s.type] end
-		local get_object_type_name = function(s) return object_lookup[s.type] end
+		endow_with_pairs_and_next(getmetatable(imgui_style))
+		endow_with_pairs_and_next(getmetatable(imgui_vector))
 		
-		endow_with_new_properties(gm_rvalue,{
-			type_name = get_rvalue_type_name,
-			lua_value = rvalue_marshall,
-			struct = proxy.struct
-		})
-		endow_with_new_properties(gm_container_t,{
-			type_name = get_rvalue_type_name,
-			lua_value = rvalue_marshall,
-			struct = proxy.struct
-		})
-		endow_with_new_properties(gm_instance,{
-			variables = proxy.variables
-		})
-		endow_with_new_properties(gm_object,{
-			type_name = get_object_type_name
-		})
-
 		if ImGui.GetStyleVar == nil then
 			local imgui_vector_meta = getmetatable(imgui_vector)
 			local imgui_stylevar_lookup = util.build_lookup(ImGuiStyleVar)
@@ -829,17 +787,55 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 				return s['x'],s['y']
 			end
 		end
+	end
+	
+	local function gm_next_delayed_load()
+		local gm_rvalue = gm.variable_global_get("init_player")
+		local gm_object = gm_rvalue.object
+		local gm_container = gm.variable_global_get("_damage_color_array")
+		local gm_container_t = gm_container.array[1]
+		local gm_instance_list = gm.CInstance.instances_all
+		local gm_instance = gm_instance_list[1]
 
-		return true
+		endow_with_pairs_and_next(getmetatable(gm_instance_list))
+		endow_with_pairs_and_next(getmetatable(gm_instance))
+		endow_with_pairs_and_next(getmetatable(gm_object))
+		endow_with_pairs_and_next(getmetatable(gm_container_t))
+		endow_with_pairs_and_next(getmetatable(gm_rvalue))
+		endow_with_pairs_and_next(getmetatable(RValueType))
+		endow_with_pairs_and_next(getmetatable(YYObjectBaseType))
+
+		local rvalue_lookup = util.build_lookup(RValueType)
+		local object_lookup = util.build_lookup(YYObjectBaseType)
+		local get_rvalue_type_name = function(s) return rvalue_lookup[s.type] end
+		local get_object_type_name = function(s) return object_lookup[s.type] end
+		
+		endow_with_new_properties(getmetatable(gm_rvalue),{
+			type_name = get_rvalue_type_name,
+			lua_value = rvalue_marshall,
+			struct = proxy.struct
+		})
+		endow_with_new_properties(getmetatable(gm_container_t),{
+			type_name = get_rvalue_type_name,
+			lua_value = rvalue_marshall,
+			struct = proxy.struct
+		})
+		endow_with_new_properties(getmetatable(gm_instance),{
+			variables = proxy.variables
+		})
+		endow_with_new_properties(getmetatable(gm_object),{
+			type_name = get_object_type_name
+		})
 	end
 
-	local next_delayed_load = on_delayed_load
-
-	local function imgui_on_render()
-		if next_delayed_load and next_delayed_load() then
-			next_delayed_load = nil
+	gui.add_imgui( function()
+		if imgui_next_delayed_load and imgui_next_delayed_load() ~= true then
+			imgui_next_delayed_load = nil
 		end
-	end
-
-	gui.add_imgui(imgui_on_render)
+	end )
+	gm.pre_code_execute( function()
+		if gm_next_delayed_load and gm_next_delayed_load() ~= true then
+			gm_next_delayed_load = nil
+		end
+	end )
 end
