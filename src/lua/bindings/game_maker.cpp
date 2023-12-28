@@ -842,6 +842,11 @@ namespace lua::game_maker
 			}
 			else
 			{
+				if (!key.size())
+				{
+					return sol::lua_nil;
+				}
+
 				self.raw_set(key,
 				    sol::overload(
 				        [key](sol::variadic_args args) {
