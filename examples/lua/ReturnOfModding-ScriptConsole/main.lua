@@ -1,33 +1,20 @@
-util.merge(_ENV,util)
-util.merge(_ENV,proxy)
-
-function find_instance(name)
-	for k,v in pairs(gm.CInstance.instances_active) do
-		if v.object_name == name then return v end
-	end
-	for k,v in pairs(gm.CInstance.instances_all) do
-		if v.object_name == name then return v end
-	end
-	return nil
-end
-
-local _repl_globals = {}
-util.merge(_repl_globals,_G,_ENV,util,proxy)
+local _globals = {}
+util.merge(_globals,_G,util,proxy)
 
 -- assume we load later than ObjectBrowser due to alphabetical order
 -- (optional dependency)
 local browser = mods['ReturnOfModding-ObjectBrowser']
-_repl_globals.root = root or browser and browser.root
+_globals.root = root or browser and browser.root
 
-repl_globals = _repl_globals
-repl_environment = setmetatable({},{
-	__index = repl_globals,
-	__newindex = repl_globals
+globals = _globals
+local repl_environment = setmetatable({},{
+	__index = globals,
+	__newindex = globals
 })
 
-autoexec_name = "autoexec"
+local autoexec = "autoexec"
 
-function tostring_literal(value)
+local function tostring_literal(value)
 	-- TODO: expand tables python-style?
 	if type(value) == "string" then
 		local lined, _lined = 0, value:gmatch("\n")
@@ -54,8 +41,8 @@ function tostring_literal(value)
 	return tostring(value)
 end
 
-function vararg_tostring(raw, ...)
-	s = ""
+local function tostring_vararg(raw, ...)
+	local s = ""
 	for _,v in util.vararg(...) do
 		v = raw and tostring(v) or tostring_literal(v)
 		s = s .. '\t' .. v
@@ -63,68 +50,84 @@ function vararg_tostring(raw, ...)
 	return s:sub(2,#s)
 end
 
-console_logger = {
+console = {}
+
+console.log = {
 	error = {
-		prefix_debug = "",
-		prefix_shown = "",
+		prefix = {
+			debug = "",
+			shown = ""
+		},
 		logger = log.error,
 		color = 0xFF2020EE,
 	},
 	info = {
-		prefix_debug = "",
-		prefix_shown = "",
+		prefix = {
+			debug = "",
+			shown = ""
+		},
 		logger = log.info,
 		color = 0xFFEEEEEE,
 	},
 	warning = {
-		prefix_debug = "",
-		prefix_shown = "",
+		prefix = {
+			debug = "",
+			shown = ""
+		},
 		logger = log.warning,
 		color = 0xFF20EEEE,
 	},
 	history = {
-		prefix_debug = "",
-		prefix_shown = "] ",
+		prefix = {
+			debug = "",
+			shown = "] "
+		},
 		logger = false,
 		color = 0xEECCCCCC,
 	},
 	echo = {
-		prefix_debug = "[Echo]:",
-		prefix_shown = "",
+		prefix = {
+			debug = "[Echo]:",
+			shown = ""
+		},
 		logger = log.info,
 		color = 0xFFEEEEEE,
 	},
 	print = {
-		prefix_debug = "[Print]:",
-		prefix_shown = "",
+		prefix = {
+			debug = "[Print]:",
+			shown = ""
+		},
 		logger = log.info,
 		color = 0xFFEEEEEE,
 	},
 	returns = {
-		prefix_debug = "[Returns]:",
-		prefix_shown = "",
+		prefix = {
+			debug = "[Returns]:",
+			shown = ""
+		},
 		logger = log.info,
 		color = 0xFFFFFF20,
 	}
 }
 
-console_logger_meta = { __call = function(lg,...) return lg.log(...) end }
+local console_log_meta = { __call = function(lg,...) return lg.log(...) end }
 
-for _,lg in pairs(console_logger) do
+for _,lg in pairs(console.log) do
 	lg.log = function(md, raw, ...)
-		local text = vararg_tostring(raw, ...)
-		table.insert(md.lines_raw, text)
-		table.insert(md.lines_shown, lg.prefix_shown .. text)
-		md.lines_colors[#md.lines_raw] = lg.color
+		local text = tostring_vararg(raw, ...)
+		table.insert(md.raw, text)
+		table.insert(md.shown, lg.prefix.shown .. text)
+		md.colors[#md.raw] = lg.color
 		if lg.logger then
-			return lg.logger( lg.prefix_debug .. md.prefix .. text )
+			return lg.logger( lg.prefix.debug .. md.prefix .. text )
 		end
 	end
-	setmetatable(lg,console_logger_meta)
+	setmetatable(lg,console_log_meta)
 end
 
-function repl_execute_lua(md, env, text, ...)
-	util.merge(repl_globals,md.definitions)
+local function repl_execute_lua(md, env, text, ...)
+	util.merge(globals,md.definitions)
 	local func, err = text, ''
 	if type(text) == "string" then
 		func, err = load( "return " .. text )
@@ -142,6 +145,8 @@ function repl_execute_lua(md, env, text, ...)
 end
 
 --https://stackoverflow.com/a/28664691
+local parse_command_text
+local parse_multicommand_text
 do 
 	-- TODO: This needs to be improved regarding properly handling embedded and mixed quotes!
 	local parse_buffer = {}
@@ -197,33 +202,33 @@ do
 	end
 end
 
-function run_console_command(md, text)
+local run_console_multicommand
+local function run_console_command(md, text)
 		local parse_result = table.pack(parse_command_text(text))
 		local status, command_name = parse_result[1], parse_result[2]
 		if not status then
-			console_logger.error(md, true, command_name)
+			return console.log.error(md, true, command_name)
 		end
-		local alias = console_aliases[command_name]
+		local alias = console.aliases[command_name]
 		if alias ~= nil then
 			return run_console_multicommand(md, alias)
 		end
-		local command = console_commands[command_name]
+		local command = console.commands[command_name]
 		if command == nil then
-			return console_logger.error(md, true, 'no command by the name of "' .. command_name .. '" found')
+			return console.log.error(md, true, 'no command by the name of "' .. command_name .. '" found')
 		end
 		local ret = table.pack(pcall(command,md,table.unpack(parse_result, 3, parse_result.n)))
 		if ret.n <= 1 then return end
 		if ret[1] == false then
-			return console_logger.error(md, true, ret[2])
+			return console.log.error(md, true, ret[2])
 		end
-		return console_logger.info(md, false, table.unpack(ret, 2, ret.n))
+		return console.log.info(md, false, table.unpack(ret, 2, ret.n))
 end
-
 function run_console_multicommand(md, text)
 		local parse_result = table.pack(parse_multicommand_text(text))
 		local status, err = parse_result[1], parse_result[2]
 		if not status then
-			console_logger.error(md, true, err)
+			console.log.error(md, true, err)
 		end
 		table.unpack(parse_result, 2, parse_result.n)
 		for i = 2, parse_result.n do
@@ -231,9 +236,10 @@ function run_console_multicommand(md, text)
 		end
 end
 
-console_aliases = {}
 
-console_commands_help = {
+console.aliases = {}
+
+console.command_help = {
 	{"help","[0..1]","lists the available commands"},
 	{"echo","[..]","prints a message to the console"},
 	{"lua","[1..]","executes lua code and shows the result"},
@@ -242,17 +248,17 @@ console_commands_help = {
 	{"alias","[0..2]","defines a command that acts as a shortcut for other commands"}
 }
 
-console_commands = {
+console.commands = {
 	help = function(md,stub)
 		if stub then
-			local msg = console_commands_help[stub]
+			local msg = console.command_help[stub]
 			if not msg then 
-				return console_logger.error(md, true, 'no command by the name of "' .. stub .. '" found')
+				return console.log.error(md, true, 'no command by the name of "' .. stub .. '" found')
 			end
-			return console_logger.echo(md, true, msg)
+			return console.log.echo(md, true, msg)
 		end
-		for _,h in ipairs(console_commands_help) do
-			console_logger.echo(md, true, table.unpack(h))
+		for _,h in ipairs(console.command_help) do
+			console.log.echo(md, true, table.unpack(h))
 		end
 	end,
 	echo = function(md,...)
@@ -261,7 +267,7 @@ console_commands = {
 			text = text .. ' ' .. arg
 		end
 		text = text:sub(2,#text)
-		return console_logger.echo(md,true,text)
+		return console.log.echo(md,true,text)
 	end,
 	lua = function(md,...)
 		local text = ""
@@ -270,23 +276,23 @@ console_commands = {
 		end
 		text = text:sub(2,#text)
 		if #text == 0 then
-			return console_logger.error(md, true, "cannot execute empty lua code.")
+			return console.log.error(md, true, "cannot execute empty lua code.")
 		end
 		local ret = table.pack(repl_execute_lua(md, true, text))
 		if ret.n <= 1 then return end
 		if ret[1] == false then
-			return console_logger.error(md, true, ret[2])
+			return console.log.error(md, true, ret[2])
 		end
-		return console_logger.returns(md, false, table.unpack( ret, 2, ret.n ))
+		return console.log.returns(md, false, table.unpack( ret, 2, ret.n ))
 	end,
 	--https://stackoverflow.com/a/10387949
 	luae = function(md,path,...)
-		qualpath = _ENV["!plugins_data_mod_folder_path"] .. '/' .. path
+		local qualpath = _ENV["!plugins_data_mod_folder_path"] .. '/' .. path
 		local file = io.open(qualpath,"rb")
 		if not file or type(file) == "string" or type(file) == "number" then
 			file = io.open(qualpath .. ".lua","rb")
 			if not file or type(file) == "string" or type(file) == "number" then
-				return console_logger.warning(md, true, 'attempted to read the lua file "' .. path .. '", but failed.')
+				return console.log.warning(md, true, 'attempted to read the lua file "' .. path .. '", but failed.')
 			end
 		end
 		local data = file:read("*a")
@@ -294,17 +300,17 @@ console_commands = {
 		local ret = table.pack(repl_execute_lua(md, true, data, ...))
 		if ret.n <= 1 then return end
 		if ret[1] == false then
-			return console_logger.error(md, true, ret[2])
+			return console.log.error(md, true, ret[2])
 		end
-		return console_logger.returns(md, false, table.unpack( ret, 2, ret.n ))
+		return console.log.returns(md, false, table.unpack( ret, 2, ret.n ))
 	end,
 	exec = function(md,path)
-		qualpath = _ENV["!plugins_data_mod_folder_path"] .. '/' .. path
+		local qualpath = _ENV["!plugins_data_mod_folder_path"] .. '/' .. path
 		local file = io.open(qualpath,"rb")
 		if not file or type(file) == "string" or type(file) == "number" then
 			file = io.open(qualpath .. ".txt","rb")
 			if not file or type(file) == "string" or type(file) == "number" then
-				return console_logger.warning(md, true, 'attempted to read the batch file "' .. path .. '", but failed.')
+				return console.log.warning(md, true, 'attempted to read the batch file "' .. path .. '", but failed.')
 			end
 		end
 		local data = file:read("*a")
@@ -313,8 +319,8 @@ console_commands = {
 	end,
 	alias = function(md,name,...)
 		if name == nil then
-			for k,v in pairs(console_aliases) do
-				console_logger.echo(md, true, k,v)
+			for k,v in pairs(console.aliases) do
+				console.log.echo(md, true, k,v)
 			end
 			return
 		end
@@ -324,37 +330,44 @@ console_commands = {
 		end
 		text = text:sub(2,#text)
 		if #text == 0 then
-			local msg = console_aliases[name]
+			local msg = console.aliases[name]
 			if not msg then 
-				return console_logger.error(md, true, 'no alias by the name of "' .. name .. '" exists')
+				return console.log.error(md, true, 'no alias by the name of "' .. name .. '" exists')
 			end
-			return console_logger.echo(md, true, msg)
+			return console.log.echo(md, true, msg)
 		end
-		console_aliases[name] = text
+		console.aliases[name] = text
 	end,
 }
 
-console_modes = {
+console.modes = {
 	{
-		name = "Command Console",
+		name = "Notebook",
+		prefix = "[Notes]:",
+		on_enter = function(md) return function(text)
+			return console.log.info(md, true, text)
+		end end
+	},
+	{
+		name = "Console",
 		prefix = "[Console]:",
 		on_enter = function(md) return function(text)
-			console_logger.history(md, true, text)
+			console.log.history(md, true, text)
 			return run_console_multicommand(md, text)
 		end end
 	},
 	{
-		name = "Lua Script REPL",
+		name = "Lua REPL",
 		prefix = "[LuaREPL]:",
 		on_enter = function(md) return function(text)
-			console_logger.history(md, true, text)
+			console.log.history(md, true, text)
 			local ret = table.pack(repl_execute_lua(md, true, text))
 			if ret.n <= 1 then return end
 			if ret[1] == false then
-				return console_logger.error(md, true, ret[2])
+				return console.log.error(md, true, ret[2])
 			end
-			repl_globals._ = ret[2]
-			return console_logger.returns(md, false, table.unpack(ret, 2, ret.n))
+			globals._ = ret[2]
+			return console.log.returns(md, false, table.unpack(ret, 2, ret.n))
 		end end
 	}
 }
@@ -362,24 +375,24 @@ console_modes = {
 local function console_mode_definitions(get_md)
 	return {
 		print = function(...)
-			return console_logger.print(get_md(),true,...)
+			return console.log.print(get_md(),true,...)
 		end,
 		tprint = function(...)
 			for _,o in util.vararg(...) do
-				console_logger.print(get_md(),false,o)
+				console.log.print(get_md(),false,o)
 				if type(o) == "table" or type(o) == "userdata" then
 					for k,v in pairs(o) do
-						console_logger.print(get_md(),false,k,v)
+						console.log.print(get_md(),false,k,v)
 					end
 				end
 			end
 		end,
 		mprint = function(m,...)
 			for _,o in util.vararg(...) do
-				console_logger.print(get_md(),false,o)
+				console.log.print(get_md(),false,o)
 				if type(o) == "table" or type(o) == "userdata" then
 					for k,v in pairs(o) do
-						console_logger.print(get_md(),false,k,m(v))
+						console.log.print(get_md(),false,k,m(v))
 					end
 				end
 			end
@@ -390,25 +403,26 @@ local function console_mode_definitions(get_md)
 	}
 end
 
-for mi,md in ipairs(console_modes) do
+for mi,md in ipairs(console.modes) do
 	util.merge(md,{
 		current_text = "",
 		enter_pressed = false,
 		history_offset = 0,
 		history = {},
-		lines_shown = {},
-		lines_raw = {},
-		lines_selected = {},
-		lines_colors = {},
+		shown = {},
+		raw = {},
+		selected = {},
+		colors = {},
 		index = mi,
 		on_enter = md.on_enter(md),
 		definitions = console_mode_definitions(function() return md end)
 	})
 end
 
-console_mode = console_modes[1]
-util.merge(_ENV,console_mode_definitions(function() return console_mode end))
+console.mode = console.modes[1]
+util.merge(globals,console_mode_definitions(function() return console.mode end))
 
+local calculate_text_sizes
 do
 	local calculate_text_sizes_x_buffer = {}
 	function calculate_text_sizes(...)
@@ -433,7 +447,7 @@ do
 	end
 end
 
-function imgui_on_render()
+local function imgui_on_render()
 	if ImGui.Begin("Script Console", true, ImGuiWindowFlags.NoTitleBar) then
 		if ImGui.BeginTabBar("Mode",ImGuiTabBarFlags.Reorderable) then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
@@ -448,28 +462,28 @@ function imgui_on_render()
 			-- such that InputText's height == max y
 			local y_input = bot_y_max - ImGui.GetFontSize() - frame_padding_y 
 			local box_y = y - top_y_max - bot_y_max - item_spacing_y*2
-			for mi,md in ipairs(console_modes) do
+			for mi,md in ipairs(console.modes) do
 				local ds = md.name
 				local ms = tostring(mi)
 				if ImGui.BeginTabItem(ds) then
 					ImGui.EndTabItem()
-					console_mode = md
-					if autoexec_name then
-						local name = autoexec_name
-						autoexec_name = nil
+					console.mode = md
+					if autoexec then
+						local name = autoexec
+						autoexec = nil
 						run_console_command(md,"exec " .. name)
 					end
 					ImGui.InvisibleButton("##Spacer" .. ms, x_bar, top_y_max)
 					ImGui.SameLine()
 					if ImGui.Button("Clear##" .. ms, x_clear, top_y_max) then
-						util.iclear(md.lines_shown,md.lines_raw,md.lines_selected,md.lines_colors)
+						util.iclear(md.shown,md.raw,md.selected,md.colors)
 					end
 					ImGui.SameLine()
 					if ImGui.Button("Copy##" .. ms, x_copy, top_y_max) then
 						local text
-						for hi,b in ipairs(md.lines_selected) do
+						for hi,b in ipairs(md.selected) do
 							if b then 
-								local line = md.lines_raw[hi] or md.lines_shown[hi]
+								local line = md.raw[hi] or md.shown[hi]
 								if text == nil then
 									text = line
 								else
@@ -482,17 +496,17 @@ function imgui_on_render()
 					ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 					if ImGui.BeginListBox("##Box" .. ms,x,box_y) then
 						ImGui.PopStyleColor()
-						for li,ls in ipairs(md.lines_shown) do
+						for li,ls in ipairs(md.shown) do
 							local tall = select(2,ImGui.CalcTextSize(ls, false, x-frame_padding_x*2-item_spacing_x))
-							md.lines_selected[li] = ImGui.Selectable("##Select" .. ms .. tostring(li), md.lines_selected[li] or false, ImGuiSelectableFlags.AllowDoubleClick, 0, tall)
+							md.selected[li] = ImGui.Selectable("##Select" .. ms .. tostring(li), md.selected[li] or false, ImGuiSelectableFlags.AllowDoubleClick, 0, tall)
 							if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Right) then
-								local selected = not md.lines_selected[li]
-								for oli in ipairs(md.lines_selected) do
-									md.lines_selected[oli] = selected
+								local selected = not md.selected[li]
+								for oli in ipairs(md.selected) do
+									md.selected[oli] = selected
 								end
 							end
 							ImGui.SameLine()
-							local color = md.lines_colors[li]
+							local color = md.colors[li]
 							if color ~= nil then ImGui.PushStyleColor(ImGuiCol.Text, color) end
 							ImGui.TextWrapped(ls)
 							if color ~= nil then ImGui.PopStyleColor() end
@@ -538,7 +552,7 @@ function imgui_on_render()
 	ImGui.End()
 	-- handling entering input separate from constructing the UI
 	-- so actions that use ImGui will be separate from the console's UI
-	for mi,md in ipairs(console_modes) do
+	for mi,md in ipairs(console.modes) do
 		if md.enter_pressed then
 			md.enter_pressed = false
 			md.history_offset = 0
@@ -551,3 +565,11 @@ function imgui_on_render()
 end
 
 gui.add_imgui(imgui_on_render)
+
+function rcon(text)
+	return run_console_multicommand(console.mode,text)
+end
+
+function rlua(text, ...)
+	return select(2,repl_execute_lua(console.mode,true,text,...))
+end

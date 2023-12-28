@@ -265,6 +265,7 @@ if util == nil then -- don't run this on refresh
 	end
 end
 
+local rvalue_marshall
 if _G.proxy == nil then -- don't do this on refresh
 
 	-- GLOBAL PROXY EXTENSIONS
@@ -303,7 +304,7 @@ if _G.proxy == nil then -- don't do this on refresh
 		return o.object
 	end
 
-	rvalue_marshallers = {
+	local rvalue_marshallers = {
 		[RValueType.REAL] = getnumber,
 		[RValueType.STRING] = getstring,
 		[RValueType.ARRAY] = getarray,
@@ -693,8 +694,6 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 		endow_with_pairs_and_next(getmetatable(gm_object))
 		endow_with_pairs_and_next(getmetatable(gm_container_t))
 		endow_with_pairs_and_next(getmetatable(gm_rvalue))
-		endow_with_pairs_and_next(getmetatable(RValueType))
-		endow_with_pairs_and_next(getmetatable(YYObjectBaseType))
 
 		local rvalue_lookup = util.build_lookup(RValueType)
 		local object_lookup = util.build_lookup(YYObjectBaseType)
@@ -729,4 +728,13 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 			gm_next_delayed_load = nil
 		end
 	end )
+	
+	endow_with_pairs_and_next(getmetatable(RValueType))
+	endow_with_pairs_and_next(getmetatable(YYObjectBaseType))
+	for _,v in pairs(_G) do
+		local meta = getmetatable(v)
+		if meta and not pcall(pairs,v) then
+			endow_with_pairs_and_next(meta)
+		end
+	end
 end

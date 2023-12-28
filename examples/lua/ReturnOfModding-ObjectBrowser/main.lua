@@ -1,3 +1,4 @@
+local calculate_text_sizes
 do
 	local calculate_text_sizes_x_buffer = {}
 	function calculate_text_sizes(...)
@@ -24,15 +25,15 @@ end
 
 browsers = {}
 details = {}
-unfolded = {}
+local unfolded = {}
 
-detail_modes = {
+local detail_filters = {
 	0xFFFFFF20,
 	0xFF20FFFF,
 	0xFFFF20FF
 }
 
-function create_browser(entry)
+local function create_browser(entry)
 	local id = #browsers + 1
 	browsers[id] = util.merge({},entry,{
 		index = id,
@@ -41,13 +42,14 @@ function create_browser(entry)
 	})
 end
 
-function create_details(entry)
+local function create_details(entry)
 	local id = #details + 1
 	details[id] = util.merge({},entry,{
 		index = id,
 		text = '',
 		filter = '',
 		texts = {},
+		tooltips = {},
 		mode = 1
 	})
 end
@@ -62,10 +64,11 @@ root = {
 	}
 }
 
-function root_entries()
+local function root_entries()
 	return { path = 'root', name = 'root', data = root, loop_type = pairs}
 end
 
+local get, len
 do
 	local function _get(t,k)
 		return t[k]
@@ -86,6 +89,7 @@ do
 	end
 end
 
+local entrify
 function entrify(k,v)
 	local data_type = type(v)
 	local rvalue_type = nil
@@ -170,6 +174,15 @@ local function tostring_literal(value)
 	return tostring(value)
 end
 
+local function tostring_vararg(...)
+	local s = ""
+	for _,v in util.vararg(...) do
+		v = tostring_literal(v)
+		s = s .. '\t' .. v
+	end
+	return s:sub(2,#s)
+end
+
 local function path_part_key(key)
 	if type(key) == "string" then
 		if excludedFieldNames[key] or not key:match("^[_%a][_%w]*$") then
@@ -192,14 +205,14 @@ local function path_part(ed)
 	return path
 end
 
-function unfold(ed)
+local function unfold(ed)
 	if ed.entries then return ed.entries end
 	ed.path = ed.path or path_part(ed)	
 	local loop_type = ed.loop_type
 	local entries = {}
 	if loop_type then
 		for k,v in loop_type(ed.data) do
-			sd = entrify(k,v)
+			local sd = entrify(k,v)
 			if sd ~= nil then
 				table.insert(entries,sd)
 			end
@@ -218,7 +231,7 @@ function unfold(ed)
 	return entries
 end
 
-function refresh(ed)
+local function refresh(ed)
 	if ed == nil then return end
 	if ed.entries == nil then return end
 	for _,ed in ipairs(ed.entries) do
@@ -227,11 +240,12 @@ function refresh(ed)
 	ed.entries = nil
 end
 
-
+local render_details
 do
-	local function peval(o)
-		local func = load("return " .. o.tostring)
+	local function peval(text)
+		local func = load("return " .. text)
 		if not func then return nil end
+		setfenv(func,_G)
 		local status, value = pcall(func)
 		if not status then return nil end
 		return value
@@ -274,7 +288,7 @@ do
 					else
 						if dd.mode ~= 3 then
 							-- not iterable
-							local value = sd.rvalue_type == nil and sd.data or sd.data.lua_value
+							local value = sd.rvalue_type == nil and sd.data
 							ImGui.Text("")
 							ImGui.SameLine()
 							ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFFFF20)
@@ -306,6 +320,45 @@ do
 								ImGui.SameLine()
 								ImGui.Text(tostring(sd.rvalue_type or sd.data))
 								ImGui.PopStyleColor()
+								if sd.data_type == "function" then
+									ImGui.SameLine()
+									ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
+									ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
+									ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
+									ImGui.Text("(")
+									ImGui.SameLine()
+									ImGui.PushItemWidth(ImGui.GetContentRegionAvail() - ImGui.CalcTextSize('(|)'))
+									local text, enter_pressed = ImGui.InputText("##Text" .. id, dd.texts[id] or '', 65535, ImGuiInputTextFlags.EnterReturnsTrue)
+									local tooltip = dd.tooltips[id]
+									if tooltip and ImGui.IsItemHovered() then
+										ImGui.PushStyleColor(ImGuiCol.Text, tooltip.color)
+										ImGui.SetTooltip(tooltip.message);
+										ImGui.PopStyleColor()
+									end
+									ImGui.PopItemWidth()
+									ImGui.SameLine()
+									ImGui.Text(")")
+									ImGui.PopStyleColor()
+									ImGui.PopStyleColor()
+									ImGui.PopStyleVar()
+									if enter_pressed then
+										local result = table.pack(pcall(sd.data, peval(text)))
+										if result.n > 1 then
+											local color, message
+											if result[1] then
+												color = 0xFFFFFF20
+												message = tostring_vararg(table.unpack(result, 2, result.n))
+											else 
+												color = 0xFF2020FF
+												message = result[2]
+											end
+											dd.tooltips[id] = { message = message, color = color }
+										end
+										dd.texts[id] = nil
+									else
+										dd.texts[id] = text
+									end
+								end
 							end
 						end
 					end
@@ -320,7 +373,7 @@ do
 	end
 end
 
-function render_tree(ed,filter,bid,ids)
+local function render_tree(ed,filter,bid,ids)
 	local root = ids == nil
 	ids = (ids and (ids .. '.') or '') .. ed.index
 	local show = ed.path ~= "root"
@@ -382,16 +435,16 @@ function render_tree(ed,filter,bid,ids)
 	end
 end
 
-local framePeriod = 60
-local frameCounter = 0
+local frame_period = 60
+local frame_counter = 0
 
-function imgui_on_render()
+local function imgui_on_render()
 	local should_refresh = false
-	if frameCounter >= framePeriod then
-		frameCounter = 0
+	if frame_counter >= frame_period then
+		frame_counter = 0
 		should_refresh = true
 	end
-	frameCounter = frameCounter + 1
+	frame_counter = frame_counter + 1
 	for bid,bd in pairs(browsers) do
 		if ImGui.Begin("Object Browser##" .. bid, true) then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
@@ -468,10 +521,10 @@ function imgui_on_render()
 			ImGui.PopStyleColor()
 			ImGui.PopStyleVar()
 			ImGui.PopItemWidth()
-			ImGui.PushStyleColor(ImGuiCol.Button, detail_modes[dd.mode])
+			ImGui.PushStyleColor(ImGuiCol.Button, detail_filters[dd.mode])
 			ImGui.SameLine()
 			if ImGui.Button("    ##Swap" .. did) then
-				dd.mode = dd.mode%#detail_modes + 1
+				dd.mode = dd.mode%#detail_filters + 1
 			end
 			ImGui.PopStyleColor()
 			if enter_pressed then
