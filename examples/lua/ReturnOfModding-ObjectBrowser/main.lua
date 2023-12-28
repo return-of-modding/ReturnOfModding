@@ -391,22 +391,25 @@ function imgui_on_render()
 	end
 	frameCounter = frameCounter + 1
 	for bid,bd in pairs(browsers) do
-		if bid == 1 and ImGui.Begin("Object Browser") or ImGui.Begin("Object Browser (" .. (bd.path or "???") .. ")##" .. bid, true) then
+		if ImGui.Begin("Object Browser##" .. bid, true) then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
-			local num, y_max, x_total, x_pad = calculate_text_sizes('|')
+			local num, y_max, x_total, x_filter = calculate_text_sizes('Filter: ')
 			local x,y = ImGui.GetContentRegionAvail()
 			-- height of InputText == font_size + frame_padding.y
 			-- and we're going to change frame_padding.y temporarily later on
 			-- such that InputText's height == max y
-			local y_input = y_max - ImGui.GetFontSize() - frame_padding_y 
-			local x_input = x --- x_total - item_spacing_x*num
+			local x_input = x - x_total - item_spacing_x*num
 			local y_box = y - y_max - item_spacing_y
 			local x_box = x
+			ImGui.Text("Filter: ")
+			ImGui.SameLine()
 			ImGui.PushItemWidth(x_input)
-			ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, frame_padding_x, y_input)
+			ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
+			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			local enter_pressed
 			bd.text, enter_pressed = ImGui.InputText("##Text" .. bid, bd.text, 65535, ImGuiInputTextFlags.EnterReturnsTrue)
+			ImGui.PopStyleColor()
 			ImGui.PopStyleVar()
 			ImGui.PopItemWidth()
 			if enter_pressed then
@@ -414,6 +417,17 @@ function imgui_on_render()
 			end
 			if should_refresh then
 				refresh(bd)
+			end
+			if bid ~= 1 then
+				local path = bd.path or "???"
+				y_box = y_box - y_max - item_spacing_y
+				ImGui.Text("Path: ")
+				ImGui.SameLine()
+				ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
+				ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
+				ImGui.InputText("##Path" .. bid, path, #path, ImGuiInputTextFlags.ReadOnly)
+				ImGui.PopStyleColor()
+				ImGui.PopStyleVar()
 			end
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			if ImGui.BeginListBox("##Box" .. bid,x_box,y_box) then
@@ -430,10 +444,10 @@ function imgui_on_render()
 		ImGui.End()
 	end
 	for did,dd in pairs(details) do
-		if ImGui.Begin("Object Details (" .. (dd.path or "???") .. ")##" .. did, true) then
+		if ImGui.Begin("Object Details##" .. did, true) then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
-			local num, y_max, x_total, x_swap = calculate_text_sizes('    ')
+			local num, y_max, x_total, x_swap, x_filter = calculate_text_sizes('    ','Filter: ')
 			local x,y = ImGui.GetContentRegionAvail()
 			-- height of InputText == font_size + frame_padding.y
 			-- and we're going to change frame_padding.y temporarily later on
@@ -442,10 +456,14 @@ function imgui_on_render()
 			local x_input = x - x_total - item_spacing_x*num
 			local y_box = y - y_max - item_spacing_y
 			local x_box = x
+			ImGui.Text("Filter: ")
+			ImGui.SameLine()
 			ImGui.PushItemWidth(x_input)
-			ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, frame_padding_x, y_input)
+			ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
+			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			local enter_pressed
 			dd.text, enter_pressed = ImGui.InputText("##Text" .. did, dd.text, 65535, ImGuiInputTextFlags.EnterReturnsTrue)
+			ImGui.PopStyleColor()
 			ImGui.PopStyleVar()
 			ImGui.PopItemWidth()
 			ImGui.PushStyleColor(ImGuiCol.Button, detail_modes[dd.mode])
@@ -459,6 +477,17 @@ function imgui_on_render()
 			end
 			if should_refresh then
 				refresh(dd)
+			end
+			do
+				local path = dd.path or "???"
+				y_box = y_box - y_max - item_spacing_y
+				ImGui.Text("Path: ")
+				ImGui.SameLine()
+				ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
+				ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
+				ImGui.InputText("##Path" .. did, path, #path, ImGuiInputTextFlags.ReadOnly)
+				ImGui.PopStyleColor()
+				ImGui.PopStyleVar()
 			end
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			if ImGui.BeginListBox("##Box" .. did,x_box,y_box) then

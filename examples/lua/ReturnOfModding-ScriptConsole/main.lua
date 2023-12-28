@@ -434,7 +434,7 @@ do
 end
 
 function imgui_on_render()
-	if ImGui.Begin("Script Console") then
+	if ImGui.Begin("Script Console", true, ImGuiWindowFlags.NoTitleBar) then
 		if ImGui.BeginTabBar("Mode",ImGuiTabBarFlags.Reorderable) then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
