@@ -14,7 +14,7 @@ static RValue parse_sol_object(sol::object arg)
 		return RValue(arg.as<std::string>());
 	else if (arg.get_type() == sol::type::boolean)
 		return RValue(arg.as<bool>());
-	else if (arg.get_type() == sol::type::userdata)
+	else if (arg.is<RValue>())
 		return arg.as<RValue>();
 
 	return {};
