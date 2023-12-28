@@ -87,6 +87,7 @@ end
 function entrify(k,v)
 	local data_type = type(v)
 	local rvalue_type = nil
+	local object_type = nil
 	local loop_type = nil
 	local info = nil
 	if data_type == "table" then
@@ -98,7 +99,9 @@ function entrify(k,v)
 	elseif data_type == "userdata" then
 		rvalue_type = get(v,"type_name")
 		if rvalue_type == "OBJECT" then
-			info = rvalue_type
+			v = v.object
+			object_type = get(v,"type_name")
+			info = object_type
 			loop_type = pairs
 		elseif rvalue_type == "ARRAY" then
 			local n = math.floor(gm.array_length(v).value)
@@ -126,7 +129,8 @@ function entrify(k,v)
 		key = k,
 		loop_type = loop_type,
 		data_type = data_type,
-		rvalue_type = rvalue_type
+		rvalue_type = rvalue_type,
+		object_type = object_type
 	}
 end
 

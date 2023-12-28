@@ -300,7 +300,7 @@ if _G.proxy == nil then -- don't do this on refresh
 	end
 	
 	local function getobject(o)
-		return gm.struct_get_from_hash(gm.variable_get_hash(o))
+		return o.object
 	end
 
 	rvalue_marshallers = {
@@ -753,6 +753,7 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 		local gm_container_t = gm_container.array[1]
 		if not gm_container_t then return false end
 		local gm_rvalue = gm.variable_global_get("mouse_x")
+		local gm_object = gm.variable_global_get("init_player").object
 
 		local imgui_style = ImGui.GetStyle() -- sol.ImGuiStyle*
 		local imgui_vector = imgui_style["WindowPadding"] -- sol.ImVec2*
@@ -761,25 +762,32 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 
 		endow_with_pairs_and_next(gm_instance_list)
 		endow_with_pairs_and_next(gm_instance)
+		endow_with_pairs_and_next(gm_object)
 		endow_with_pairs_and_next(gm_container_t)
 		endow_with_pairs_and_next(gm_rvalue)
 		endow_with_pairs_and_next(RValueType)
+		endow_with_pairs_and_next(YYObjectBaseType)
 
 		local rvalue_lookup = util.build_lookup(RValueType)
-		local get_type_name = function(s) return rvalue_lookup[s.type] end
+		local object_lookup = util.build_lookup(YYObjectBaseType)
+		local get_rvalue_type_name = function(s) return rvalue_lookup[s.type] end
+		local get_object_type_name = function(s) return object_lookup[s.type] end
 		
 		endow_with_new_properties(gm_rvalue,{
-			type_name = get_type_name,
+			type_name = get_rvalue_type_name,
 			lua_value = rvalue_marshall,
 			struct = proxy.struct
 		})
 		endow_with_new_properties(gm_container_t,{
-			type_name = get_type_name,
+			type_name = get_rvalue_type_name,
 			lua_value = rvalue_marshall,
 			struct = proxy.struct
 		})
 		endow_with_new_properties(gm_instance,{
 			variables = proxy.variables
+		})
+		endow_with_new_properties(gm_object,{
+			type_name = get_object_type_name
 		})
 
 		if ImGui.GetStyleVar == nil then
