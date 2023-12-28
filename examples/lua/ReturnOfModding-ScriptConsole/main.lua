@@ -483,8 +483,8 @@ function imgui_on_render()
 					if ImGui.BeginListBox("##Box" .. ms,x,box_y) then
 						ImGui.PopStyleColor()
 						for li,ls in ipairs(md.lines_shown) do
-							local _, y = ImGui.CalcTextSize(ls)
-							md.lines_selected[li] = ImGui.Selectable("##Select" .. ms .. tostring(li), md.lines_selected[li] or false, ImGuiSelectableFlags.AllowDoubleClick, 0, y)
+							local tall = select(2,ImGui.CalcTextSize(ls, false, x-frame_padding_x*2-item_spacing_x))
+							md.lines_selected[li] = ImGui.Selectable("##Select" .. ms .. tostring(li), md.lines_selected[li] or false, ImGuiSelectableFlags.AllowDoubleClick, 0, tall)
 							if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Right) then
 								local selected = not md.lines_selected[li]
 								for oli in ipairs(md.lines_selected) do
