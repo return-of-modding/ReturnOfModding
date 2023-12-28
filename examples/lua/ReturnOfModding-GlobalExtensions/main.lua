@@ -343,74 +343,94 @@ if _G.proxy == nil then -- don't do this on refresh
 		return rvalue.tostring
 	end
 
-	local instance_variables_id_register = setmetatable({},{__mode = "k"})
-	local instance_variables_proxy_register = setmetatable({},{__mode = "v"})
-
-	local instance_variables_proxy_meta = {
-		__names = function(s,k)
-			local id = instance_variables_id_register[s]
-			local names = gm.variable_instance_get_names(id)
+	local function define_proxy_meta(get_names,exists,get,set,id_register)
+		local _get_names = function(s)
+			local id = id_register[s]
+			local names = get_names(id)
 			if names.type ~= RValueType.ARRAY then return nil end
 			return names.array
-		end,
-		__index = function(s,k)
-			if type(k) == number then
-				local names = getmetatable(s).__names(s)
-				if not names then return nil end
-				k = names[k]
-				if k == nil then return nil end
-				k = k.tostring
-				return s[k]
-			end
-			local id = instance_variables_id_register[s]
-			return rvalue_marshall_get(gm.variable_instance_get(id,k))
-		end,
-		__newindex = function(s,k,v)
-			if type(k) == number then
-				local names = getmetatable(s).__names(s)
-				if not names then return end
-				k = names[k]
-				if k == nil then return end
-				k = k.tostring
-				s[k] = v
-				return
-			end
-			local id = instance_variables_id_register[s]
-			return gm.variable_instance_set(id,k,rvalue_marshall_set(v))
-		end,
-		__len = function(s)
-			local names = getmetatable(s).__names(s)
-			if not names then return 0 end
-			return #names
-		end,
-		__next = function(s,k)
-			local names = getmetatable(s).__names(s)
-			if not names then return nil end
-			local i = k
-			if type(k) ~= "number" then
-				i = k and util.perform_lookup(names,k,get_name) or 0
-			end
-			k = names[i+1]
-			if k == nil then return nil end
-			k = k.tostring
-			return k, rvalue_marshall_get(gm.variable_instance_get(id,k))
-		end,
-		__pairs = function(s,k)
-			local names = getmetatable(s).__names(s)
-			if not names then return null end
-			local names_lookup = util.build_lookup(names,get_name)
-			return function(_,k)
-				local i = k
-				if type(k) ~= "number" then
-					i = k and names_lookup[k] or 0
+		end
+		return {
+			__index = function(s,k)
+				if type(k) == "number" then
+					local names = _get_names(s)
+					if not names then return nil end
+					k = names[k]
+					if k == nil then return nil end
+					k = k.tostring
+					return s[k]
 				end
+				if not exists(id,k).lua_value then return nil end
+				local id = id_register[s]
+				return rvalue_marshall_get(get(id,k))
+			end,
+			__newindex = function(s,k,v)
+				local names = _get_names(s)
+				if not names then return end
+				if type(k) == "number" then
+					k = names[k]
+					if k == nil then return end
+					k = k.tostring
+					s[k] = v
+					return
+				end
+				if not exists(id,k).lua_value then return end
+				local id = id_register[s]
+				return set(id,k,rvalue_marshall_set(v))
+			end,
+			__len = function(s)
+				local names = _get_names(s)
+				if not names then return 0 end
+				return #names
+			end,
+			__next = function(s,k)
+				local names = _get_names(s)
+				if not names then return nil end
+				local i
+				if k == nil then
+					i = 0
+				elseif type(k) ~= "number" then
+					i = util.perform_lookup(names,k,get_name)
+				end
+				if i == nil then return nil end
 				k = names[i+1]
 				if k == nil then return nil end
 				k = k.tostring
-				return k, rvalue_marshall_get(gm.variable_instance_get(id,k))
-			end,s,k
-		end
-	}
+				local id = id_register[s]
+				return k, rvalue_marshall_get(get(id,k))
+			end,
+			__pairs = function(s,k)
+				local names = _get_names(s)
+				if not names then return null end
+				local names_lookup = util.build_lookup(names,get_name)
+				local id = id_register[s]
+				return function(_,k)
+					local i
+					if k == nil then
+						i = 0
+					elseif type(k) ~= "number" then
+						i = names_lookup[k]
+					end
+					if i == nil then return nil end
+					k = names[i+1]
+					if k == nil then return nil end
+					k = k.tostring
+					return k, rvalue_marshall_get(get(id,k))
+				end,s,k
+			end
+		}
+	end
+
+	local instance_variables_id_register = setmetatable({},{__mode = "k"})
+	local instance_variables_proxy_register = setmetatable({},{__mode = "v"})
+
+	local instance_variables_proxy_meta = define_proxy_meta(
+		gm.variable_instance_get_names,
+		gm.variable_instance_exists,
+		gm.variable_instance_get,
+		gm.variable_instance_set,
+		instance_variables_id_register
+	)
 
 	function proxy.variables(id)
 		local meta = getmetatable(id)
@@ -427,71 +447,13 @@ if _G.proxy == nil then -- don't do this on refresh
 	local struct_id_register = setmetatable({},{__mode = "k"})
 	local struct_proxy_register = setmetatable({},{__mode = "v"})
 
-	local struct_proxy_meta = {
-		__names = function(s)
-			local id = struct_id_register[s]
-			local names = gm.struct_get_names(id)
-			if names.type ~= RValueType.ARRAY then return nil end
-			return names.array
-		end,
-		__index = function(s,k)
-			if type(k) == number then
-				local names = getmetatable(s).__names(s)
-				if not names then return nil end
-				k = names[k]
-				if k == nil then return nil end
-				k = k.tostring
-				return s[k]
-			end
-			local id = struct_id_register[s]
-			return rvalue_marshall_get(gm.struct_get(id,k))
-		end,
-		__newindex = function(s,k,v)
-			if type(k) == number then
-				local names = getmetatable(s).__names(s)
-				if not names then return end
-				k = names[k]
-				if k == nil then return end
-				k = k.tostring
-				s[k] = v
-				return
-			end
-			local id = struct_id_register[s]
-			return gm.struct_set(id,k,rvalue_marshall_set(v))
-		end,
-		__len = function(s)
-			local names = getmetatable(s).__names(s)
-			if not names then return 0 end
-			return #names
-		end,
-		__next = function(s,k)
-			local names = getmetatable(s).__names(s)
-			if not names then return nil end
-			local i = k
-			if type(k) ~= "number" then
-				i = k and util.perform_lookup(names,k,get_name) or 0
-			end
-			k = names[i+1]
-			if k == nil then return nil end
-			k = k.tostring
-			return k, rvalue_marshall_get(gm.struct_get(id,k))
-		end,
-		__pairs = function(s,k)
-			local names = getmetatable(s).__names(s)
-			if not names then return null end
-			local names_lookup = util.build_lookup(names,get_name)
-			return function(_,k)
-				local i = k
-				if type(k) ~= "number" then
-					i = k and names_lookup[k] or 0
-				end
-				k = names[i+1]
-				if k == nil then return nil end
-				k = k.tostring
-				return k, rvalue_marshall_get(gm.struct_get(id,k))
-			end,s,k
-		end
-	}
+	local struct_proxy_meta = define_proxy_meta(
+		gm.struct_get_names,
+		gm.struct_exists,
+		gm.struct_get,
+		gm.struct_set,
+		struct_id_register
+	)
 
 	proxy.struct = setmetatable({},{
 		__call = function(_,id)
@@ -507,71 +469,13 @@ if _G.proxy == nil then -- don't do this on refresh
 	local struct_variables_id_register = setmetatable({},{__mode = "k"})
 	local struct_variables_proxy_register = setmetatable({},{__mode = "v"})
 
-	local struct_variables_proxy_meta = {
-		__names = function(s)
-			local id = struct_variables_id_register[s]
-			local names = gm.variable_struct_get_names(id)
-			if names.type ~= RValueType.ARRAY then return nil end
-			return names.array
-		end,
-		__index = function(s,k)
-			if type(k) == number then
-				local names = getmetatable(s).__names(s)
-				if not names then return nil end
-				k = names[k]
-				if k == nil then return nil end
-				k = k.tostring
-				return s[k]
-			end
-			local id = struct_variables_id_register[s]
-			return rvalue_marshall_get(gm.variable_struct_get(id,k))
-		end,
-		__newindex = function(s,k,v)
-			if type(k) == number then
-				local names = getmetatable(s).__names(s)
-				if not names then return end
-				k = names[k]
-				if k == nil then return end
-				k = k.tostring
-				s[k] = v
-				return
-			end
-			local id = struct_variables_id_register[s]
-			return gm.variable_struct_set(id,k,rvalue_marshall_set(v))
-		end,
-		__len = function(s)
-			local names = getmetatable(s).__names(s)
-			if not names then return 0 end
-			return #names
-		end,
-		__next = function(s,k)
-			local names = getmetatable(s).__names(s)
-			if not names then return nil end
-			local i = k
-			if type(k) ~= "number" then
-				i = k and util.perform_lookup(names,k,get_name) or 0
-			end
-			k = names[i+1]
-			if k == nil then return nil end
-			k = k.tostring
-			return k, rvalue_marshall_get(gm.variable_struct_get(id,k))
-		end,
-		__pairs = function(s,k)
-			local names = getmetatable(s).__names(s)
-			if not names then return null end
-			local names_lookup = util.build_lookup(names,get_name)
-			return function(_,k)
-				local i = k
-				if type(k) ~= "number" then
-					i = k and names_lookup[k] or 0
-				end
-				k = names[i+1]
-				if k == nil then return nil end
-				k = k.tostring
-				return k, rvalue_marshall_get(gm.variable_struct_get(id,k))
-			end,s,k
-		end
-	}
+	local struct_variables_proxy_meta = define_proxy_meta(
+		gm.variable_struct_get_names,
+		gm.variable_struct_exists,
+		gm.variable_struct_get,
+		gm.variable_struct_set,
+		struct_variables_id_register
+	)
 
 	function proxy.struct.variables(id)
 		local proxy = struct_variables_proxy_register[id]
@@ -582,68 +486,13 @@ if _G.proxy == nil then -- don't do this on refresh
 		return proxy
 	end
 
-	local global_variables_proxy_meta = {
-		__names = function(s)
-			local names = gm.variable_instance_get_names(EVariableType.GLOBAL)
-			if names.type ~= RValueType.ARRAY then return nil end
-			return names.array
-		end,
-		__index = function(s,k)
-			if type(k) == "number" then
-				local names = getmetatable(s).__names(s)
-				if not names then return nil end
-				k = names[k]
-				if k == nil then return nil end
-				k = k.tostring
-				return s[k]
-			end
-			return rvalue_marshall_get(gm.variable_global_get(k))
-		end,
-		__newindex = function(s,k,v)
-			if type(k) == "number" then
-				local names = getmetatable(s).__names(s)
-				if not names then return end
-				k = names[k]
-				if k == nil then return end
-				k = k.tostring
-				s[k] = v
-				return
-			end
-			return gm.variable_global_set(k,rvalue_marshall_set(v))
-		end,
-		__len = function(s)
-			local names = getmetatable(s).__names(s)
-			if not names then return 0 end
-			return #names
-		end,
-		__next = function(s,k)
-			local names = getmetatable(s).__names(s)
-			if not names then return nil end
-			local i = k
-			if type(k) ~= "number" then
-				i = k and util.perform_lookup(names,k,get_name) or 0
-			end
-			k = names[i+1]
-			if k == nil then return nil end
-			k = k.tostring
-			return k, s[k]
-		end,
-		__pairs = function(s,k)
-			local names = getmetatable(s).__names(s)
-			if not names then return null end
-			local names_lookup = util.build_lookup(names,get_name)
-			return function(_,k)
-				local i = k
-				if type(k) ~= "number" then
-					i = k and names_lookup[k] or 0
-				end
-				k = names[i+1]
-				if k == nil then return nil end
-				k = k.tostring
-				return k, s[k]
-			end,s,k
-		end
-	}
+	local global_variables_proxy_meta = define_proxy_meta(
+		function() return gm.variable_instance_get_names(EVariableType.GLOBAL) end,
+		function(_,k) return gm.variable_global_exists(k) end,
+		function(_,k) return gm.variable_global_get(k) end,
+		function(_,k,v) return gm.variable_global_set(k,v) end,
+		{}
+	)
 
 	proxy.globals = setmetatable({},global_variables_proxy_meta)
 
@@ -662,8 +511,11 @@ if _G.proxy == nil then -- don't do this on refresh
 		constants_proxy_meta[t] = {
 			__index = function(s,k)
 				if type(k) == 'number' then
-					return get_asset(v[k],t)
+					local a = v[k]
+					if a == nil then return nil end
+					return get_asset(a,t)
 				end
+				if constants_lookup[t][k] == nil then return nil end
 				return get_asset(k,t)
 			end,
 			__newindex = function(s,k,v)
