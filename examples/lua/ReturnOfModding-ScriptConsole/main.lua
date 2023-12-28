@@ -12,10 +12,13 @@ function find_instance(name)
 end
 
 local _repl_globals = {}
-util.merge(_repl_globals,_G)
-util.merge(_repl_globals,_ENV)
-util.merge(_repl_globals,util)
-util.merge(_repl_globals,proxy)
+util.merge(_repl_globals,_G,_ENV,util,proxy)
+
+-- assume we load later than ObjectBrowser due to alphabetical order
+-- (optional dependency)
+local browser = mods['ReturnOfModding-ObjectBrowser']
+_repl_globals.root = root or browser and browser.root
+
 repl_globals = _repl_globals
 repl_environment = setmetatable({},{
 	__index = repl_globals,

@@ -52,16 +52,16 @@ function create_details(entry)
 	})
 end
 
-function root_entries()
-	return { path = 'root', name = 'root',
-		data = function()
-			return {
-				entrify("globals",proxy.globals),
-				entrify("instances_all",gm.CInstance.instances_all),
-				entrify("instances_active",gm.CInstance.instances_active)
-			}
-		end
+root = {
+	globals = proxy.globals,
+	instances = {
+		all = gm.CInstance.instances_all,
+		active = gm.CInstance.instances_active
 	}
+}
+
+function root_entries()
+	return { path = 'root', name = 'root', data = root, loop_type = pairs}
 end
 
 do
@@ -89,6 +89,7 @@ function entrify(k,v)
 	local rvalue_type = nil
 	local object_type = nil
 	local loop_type = nil
+	local keys = nil
 	local info = nil
 	if data_type == "table" then
 		loop_type = pairs
@@ -103,11 +104,13 @@ function entrify(k,v)
 			object_type = get(v,"type_name")
 			info = object_type
 			loop_type = pairs
+			keys = {k,'object'}
 		elseif rvalue_type == "ARRAY" then
 			local n = math.floor(gm.array_length(v).value)
 			v = v.array
 			info = rvalue_type .. "[" .. n .. "]"
 			loop_type = ipairs
+			keys = {k,'array'}
 		elseif rvalue_type == nil then
 			if tostring(v):match('<') then
 				loop_type = ipairs
@@ -117,6 +120,9 @@ function entrify(k,v)
 			elseif getmetatable(v).__next then
 				loop_type = pairs
 				info = getmetatable(v).__name or data_type
+				if info:match("CInstance") then
+					info = v.object_name .." (" .. v.object_index .. " @ " .. v.id .. ")"
+				end
 				local n = len(v)
 				if n then info = info .. "[" .. n .. "]" end
 			end
@@ -126,7 +132,7 @@ function entrify(k,v)
 		name = tostring(k),
 		info = info,
 		data = v,
-		key = k,
+		keys = keys or {k},
 		loop_type = loop_type,
 		data_type = data_type,
 		rvalue_type = rvalue_type,
@@ -162,8 +168,7 @@ local function tostring_literal(value)
 	return tostring(value)
 end
 
-local function path_part(ed)
-	local key = ed.key
+local function path_part_key(key)
 	if type(key) == "string" then
 		if excludedFieldNames[key] or not key:match("^[_%a][_%w]*$") then
 			return '[' .. tostring_literal(key) .. ']' 
@@ -173,7 +178,16 @@ local function path_part(ed)
 	if type(key) == "number" then
 		return '[' .. key .. ']' 
 	end
-	return "<" .. ed.name .. ">"
+end
+
+local function path_part(ed)
+	local path = ''
+	for _, key in ipairs(ed.keys) do
+		local part = path_part_key(key)
+		if part == nil then return "<" .. ed.name .. ">" end
+		path = path .. part
+	end
+	return path
 end
 
 function unfold(ed)
@@ -366,12 +380,12 @@ function render_tree(ed,filter,bid,ids)
 	end
 end
 
-local frameCounter = 0
 local framePeriod = 60
+local frameCounter = 0
 
 function imgui_on_render()
 	local should_refresh = false
-	if frameCounter > framePeriod then
+	if frameCounter >= framePeriod then
 		frameCounter = 0
 		should_refresh = true
 	end
