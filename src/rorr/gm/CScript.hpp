@@ -8,7 +8,7 @@ struct CStream
 	void* internal_buffer;
 };
 
-struct __declspec(align(4)) CScript
+struct CScript
 {
 	void** pVMT;
 	CStream* s_text;
@@ -17,10 +17,10 @@ struct __declspec(align(4)) CScript
 	CInstance* s_pStaticObject;
 
 	union {
-		const char* s_script;
+		const char* m_script_name; // example: gml_Script_init_player
 		int s_compiledIndex;
 	};
 
-	const char* s_name;
-	int s_offset;
+	const char* m_name;
+	int m_offset;
 };
