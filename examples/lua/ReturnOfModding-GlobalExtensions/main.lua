@@ -265,7 +265,7 @@ if util == nil then -- don't run this on refresh
 	end
 end
 
-local rvalue_marshall
+local rvalue_marshall, get_script_call
 if _G.proxy == nil then -- don't do this on refresh
 
 	-- GLOBAL PROXY EXTENSIONS
@@ -533,9 +533,20 @@ if _G.proxy == nil then -- don't do this on refresh
 
 	proxy.globals = setmetatable({},global_variables_proxy_meta)
 
+	local script_call_register = setmetatable({},{__mode="v"})
+
+	function get_script_call(name)
+		local call = script_call_register[name]
+		if call then return call end
+		call = function(...) return rvalue_marshall(gm.call(name,...)) end
+		script_call_register[name] = call
+		return call
+	end
+
 	local function get_asset(asset_name,asset_type)
-		if asset_type == 'script' then return gm[asset_name] end
-		--return gm.asset_get_index(asset_name)
+		if asset_type == 'script' or asset_type == "gml_script" then
+			return get_script_call(asset_name)
+		end
 		return gm.constants[asset_name]
 	end
 
@@ -700,6 +711,17 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 		local get_rvalue_type_name = function(s) return rvalue_lookup[s.type] end
 		local get_object_type_name = function(s) return object_lookup[s.type] end
 		
+		local script_prefix = "gml_Script_"
+		local script_prefix_index = #script_prefix+1
+		local get_object_script_call = function(s)
+			if s.type == YYObjectBaseType.SCRIPTREF then
+				local k = s.script_name
+				if not k then return nil end
+				k = k:sub(script_prefix_index)
+				return get_script_call(k)
+			end
+		end
+		
 		endow_with_new_properties(getmetatable(gm_rvalue),{
 			type_name = get_rvalue_type_name,
 			lua_value = rvalue_marshall,
@@ -714,7 +736,8 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 			variables = proxy.variables
 		})
 		endow_with_new_properties(getmetatable(gm_object),{
-			type_name = get_object_type_name
+			type_name = get_object_type_name,
+			call = get_object_script_call
 		})
 	end
 
