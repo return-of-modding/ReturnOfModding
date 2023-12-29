@@ -188,6 +188,20 @@ if inext == nil then -- don't run this on refresh
 
 end
 
+if hardcoded == nil then -- don't run this on refresh
+
+	_G.hardcoded = hardcoded or require("./hardcoded")
+	hardcoded.enum = {}
+	for k,v in pairs(hardcoded.array) do
+		local enum = {}
+		hardcoded.enum[k] = enum
+		for i,w in pairs(v) do
+			enum[w.name] = w.value or i
+		end
+	end
+
+end
+
 if util == nil then -- don't run this on refresh
 
 	-- GLOBAL UTILITY EXTENSIONS
@@ -534,6 +548,7 @@ if _G.proxy == nil then -- don't do this on refresh
 	proxy.globals = setmetatable({},global_variables_proxy_meta)
 
 	local script_call_register = setmetatable({},{__mode="v"})
+	local asset_register = setmetatable({},{__mode="v"})
 
 	function get_script_call(name)
 		local call = script_call_register[name]
@@ -544,10 +559,14 @@ if _G.proxy == nil then -- don't do this on refresh
 	end
 
 	local function get_asset(asset_name,asset_type)
-		if asset_type == 'script' or asset_type == "gml_script" then
-			return get_script_call(asset_name)
+		local wrap = asset_register[asset_name]
+		if wrap then return wrap end
+		wrap = { index = gm.constants[asset_name] }
+		asset_register[asset_name] = wrap
+		if asset_type == "script" or asset_type == "gml_script" then
+			wrap.call = get_script_call(asset_name)
 		end
-		return gm.constants[asset_name]
+		return wrap
 	end
 
 	proxy.constants = {}
