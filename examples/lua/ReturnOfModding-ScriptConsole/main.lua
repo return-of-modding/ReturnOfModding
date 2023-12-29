@@ -58,7 +58,7 @@ console.log = {
 			debug = "",
 			shown = ""
 		},
-		logger = log.error,
+		logger = false,--log.error,
 		color = 0xFF2020EE,
 	},
 	info = {
