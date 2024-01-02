@@ -26051,4 +26051,56 @@ return {
 		
 	},
 	
+	callback = {
+
+		-- callback_execute is called with (cb_id, args...) so if you can hook it, you can inject code to any of the game's own callbacks
+		-- internally registered callbacks
+		-- no guarantee all of these actually fire
+		onLoad = {},
+		postLoad = {},
+		onStep = {},
+		preStep = {},
+		postStep = {},
+		onDraw = {},
+		preHUDDraw = {},
+		onHUDDraw = {},
+		postHUDDraw = {},
+		camera_onViewCameraUpdate = {},
+		onScreenRefresh = {},
+		onGameStart = {},
+		onGameEnd = {},
+		onStageStart = {},
+		onDirectorPopulateSpawnArrays = {},
+		onSecond = {[=[LT_NUMBER]=],[=[LT_NUMBER]=]},
+		onMinute = {[=[LT_NUMBER]=],[=[LT_NUMBER]=]},
+		onAttackCreate = {[=["AttackInfo"]=]},
+		onAttackHandleEnd = {[=["AttackInfo"]=]},
+		onAttackHandleStart = {[=["AttackInfo"]=]},
+		onAttackHit = {[=["HitInfo"]=]},
+		onEnemyInit = {[=[LT_INSTANCE_ACTOR]=]},
+		onEliteInit = {[=[LT_INSTANCE_ACTOR]=]},
+		onDeath = {[=[LT_INSTANCE_ACTOR]=],[=[LT_BOOL]=]},
+		onPlayerInit = {[=[LT_INSTANCE_PLAYER]=]},
+		onPlayerStep = {[=[LT_INSTANCE_PLAYER]=]},
+		prePlayerHUDDraw = {[=[LT_INSTANCE_PLAYER]=],[=[LT_NUMBER]=],[=[LT_NUMBER]=]},
+		onPlayerHUDDraw = {[=[LT_INSTANCE_PLAYER]=],[=[LT_NUMBER]=],[=[LT_NUMBER]=]},
+		onPlayerInventoryUpdate = {[=[LT_INSTANCE_PLAYER]=]},
+		onPlayerDeath = {[=[LT_INSTANCE_PLAYER]=]},
+		onCheckpointRespawn = {[=[LT_INSTANCE_PLAYER]=]},
+		onInputPlayerDeviceUpdate = {[=[LT_NUMBER]=]},
+		onPickupCollected = {[=[LT_INSTANCE_PICKUP]=],[=[LT_INSTANCE_PLAYER]=]},
+		onPickupRoll = {[=["Pickup"]=]},
+		onEquipmentUse = {[=[LT_INSTANCE_PLAYER]=],[=["Equipment"]=],[=[LT_BOOL]=],[=[LT_NUMBER]=]},
+		postEquipmentUse = {[=[LT_INSTANCE_PLAYER]=],[=["Equipment"]=],[=[LT_BOOL]=],[=[LT_NUMBER]=]},
+		onDamageBlocked = {[=[LT_INSTANCE_PLAYER]=],[=["DamageBlockType"]=],[=[LT_NUMBER]=]},
+		onInteractableActivate = {[=[LT_INSTANCE_INTERACTABLE]=],[=[LT_INSTANCE_PLAYER]=]},
+		onHitProc = {[=[LT_INSTANCE_ACTOR]=],[=[LT_INSTANCE_ACTOR]=],[=["HitInfo"]=]},
+		onDamagedProc = {[=[LT_INSTANCE_ACTOR]=],[=["HitInfo"]=]},
+		onKillProc = {[=[LT_INSTANCE_ACTOR]=],[=[LT_INSTANCE_ACTOR]=]},
+		-- packet id, read buffer, buffer data pos, sending player
+		net_message_onReceived = {[=[LT_NUMBER]=],[=["Buffer"]=],[=[LT_NUMBER]=],[=[LT_INSTANCE_PLAYER]=]},
+		-- command text
+		console_onCommand = {[=[LT_STRING]=]},
+		
+	}
 }
