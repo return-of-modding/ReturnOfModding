@@ -329,16 +329,6 @@ if _G.proxy == nil then -- don't do this on refresh
 		if m == nil then return nil end
 		return m(rvalue)
 	end
-	
-	local function rvalue_marshall_get(rvalue)
-		--in case some massaging is needed
-		return rvalue
-	end
-	
-	local function rvalue_marshall_set(rvalue)
-		--in case some massaging is needed
-		return rvalue
-	end
 
 	local function get_name(rvalue)
 		return rvalue.tostring
@@ -360,11 +350,11 @@ if _G.proxy == nil then -- don't do this on refresh
 					if k == nil then return nil end
 					k = k.tostring
 					local id = id_register[s]
-					return rvalue_marshall_get(get(id,k))
+					return (get(id,k))
 				end
 				local id = id_register[s]
 				if not exists(id,k).lua_value then return nil end
-				return rvalue_marshall_get(get(id,k))
+				return (get(id,k))
 			end,
 			__newindex = function(s,k,v)
 				local names = _get_names(s)
@@ -374,11 +364,11 @@ if _G.proxy == nil then -- don't do this on refresh
 					if k == nil then return end
 					k = k.tostring
 					local id = id_register[s]
-					return set(id,k,rvalue_marshall_set(v))
+					return set(id,k,(v))
 				end
 				local id = id_register[s]
 				if not exists(id,k).lua_value then return end
-				return set(id,k,rvalue_marshall_set(v))
+				return set(id,k,(v))
 			end,
 			__len = function(s)
 				local names = _get_names(s)
@@ -399,7 +389,7 @@ if _G.proxy == nil then -- don't do this on refresh
 				if k == nil then return nil end
 				k = k.tostring
 				local id = id_register[s]
-				return k, rvalue_marshall_get(get(id,k))
+				return k, (get(id,k))
 			end,
 			__pairs = function(s,k)
 				local names = _get_names(s)
@@ -417,7 +407,7 @@ if _G.proxy == nil then -- don't do this on refresh
 					k = names[i+1]
 					if k == nil then return nil end
 					k = k.tostring
-					return k, rvalue_marshall_get(get(id,k))
+					return k, (get(id,k))
 				end,s,k
 			end,
 			__inext = function(s,k)
@@ -434,7 +424,7 @@ if _G.proxy == nil then -- don't do this on refresh
 				if k == nil then return nil end
 				k = k.tostring
 				local id = id_register[s]
-				return i, rvalue_marshall_get(get(id,k))
+				return i, (get(id,k))
 			end,
 			__ipairs = function(s,k)
 				local names = _get_names(s)
@@ -452,7 +442,7 @@ if _G.proxy == nil then -- don't do this on refresh
 					k = names[i+1]
 					if k == nil then return nil end
 					k = k.tostring
-					return i, rvalue_marshall_get(get(id,k))
+					return i, (get(id,k))
 				end,s,k
 			end
 		}
@@ -594,6 +584,49 @@ if _G.proxy == nil then -- don't do this on refresh
 			end
 		}
 		proxy.constants[t] = setmetatable({},constants_proxy_meta[t])
+	end
+
+	local ds_map_id_register = setmetatable({},{__mode = "k"})
+	local ds_map_proxy_register = setmetatable({},{__mode = "v"})
+
+	local ds_map_proxy_meta = {
+		__index = function(s,k)
+			local id = ds_map_id_register[s]
+			return (gm.call('ds_map_find_value',id,k))
+		end,
+		__newindex = function(s,k,v)
+			local id = ds_map_id_register[s]
+			return gm.call('ds_map_set',id,k,(v))
+		end,
+		__next = function(s,k)
+			local id = ds_map_id_register[s]
+			if k == nil then
+				k = gm.call('ds_map_find_first',id).lua_value
+			else
+				k = gm.call('ds_map_find_next',id,k).lua_value
+			end
+			return k, (gm.call('ds_map_find_value',id,k))
+		end,
+		__pairs = function(s,k)
+			local id = ds_map_id_register[s]
+			return function(_,k)
+				if k == nil then
+					k = gm.call('ds_map_find_first',id).lua_value
+				else
+					k = gm.call('ds_map_find_next',id,k).lua_value
+				end
+				return k, (gm.call('ds_map_find_value',id,k))
+			end,s,k
+		end
+	}
+
+	function proxy.map(id)
+		local proxy = ds_map_proxy_register[id]
+		if proxy then return proxy end
+		local proxy = setmetatable({},ds_map_proxy_meta)
+		ds_map_proxy_register[id] = proxy
+		ds_map_id_register[proxy] = id
+		return proxy
 	end
 
 end
@@ -915,6 +948,7 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 		end
 	end )
 	
+	endow_with_pairs_and_next(getmetatable(EVariableType))
 	endow_with_pairs_and_next(getmetatable(RValueType))
 	endow_with_pairs_and_next(getmetatable(YYObjectBaseType))
 	for _,v in pairs(_G) do

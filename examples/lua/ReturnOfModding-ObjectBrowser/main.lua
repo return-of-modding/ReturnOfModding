@@ -56,6 +56,7 @@ end
 
 root = {
 	lua = _G,
+	mods = mods,
 	code = {
 		pre = {},
 		post = {}
@@ -159,11 +160,14 @@ local entrify
 do
 	-- to avoid making these many times
 	local keys_struct_skill = {'struct',{'root','helpers',"proxy_skill_family_element"}}
+	local keys_map = {{'proxy','map'}}
 	local keys_struct = {'struct'}
 	local keys_object = {'object'}
 	local keys_array = {'array'}
+	local extra = {}
 	
 	function entrify(k,v)
+		util.clear(extra)
 		local data_type = type(v)
 		local rvalue_type = nil
 		local object_type = nil
@@ -178,6 +182,20 @@ do
 			if n then info = "table[" .. n .. "]" end
 		elseif data_type == "userdata" then
 			rvalue_type = get(v,"type_name")
+			if rvalue_type == "REAL" and type(k) == "string" and k:sub(#k-3) == "_map" then
+				local w = v.value
+				if true or gm.call('ds_exists',w,1).lua_value then
+					local data = proxy.map(w)
+					table.insert(extra,{
+						name = tostring(k),
+						info = "ds_map",
+						data = data,
+						key = k,
+						keys = keys_map,
+						loop_type = pairs
+					})
+				end
+			end
 			if rvalue_type == "OBJECT" then
 				local o = v.object
 				object_type = get(o,"type_name")
@@ -185,7 +203,7 @@ do
 				if object_type == "YYOBJECTBASE" then
 					v = v.struct
 					local n = math.floor(#v)
-					info = "STRUCT" .. "[" .. n .. "]"
+					info = "struct[" .. n .. "]"
 					local sid = v.skill_id
 					sid = sid and sid.value
 					if sid then
@@ -232,7 +250,7 @@ do
 			data_type = data_type,
 			rvalue_type = rvalue_type,
 			object_type = object_type
-		}
+		}, table.unpack(extra)
 	end
 end
 
@@ -320,9 +338,10 @@ local function unfold(ed)
 	local entries = {}
 	if loop_type then
 		for k,v in loop_type(ed.data) do
-			local sd = entrify(k,v)
-			if sd ~= nil then
-				table.insert(entries,sd)
+			for _,sd in util.vararg(entrify(k,v)) do
+				if sd ~= nil then
+					table.insert(entries,sd)
+				end
 			end
 		end
 	else
@@ -385,26 +404,37 @@ do
 		return value
 	end
 
-	local function try_enum_tooltip(dd,sd) 
+	local function try_tooltip(dd,sd,value_part) 
 		if ImGui.IsItemHovered() then
-			local enum = type(dd.key) == "string" and type(sd.data) == "number" and hardcoded.array[dd.key]
-			if enum then
-				enum = enum[sd.data]
-			elseif type(dd.data.class_name) == "string" then
-				enum = dd.data.class_name:upper()
-				enum = hardcoded.array[enum][hardcoded.enum[enum][sd.key]]
-			end
-			if not enum then return end
 			local message
-			local description = enum.description
-			local value = enum.value
-			if value then
-				message = tostring_literal(value)
+			if value_part then
+				if sd.rvalue_type == "STRING" then 
+					message = gm.call('ds_map_find_value',gm.variable_global_get("_language_map").value,sd.data.tostring)
+					if message.type == RValueType.STRING then message = message.tostring else message = nil end
+				elseif sd.data_type == "string" then
+					message = gm.call('ds_map_find_value',gm.variable_global_get("_language_map").value,sd.data)
+					if message.type == RValueType.STRING then message = message.tostring else message = nil end
+				end
 			end
-			if description then
-				message = (message and message .. ' ' or '') .. '-- ' .. description
+			if message == nil then
+				local enum = type(dd.key) == "string" and type(sd.data) == "number" and hardcoded.array[dd.key]
+				if enum then
+					enum = enum[sd.data]
+				elseif type(dd.data.class_name) == "string" then
+					enum = dd.data.class_name:upper()
+					enum = hardcoded.array[enum][hardcoded.enum[enum][sd.key]]
+				end
+				if not enum then return end
+				local description = enum.description
+				local value = enum.value
+				if value then
+					message = tostring_literal(value)
+				end
+				if description then
+					message = (message and message .. ' ' or '') .. '-- ' .. description
+				end
 			end
-			if message then
+			if message ~= nil then
 				ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
 				ImGui.SetTooltip(message);
 				ImGui.PopStyleColor()
@@ -441,12 +471,12 @@ do
 							ImGui.SameLine()
 							ImGui.Text(sd.name)
 							ImGui.PopStyleColor()
-							try_enum_tooltip(dd,sd)
+							try_tooltip(dd,sd,false)
 							ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
 							ImGui.SameLine()
 							ImGui.Text(sd.info)
 							ImGui.PopStyleColor()
-							try_enum_tooltip(dd,sd)
+							try_tooltip(dd,sd,true)
 						end
 					else
 						if dd.mode ~= 3 then
@@ -456,7 +486,7 @@ do
 							ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFFFF20)
 							ImGui.Text(sd.name)
 							ImGui.PopStyleColor()
-							try_enum_tooltip(dd,sd)
+							try_tooltip(dd,sd,false)
 							if
 								sd.data_type ~= "function" and sd.data_type ~= "thread" and
 								(sd.rvalue_type == "UNDEFINED" or (sd.rvalue_type ~= nil and sd.data.lua_value ~= nil) or (sd.data_type ~= "userdata" and sd.data))
@@ -473,7 +503,7 @@ do
 								ImGui.PopStyleColor()
 								ImGui.PopStyleColor()
 								ImGui.PopStyleVar()
-								try_enum_tooltip(dd,sd)
+								try_tooltip(dd,sd,true)
 								if enter_pressed then
 									dd.data[sd.key] = peval(text)
 									dd.texts[id] = nil
