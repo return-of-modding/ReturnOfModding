@@ -711,7 +711,7 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 		end
 	end
 	
-	local function gm_next_delayed_load()
+	local function gm_next_delayed_load(ccode)
 		local gm_rvalue = gm.variable_global_get("init_player")
 		local gm_object = gm_rvalue.object
 		local gm_container = gm.variable_global_get("_damage_color_array")
@@ -726,6 +726,7 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 		endow_with_pairs_and_next(getmetatable(gm_object))
 		endow_with_pairs_and_next(getmetatable(gm_container_item))
 		endow_with_pairs_and_next(getmetatable(gm_rvalue))
+		endow_with_pairs_and_next(getmetatable(ccode))
 
 		local rvalue_lookup = util.build_lookup(RValueType)
 		local object_lookup = util.build_lookup(YYObjectBaseType)
@@ -858,7 +859,7 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 				__call = function(_,id)
 					local proxy = instances[id]
 					if proxy then return proxy end
-					proxy = setmetatable({}, gm_instance_meta)
+					proxy = setmetatable({ class_name = name }, gm_instance_meta)
 					instances[id] = proxy
 					gm_instance_id_register[proxy] = id
 					gm_class_name_register[proxy] = name
@@ -908,8 +909,8 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 			imgui_next_delayed_load = nil
 		end
 	end )
-	gm.pre_code_execute( function()
-		if gm_next_delayed_load and gm_next_delayed_load() ~= true then
+	gm.pre_code_execute( function(_,_,ccode)
+		if gm_next_delayed_load and gm_next_delayed_load(ccode) ~= true then
 			gm_next_delayed_load = nil
 		end
 	end )

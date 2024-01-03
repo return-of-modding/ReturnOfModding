@@ -35,30 +35,35 @@ local detail_filters = {
 
 local function create_browser(entry)
 	local id = #browsers + 1
-	browsers[id] = util.merge({},entry,{
+	browsers[id] = util.merge({
 		index = id,
 		text = '',
 		filter = ''
-	})
+	},entry)
 end
 
 local function create_details(entry)
 	local id = #details + 1
-	details[id] = util.merge({},entry,{
+	details[id] = util.merge({
 		index = id,
 		text = '',
 		filter = '',
 		texts = {},
 		tooltips = {},
 		mode = 1
-	})
+	},entry)
 end
 
 root = {
 	lua = _G,
+	code = {
+		pre = {},
+		post = {}
+	},
 	helpers = {},
 	globals = proxy.globals,
 	constants = proxy.constants,
+	hardcoded = hardcoded,
 	instances = {
 		all = gm.CInstance.instances_all,
 		active = gm.CInstance.instances_active
@@ -82,6 +87,7 @@ do
 			return id[k]
 		end,
 		__newindex = function(s,k,v)
+			local id = skill_family_id_register[s]
 			id[k] = v
 		end,
 		__len = function(s)
@@ -340,6 +346,29 @@ local function refresh(ed)
 		refresh(ed.entries)
 	end
 	ed.entries = nil
+end 
+
+local resolve
+do
+	local steps = {}
+	function resolve(ed)
+		util.clear(steps)
+		local pd = ed
+		local i = 0
+		while pd.parent do
+			i = i + 1
+			steps[i] = pd.key
+			pd = pd.parent
+		end
+		for j = i, 1, -1 do
+			local step = steps[j]
+			local data = pd.data[step]
+			--if data == nil then return end
+			pd = entrify(step,data)
+		end
+		refresh(ed)
+		return util.merge(ed,pd)
+	end
 end
 
 local render_details
@@ -354,6 +383,33 @@ do
 		local status, value = pcall(func)
 		if not status then return nil end
 		return value
+	end
+
+	local function try_enum_tooltip(dd,sd) 
+		if ImGui.IsItemHovered() then
+			local enum = type(dd.key) == "string" and type(sd.data) == "number" and hardcoded.array[dd.key]
+			if enum then
+				enum = enum[sd.data]
+			elseif type(dd.data.class_name) == "string" then
+				enum = dd.data.class_name:upper()
+				enum = hardcoded.array[enum][hardcoded.enum[enum][sd.key]]
+			end
+			if not enum then return end
+			local message
+			local description = enum.description
+			local value = enum.value
+			if value then
+				message = tostring_literal(value)
+			end
+			if description then
+				message = (message and message .. ' ' or '') .. '-- ' .. description
+			end
+			if message then
+				ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
+				ImGui.SetTooltip(message);
+				ImGui.PopStyleColor()
+			end
+		end
 	end
 
 	function render_details(dd,filter,did)
@@ -385,10 +441,12 @@ do
 							ImGui.SameLine()
 							ImGui.Text(sd.name)
 							ImGui.PopStyleColor()
+							try_enum_tooltip(dd,sd)
 							ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
 							ImGui.SameLine()
 							ImGui.Text(sd.info)
 							ImGui.PopStyleColor()
+							try_enum_tooltip(dd,sd)
 						end
 					else
 						if dd.mode ~= 3 then
@@ -398,6 +456,7 @@ do
 							ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFFFF20)
 							ImGui.Text(sd.name)
 							ImGui.PopStyleColor()
+							try_enum_tooltip(dd,sd)
 							if
 								sd.data_type ~= "function" and sd.data_type ~= "thread" and
 								(sd.rvalue_type == "UNDEFINED" or (sd.rvalue_type ~= nil and sd.data.lua_value ~= nil) or (sd.data_type ~= "userdata" and sd.data))
@@ -414,6 +473,7 @@ do
 								ImGui.PopStyleColor()
 								ImGui.PopStyleColor()
 								ImGui.PopStyleVar()
+								try_enum_tooltip(dd,sd)
 								if enter_pressed then
 									dd.data[sd.key] = peval(text)
 									dd.texts[id] = nil
@@ -645,13 +705,16 @@ local function imgui_on_render()
 		if ImGui.Begin("Object Details##" .. did, true) then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
-			local num, y_max, x_total, x_swap, x_filter = calculate_text_sizes('    ','Filter: ')
+			local num, y_max, x_total, x_swap, x_filter = calculate_text_sizes('...','Filter: ')
+			local _, y_max2, x_total2, x_resolve, x_path = calculate_text_sizes('...','Path:  ')
+			y_max = math.max(y_max,y_max2)
 			local x,y = ImGui.GetContentRegionAvail()
 			-- height of InputText == font_size + frame_padding.y
 			-- and we're going to change frame_padding.y temporarily later on
 			-- such that InputText's height == max y
 			local y_input = y_max - ImGui.GetFontSize() - frame_padding_y 
 			local x_input = x - x_total - item_spacing_x*num
+			local x_input2 = x - x_total2 - item_spacing_x*num
 			local y_box = y - y_max - item_spacing_y
 			local x_box = x
 			ImGui.Text("Filter: ")
@@ -679,13 +742,19 @@ local function imgui_on_render()
 			do
 				local path = dd.path or "???"
 				y_box = y_box - y_max - item_spacing_y
-				ImGui.Text("Path: ")
+				ImGui.Text("Path:  ")
 				ImGui.SameLine()
 				ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
 				ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
+				ImGui.PushItemWidth(x_input2)
 				ImGui.InputText("##Path" .. did, path, #path, ImGuiInputTextFlags.ReadOnly)
+				ImGui.PopItemWidth()
 				ImGui.PopStyleColor()
 				ImGui.PopStyleVar()
+				ImGui.SameLine()
+				if ImGui.Button("|<-##Resolve" .. did) then
+					resolve(dd)
+				end
 			end
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			if ImGui.BeginListBox("##Box" .. did,x_box,y_box) then
@@ -704,3 +773,15 @@ end
 
 create_browser(root_entries())
 gui.add_imgui(imgui_on_render)
+gm.pre_code_execute( function(...)
+	util.clear(root.code.pre)
+	for i,v in util.vararg(...) do
+		root.code.pre[i] = v
+	end
+end )
+gm.post_code_execute( function(...)
+	util.clear(root.code.post)
+	for i,v in util.vararg(...) do
+		root.code.post[i] = v
+	end
+end )
