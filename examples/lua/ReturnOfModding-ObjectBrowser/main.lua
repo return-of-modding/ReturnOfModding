@@ -288,7 +288,6 @@ do
 					else
 						if dd.mode ~= 3 then
 							-- not iterable
-							local value = sd.rvalue_type == nil and sd.data
 							ImGui.Text("")
 							ImGui.SameLine()
 							ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFFFF20)
@@ -298,6 +297,7 @@ do
 								sd.data_type ~= "function" and sd.data_type ~= "thread" and
 								(sd.rvalue_type == "UNDEFINED" or (sd.rvalue_type ~= nil and sd.data.lua_value ~= nil) or (sd.data_type ~= "userdata" and sd.data))
 							then
+								local value = sd.rvalue_type == nil and sd.data or sd.data.lua_value
 								local value_text = tostring_literal(value)
 								ImGui.SameLine()
 								ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)

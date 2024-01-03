@@ -376,8 +376,8 @@ if _G.proxy == nil then -- don't do this on refresh
 					local id = id_register[s]
 					return rvalue_marshall_get(get(id,k))
 				end
-				if not exists(id,k).lua_value then return nil end
 				local id = id_register[s]
+				if not exists(id,k).lua_value then return nil end
 				return rvalue_marshall_get(get(id,k))
 			end,
 			__newindex = function(s,k,v)
@@ -390,8 +390,8 @@ if _G.proxy == nil then -- don't do this on refresh
 					local id = id_register[s]
 					return set(id,k,rvalue_marshall_set(v))
 				end
-				if not exists(id,k).lua_value then return end
 				local id = id_register[s]
+				if not exists(id,k).lua_value then return end
 				return set(id,k,rvalue_marshall_set(v))
 			end,
 			__len = function(s)
@@ -489,7 +489,6 @@ if _G.proxy == nil then -- don't do this on refresh
 		local proxy = instance_variables_proxy_register[id]
 		if proxy then return proxy end
 		local proxy = setmetatable({},instance_variables_proxy_meta)
-		local meta = getmetatable(id)
 		instance_variables_proxy_register[id] = proxy
 		instance_variables_id_register[proxy] = id
 		return proxy
