@@ -106,11 +106,19 @@ function entrify(k,v)
 	elseif data_type == "userdata" then
 		rvalue_type = get(v,"type_name")
 		if rvalue_type == "OBJECT" then
-			v = v.object
-			object_type = get(v,"type_name")
-			info = object_type
+			local o = v.object
+			object_type = get(o,"type_name")
 			loop_type = pairs
-			keys = {k,'object'}
+			if object_type == "YYOBJECTBASE" then
+				keys = {k,'struct'}
+				v = v.struct
+				local n = math.floor(#v)
+				info = "STRUCT" .. "[" .. n .. "]"
+			else
+				keys = {k,'object'}
+				v = o
+				info = object_type
+			end
 		elseif rvalue_type == "ARRAY" then
 			local n = math.floor(gm.array_length(v).value)
 			v = v.array
@@ -446,7 +454,8 @@ local function imgui_on_render()
 	end
 	frame_counter = frame_counter + 1
 	for bid,bd in pairs(browsers) do
-		if ImGui.Begin("Object Browser##" .. bid, true) then
+		local open
+		if bid == 1 and ImGui.Begin("Object Browser") or ImGui.Begin("Object Browser##" .. bid, true) then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
 			local num, y_max, x_total, x_filter = calculate_text_sizes('Filter: ')

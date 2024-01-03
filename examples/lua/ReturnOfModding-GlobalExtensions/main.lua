@@ -598,6 +598,23 @@ if _G.proxy == nil then -- don't do this on refresh
 
 end
 
+if hardcoded == nil then -- don't run this on refresh
+
+	_G.hardcoded = hardcoded or require("./hardcoded")
+	hardcoded.enum = {}
+	for k,v in pairs(hardcoded.array) do
+		local enum = {}
+		hardcoded.enum[k] = enum
+		for i,w in pairs(v) do
+			enum[w.name] = w.value or i
+		end
+	end
+	for k,v in pairs(hardcoded.script) do
+		v.call = get_script_call(k)
+	end
+
+end
+
 if ImGui.GetStyleVar == nil then -- don't do this on refresh
 
 	-- GLOBAL OBJECT EXTENSIONS
@@ -698,7 +715,7 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 		local gm_rvalue = gm.variable_global_get("init_player")
 		local gm_object = gm_rvalue.object
 		local gm_container = gm.variable_global_get("_damage_color_array")
-		local gm_container_t = gm_container.array[1]
+		local gm_container_item = gm_container.array[1]
 		local gm_instance_list = gm.CInstance.instances_all
 		local gm_instance = gm.variable_global_get("__input_blacklist_dictionary").cinstance
 		local gm_instance_variables = gm_instance:variable_instance_get_names()
@@ -707,7 +724,7 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 		endow_with_pairs_and_next(getmetatable(gm_instance))
 		endow_with_pairs_and_next(getmetatable(gm_instance_variables))
 		endow_with_pairs_and_next(getmetatable(gm_object))
-		endow_with_pairs_and_next(getmetatable(gm_container_t))
+		endow_with_pairs_and_next(getmetatable(gm_container_item))
 		endow_with_pairs_and_next(getmetatable(gm_rvalue))
 
 		local rvalue_lookup = util.build_lookup(RValueType)
@@ -731,7 +748,7 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 			lua_value = rvalue_marshall,
 			struct = proxy.struct
 		})
-		endow_with_new_properties(getmetatable(gm_container_t),{
+		endow_with_new_properties(getmetatable(gm_container_item),{
 			type_name = get_rvalue_type_name,
 			lua_value = rvalue_marshall,
 			struct = proxy.struct
@@ -743,6 +760,147 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 			type_name = get_object_type_name,
 			call = get_object_script_call
 		})
+
+		local gm_instance_id_register = setmetatable({},{__mode='k'})
+		local gm_class_name_register = setmetatable({},{__mode='k'})
+		local gm_instance_fields_register = setmetatable({},{__mode='k'})
+
+		local gm_instance_meta = {
+			__index = function(t,k)
+				local field = k
+				if type(k) ~= "number" then
+					local fields = gm_instance_fields_register[t]
+					field = fields[k]
+					if field == nil then return nil end
+				end
+				local array = proxy.globals[gm_class_name_register[t]].array
+				local id = gm_instance_id_register[t]
+				array = array[id].array
+				local value = array[field]
+				if value == nil then return nil end
+				return value
+			end,
+			__newindex = function(t,k,v)
+				local fields = gm_instance_fields_register[t]
+				local field = fields[k]
+				if not field then error("setting unknown field " .. k) end
+				local array = proxy.globals[gm_class_name_register[t]].array
+				local id = gm_instance_id_register[t]
+				array = array[id].array
+				array[field] = v
+			end,
+			__len = function(t)
+				local array = proxy.globals[gm_class_name_register[t]].array
+				local id = gm_instance_id_register[t]
+				array = array[id].array
+				return #array
+			end,
+			__next = function(t,k)
+				local field
+				local fields = gm_instance_fields_register[t]
+				k, field = next(fields,k)
+				if k == nil then return nil end
+				local array = proxy.globals[gm_class_name_register[t]].array
+				local id = gm_instance_id_register[t]
+				array = array[id].array
+				local value = array[field]
+				if value == nil then return k,nil end
+				return k,value
+			end,
+			__pairs = function(t,k)
+				local fields = gm_instance_fields_register[t]
+				local array = proxy.globals[gm_class_name_register[t]].array
+				local id = gm_instance_id_register[t]
+				array = array[id].array
+				return function(t,k)
+					local field
+					k, field = next(fields,k)
+					if k == nil then return nil end
+					local value = array[field]
+					if value == nil then return k,nil end
+					return k,value
+				end,t,k
+			end,
+			__inext = function(t,k)
+				local array = proxy.globals[gm_class_name_register[t]].array
+				local id = gm_instance_id_register[t]
+				array = array[id].array
+				local n = #array
+				if n == 0 then return nil end
+				k = (k or 0) + 1
+				if n < k then return nil end
+				local value = array[k]
+				if value == nil then return k,nil end
+				return k,value
+			end,
+			__ipairs = function(t,k)
+				local array = proxy.globals[gm_class_name_register[t]].array
+				local id = gm_instance_id_register[t]
+				array = array[id].array
+				return function(t,k)
+					local n = #array
+					if n == 0 then return nil end
+					k = (k or 0) + 1
+					if n < k then return nil end
+					local value = array[k]
+					if value == nil then return k,nil end
+					return k,value
+				end,t,k
+			end
+		}
+
+		-- for interacting with global arrays as classes
+		-- thanks to sarn
+		local function gm_array_class(name, array, fields)
+			local instances = setmetatable({},{__mode='kv'})
+			
+			return setmetatable({},{
+				__call = function(_,id)
+					local proxy = instances[id]
+					if proxy then return proxy end
+					proxy = setmetatable({}, gm_instance_meta)
+					instances[id] = proxy
+					gm_instance_id_register[proxy] = id
+					gm_class_name_register[proxy] = name
+					gm_instance_fields_register[proxy] = fields
+					return proxy
+				end,
+				__index = function(s,k)
+					return s(k)
+				end,
+				__newindex = function(_,k,v)
+					array[k] = v
+				end,
+				__len = function(_)
+					return #array
+				end,
+				__next = function(s,k)
+					local n = #array
+					if n == 0 then return nil end
+					k = (k or 0) + 1
+					if n < k then return nil end
+					return k,s[k]
+				end,
+				__pairs = function(s,k)
+					return getmetatable(s).__next,s,k
+				end,
+				__inext = function(s,k)
+					return getmetatable(s).__next(s,k)
+				end,
+				__ipairs = function(s,k)
+					return getmetatable(s).__next,s,k
+				end
+			})
+		end
+		
+		hardcoded.class = {}
+		for k,v in pairs(hardcoded.enum) do
+			local class_name = k:lower()
+			local class_array = gm.variable_global_get(class_name)
+			if class_array and class_array.type == RValueType.ARRAY then
+				hardcoded.class[class_name] = gm_array_class(class_name,class_array.array,v)
+			end
+		end
 	end
 
 	gui.add_imgui( function()
@@ -764,21 +922,4 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 			endow_with_pairs_and_next(meta)
 		end
 	end
-end
-
-if hardcoded == nil then -- don't run this on refresh
-
-	_G.hardcoded = hardcoded or require("./hardcoded")
-	hardcoded.enum = {}
-	for k,v in pairs(hardcoded.array) do
-		local enum = {}
-		hardcoded.enum[k] = enum
-		for i,w in pairs(v) do
-			enum[w.name] = w.value or i
-		end
-	end
-	for k,v in pairs(hardcoded.script) do
-		v.call = get_script_call(k)
-	end
-
 end
