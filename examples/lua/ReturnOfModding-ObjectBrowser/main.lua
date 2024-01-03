@@ -56,6 +56,7 @@ end
 
 root = {
 	lua = _G,
+	helpers = {},
 	globals = proxy.globals,
 	constants = proxy.constants,
 	instances = {
@@ -66,6 +67,65 @@ root = {
 
 local function root_entries()
 	return { path = 'root', name = 'root', data = root, loop_type = pairs}
+end
+
+do
+	local skill_family_id_register = setmetatable({},{__mode="k"})
+	local skill_family_proxy_register = setmetatable({},{__mode="v"})
+	
+	local skill_family_meta = {
+		__index = function(s,k)
+			local id = skill_family_id_register[s]
+			if k == "skill" then
+				return hardcoded.class.class_skill[id["skill_id"].value]
+			end
+			return id[k]
+		end,
+		__newindex = function(s,k,v)
+			id[k] = v
+		end,
+		__len = function(s)
+			local id = skill_family_id_register[s]
+			return #id
+		end,
+		__next = function(s,k)
+			local id = skill_family_id_register[s]
+			local j = k
+			local k,v = next(id,k)
+			if k == nil and id[j] ~= nil then
+				return "skill", hardcoded.class.class_skill[id["skill_id"].value]
+			end
+			return k,v
+		end,
+		__pairs = function(s,k)
+			local id = skill_family_id_register[s]
+			return function(_,k)
+				local j = k
+				local k,v = next(id,k)
+				if k == nil and id[j] ~= nil then
+					return "skill", hardcoded.class.class_skill[id["skill_id"].value]
+				end
+				return k,v
+			end,s,k
+		end,
+		__inext = function(s,k)
+			local id = skill_family_id_register[s]
+			return inext(id,k)
+		end,
+		__ipairs = function(s,k)
+			local id = skill_family_id_register[s]
+			return ipairs(id,k)
+		end
+	}
+
+	function root.helpers.proxy_skill_family_element(id)
+		local proxy = skill_family_proxy_register[id]
+		if proxy then return proxy end
+		proxy = setmetatable({},skill_family_meta)
+		skill_family_id_register[proxy] = id
+		skill_family_proxy_register[id] = proxy
+        return proxy
+    end
 end
 
 local get, len
@@ -110,10 +170,17 @@ function entrify(k,v)
 			object_type = get(o,"type_name")
 			loop_type = pairs
 			if object_type == "YYOBJECTBASE" then
-				keys = {k,'struct'}
 				v = v.struct
 				local n = math.floor(#v)
 				info = "STRUCT" .. "[" .. n .. "]"
+				local sid = v.skill_id
+				sid = sid and sid.value
+				if sid then
+					keys = {k,'struct',{'root','helpers',"proxy_skill_family_element"}}
+					v = root.helpers.proxy_skill_family_element(v)
+				else
+					keys = {k,'struct'}
+				end
 			else
 				keys = {k,'object'}
 				v = o
@@ -203,12 +270,28 @@ local function path_part_key(key)
 	end
 end
 
-local function path_part(ed)
-	local path = ''
+local function path_part(ed,path)
+	path = path or ''
 	for _, key in ipairs(ed.keys) do
-		local part = path_part_key(key)
-		if part == nil then return "<" .. ed.name .. ">" end
-		path = path .. part
+		if type(key) == "table" then
+			-- build new path for a function to wrap over it
+			local wrap = nil
+			for _, k in ipairs(key) do
+				if wrap then
+					local part = path_part_key(k)
+					if part == nil then part = "[?]" end
+					wrap = wrap .. part
+				else
+					wrap = k
+				end
+			end
+			path = wrap .. '(' .. path .. ')'
+		else
+			-- extend current path
+			local part = path_part_key(key)
+			if part == nil then return "<" .. ed.name .. ">" end
+			path = path .. part
+		end
 	end
 	return path
 end
@@ -233,7 +316,7 @@ local function unfold(ed)
 	for i,sd in ipairs(entries) do
 		sd.index = i
 		sd.parent = ed
-		sd.path = ed.path .. path_part(sd)
+		sd.path = path_part(sd,ed.path)
 	end
 	ed.entries = entries
 	return entries
