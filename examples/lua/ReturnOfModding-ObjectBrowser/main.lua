@@ -150,75 +150,84 @@ do
 end
 
 local entrify
-function entrify(k,v)
-	local data_type = type(v)
-	local rvalue_type = nil
-	local object_type = nil
-	local loop_type = nil
-	local keys = nil
-	local info = nil
-	local meta = getmetatable(v)
-	if data_type == "table" then
-		loop_type = pairs
-		info = meta and meta.__name or data_type
-		local n = len(v)
-		if n then info = "table[" .. n .. "]" end
-	elseif data_type == "userdata" then
-		rvalue_type = get(v,"type_name")
-		if rvalue_type == "OBJECT" then
-			local o = v.object
-			object_type = get(o,"type_name")
+do
+	-- to avoid making these many times
+	local keys_struct_skill = {'struct',{'root','helpers',"proxy_skill_family_element"}}
+	local keys_struct = {'struct'}
+	local keys_object = {'object'}
+	local keys_array = {'array'}
+	
+	function entrify(k,v)
+		local data_type = type(v)
+		local rvalue_type = nil
+		local object_type = nil
+		local loop_type = nil
+		local keys = nil
+		local info = nil
+		local meta = getmetatable(v)
+		if data_type == "table" then
 			loop_type = pairs
-			if object_type == "YYOBJECTBASE" then
-				v = v.struct
-				local n = math.floor(#v)
-				info = "STRUCT" .. "[" .. n .. "]"
-				local sid = v.skill_id
-				sid = sid and sid.value
-				if sid then
-					keys = {k,'struct',{'root','helpers',"proxy_skill_family_element"}}
-					v = root.helpers.proxy_skill_family_element(v)
-				else
-					keys = {k,'struct'}
-				end
-			else
-				keys = {k,'object'}
-				v = o
-				info = object_type
-			end
-		elseif rvalue_type == "ARRAY" then
-			local n = math.floor(gm.array_length(v).value)
-			v = v.array
-			info = rvalue_type .. "[" .. n .. "]"
-			loop_type = ipairs
-			keys = {k,'array'}
-		elseif rvalue_type == nil then
-			if tostring(v):match('<') then
-				loop_type = ipairs
-				info = meta.__name or data_type
-				local n = math.floor(#v)
-				info = info .. "[" .. n .. "]"
-			elseif meta and meta.__next then
+			info = meta and meta.__name or data_type
+			local n = len(v)
+			if n then info = "table[" .. n .. "]" end
+		elseif data_type == "userdata" then
+			rvalue_type = get(v,"type_name")
+			if rvalue_type == "OBJECT" then
+				local o = v.object
+				object_type = get(o,"type_name")
 				loop_type = pairs
-				info = meta.__name or data_type
-				if info:match("CInstance") then
-					info = v.object_name .." (" .. v.object_index .. " @ " .. v.id .. ")"
+				if object_type == "YYOBJECTBASE" then
+					v = v.struct
+					local n = math.floor(#v)
+					info = "STRUCT" .. "[" .. n .. "]"
+					local sid = v.skill_id
+					sid = sid and sid.value
+					if sid then
+						keys = keys_struct_skill
+						v = root.helpers.proxy_skill_family_element(v)
+					else
+						keys = keys_struct
+					end
+				else
+					keys = keys_object
+					v = o
+					info = object_type
 				end
-				local n = len(v)
-				if n then info = info .. "[" .. n .. "]" end
+			elseif rvalue_type == "ARRAY" then
+				local n = math.floor(gm.array_length(v).value)
+				v = v.array
+				info = rvalue_type .. "[" .. n .. "]"
+				loop_type = ipairs
+				keys = keys_array
+			elseif rvalue_type == nil then
+				if tostring(v):match('<') then
+					loop_type = ipairs
+					info = meta.__name or data_type
+					local n = math.floor(#v)
+					info = info .. "[" .. n .. "]"
+				elseif meta and meta.__next then
+					loop_type = pairs
+					info = meta.__name or data_type
+					if info:match("CInstance") then
+						info = v.object_name .." (" .. v.object_index .. " @ " .. v.id .. ")"
+					end
+					local n = len(v)
+					if n then info = info .. "[" .. n .. "]" end
+				end
 			end
 		end
+		return {
+			name = tostring(k),
+			info = info,
+			data = v,
+			key = k,
+			keys = keys,
+			loop_type = loop_type,
+			data_type = data_type,
+			rvalue_type = rvalue_type,
+			object_type = object_type
+		}
 	end
-	return {
-		name = tostring(k),
-		info = info,
-		data = v,
-		keys = keys or {k},
-		loop_type = loop_type,
-		data_type = data_type,
-		rvalue_type = rvalue_type,
-		object_type = object_type
-	}
 end
 
 local excludedFieldNames = util.build_lookup{ "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while" }
@@ -271,26 +280,28 @@ local function path_part_key(key)
 end
 
 local function path_part(ed,path)
-	path = path or ''
-	for _, key in ipairs(ed.keys) do
-		if type(key) == "table" then
-			-- build new path for a function to wrap over it
-			local wrap = nil
-			for _, k in ipairs(key) do
-				if wrap then
-					local part = path_part_key(k)
-					if part == nil then part = "[?]" end
-					wrap = wrap .. part
-				else
-					wrap = k
+	path = (path or '') .. path_part_key(ed.key)
+	if ed.keys then
+		for _, key in ipairs(ed.keys) do
+			if type(key) == "table" then
+				-- build new path for a function to wrap over it
+				local wrap = nil
+				for _, k in ipairs(key) do
+					if wrap then
+						local part = path_part_key(k)
+						if part == nil then part = "[?]" end
+						wrap = wrap .. part
+					else
+						wrap = k
+					end
 				end
+				path = wrap .. '(' .. path .. ')'
+			else
+				-- extend current path
+				local part = path_part_key(key)
+				if part == nil then return "<" .. ed.name .. ">" end
+				path = path .. part
 			end
-			path = wrap .. '(' .. path .. ')'
-		else
-			-- extend current path
-			local part = path_part_key(key)
-			if part == nil then return "<" .. ed.name .. ">" end
-			path = path .. part
 		end
 	end
 	return path
@@ -333,6 +344,9 @@ end
 
 local render_details
 do
+	local script_prefix = "gml_Script_"
+	local script_prefix_index = #script_prefix+1
+
 	local function peval(text)
 		local func = load("return " .. text)
 		if not func then return nil end
@@ -448,6 +462,43 @@ do
 										dd.texts[id] = nil
 									else
 										dd.texts[id] = text
+									end
+									if dd.data and sd.key == "call" then
+										local params = dd.data.params
+										if params == nil then
+											local name = dd.data.name
+											if name == nil then
+												local script_name = dd.data.script_name
+												if script_name ~= nil then
+													if type(script_name) == "userdata" then
+														script_name = script_name.tostring
+													end
+													name = script_name:sub(script_prefix_index)
+												end
+											end
+											if name ~= nil then
+												local script = hardcoded.script[name]
+												if script then 
+													params = script.params
+												end
+											end
+											if params ~= nil then
+												ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
+												ImGui.Text("")
+												ImGui.SameLine()
+												ImGui.Text("")
+												ImGui.SameLine()
+												ImGui.Text("params:")
+												for _,p in ipairs(params) do
+													ImGui.SameLine()
+													ImGui.Text(p.name)
+													if p.value and ImGui.IsItemHovered() then
+														ImGui.SetTooltip(p.value);
+													end
+												end
+												ImGui.PopStyleColor()
+											end
+										end
 									end
 								end
 							end

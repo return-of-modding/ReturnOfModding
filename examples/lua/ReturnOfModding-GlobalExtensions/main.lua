@@ -546,7 +546,7 @@ if _G.proxy == nil then -- don't do this on refresh
 	local function get_asset(asset_name,asset_type)
 		local wrap = asset_register[asset_name]
 		if wrap then return wrap end
-		wrap = { index = gm.constants[asset_name] }
+		wrap = { index = gm.constants[asset_name], name = asset_name }
 		asset_register[asset_name] = wrap
 		if asset_type == "script" or asset_type == "gml_script" then
 			wrap.call = get_script_call(asset_name)
