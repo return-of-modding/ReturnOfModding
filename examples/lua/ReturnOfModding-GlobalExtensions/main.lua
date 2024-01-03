@@ -188,20 +188,6 @@ if inext == nil then -- don't run this on refresh
 
 end
 
-if hardcoded == nil then -- don't run this on refresh
-
-	_G.hardcoded = hardcoded or require("./hardcoded")
-	hardcoded.enum = {}
-	for k,v in pairs(hardcoded.array) do
-		local enum = {}
-		hardcoded.enum[k] = enum
-		for i,w in pairs(v) do
-			enum[w.name] = w.value or i
-		end
-	end
-
-end
-
 if util == nil then -- don't run this on refresh
 
 	-- GLOBAL UTILITY EXTENSIONS
@@ -778,4 +764,21 @@ if ImGui.GetStyleVar == nil then -- don't do this on refresh
 			endow_with_pairs_and_next(meta)
 		end
 	end
+end
+
+if hardcoded == nil then -- don't run this on refresh
+
+	_G.hardcoded = hardcoded or require("./hardcoded")
+	hardcoded.enum = {}
+	for k,v in pairs(hardcoded.array) do
+		local enum = {}
+		hardcoded.enum[k] = enum
+		for i,w in pairs(v) do
+			enum[w.name] = w.value or i
+		end
+	end
+	for k,v in pairs(hardcoded.script) do
+		v.call = get_script_call(k)
+	end
+
 end
