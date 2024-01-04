@@ -44,26 +44,24 @@ local instance_var_to_input = {}
 function imgui_dump_instance_variables(cinstance)
     local instance_variable_names = gm.variable_instance_get_names(cinstance.id)
 
-    if instance_variable_names.type == RValueType.ARRAY then
-        local arr = instance_variable_names.array
-        ImGui.Text("Instance Variable Count: " .. #arr)
+    local arr = instance_variable_names.value
+    ImGui.Text("Instance Variable Count: " .. #arr)
 
-        for i = 1, #arr do
-            local variable_name = arr[i].tostring
-            local variable_identifier = variable_name .. cinstance.id
+    for i = 1, #arr do
+        local variable_name = arr[i].tostring
+        local variable_identifier = variable_name .. cinstance.id
 
-            if instance_var_to_input[variable_identifier] == nil then
-                instance_var_to_input[variable_identifier] = gm.variable_instance_get(cinstance.id, variable_name).tostring
-            end
+        if instance_var_to_input[variable_identifier] == nil then
+            instance_var_to_input[variable_identifier] = gm.variable_instance_get(cinstance.id, variable_name).tostring
+        end
 
-            local new_text_value, res = ImGui.InputText(variable_name .. "##input_text" .. variable_identifier, instance_var_to_input[variable_identifier], 256)
-            instance_var_to_input[variable_identifier] = new_text_value
+        local new_text_value, res = ImGui.InputText(variable_name .. "##input_text" .. variable_identifier, instance_var_to_input[variable_identifier], 256)
+        instance_var_to_input[variable_identifier] = new_text_value
 
-            if ImGui.Button("Save##btn" .. variable_identifier) then
-                local new_value = tonumber(new_text_value)
-                if new_value ~= nil then
-                    gm.variable_instance_set(cinstance.id, variable_name, new_value)
-                end
+        if ImGui.Button("Save##btn" .. variable_identifier) then
+            local new_value = tonumber(new_text_value)
+            if new_value ~= nil then
+                gm.variable_instance_set(cinstance.id, variable_name, new_value)
             end
         end
     end
@@ -76,14 +74,12 @@ gui.add_imgui(function()
         local instance_nearest = gm.instance_nearest(mouse_x, mouse_y, EVariableType.ALL)
         ImGui.Text("Cursor (" .. mouse_x .. ", " .. mouse_y .. ")")
         ImGui.Separator()
-        if instance_nearest.type == RValueType.REF then
-            for i = 1, #gm.CInstance.instances_active do
-                if gm.CInstance.instances_active[i].id == instance_nearest.value then
-                    imgui_dump(gm.CInstance.instances_active[i])
-                    ImGui.Separator()
+        for i = 1, #gm.CInstance.instances_active do
+            if gm.CInstance.instances_active[i].id == instance_nearest.value then
+                imgui_dump(gm.CInstance.instances_active[i])
+                ImGui.Separator()
 
-                    break
-                end
+                break
             end
         end
     end
@@ -181,7 +177,7 @@ gui.add_imgui(function()
         end
 
         if ImGui.Button("Dump Game Global Variables") then
-            local game_globals = gm.variable_instance_get_names(EVariableType.GLOBAL).array
+            local game_globals = gm.variable_instance_get_names(EVariableType.GLOBAL).value
             for i = 1, #game_globals do
                 log.info(game_globals[i].tostring)
             end

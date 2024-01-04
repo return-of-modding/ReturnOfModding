@@ -51,14 +51,10 @@ hooks["gml_Object_oP_Step_2"] = function(self)
     end
 end
 
---[[hooks["gml_Object_oP_Draw_0"] = function(self)
-    local id = self.id
-    
-end]]
-
 gm.pre_code_execute(function(self, other, code, result, flags)
-    -- wait for startmenu_step_2 to be called to init to be safe..
     if hooks[code.name] then
         hooks[code.name](self)
     end
+
+    return true
 end)
