@@ -2,7 +2,7 @@
 
 Class representing a value coming from the game maker engine
 
-## Fields (6)
+## Fields (3)
 
 ### `type`
 
@@ -10,19 +10,7 @@ Class representing a value coming from the game maker engine
 
 ### `value`
 
-- Type: `number`
-
-### `object`
-
-- Type: `YYObjectBase`
-
-### `cinstance`
-
-- Type: `CInstance`
-
-### `array`
-
-- Type: `table of RValues`
+- Type: `The actual value behind the RValue, or RValue if the type is not handled yet.`
 
 ### `tostring`
 
