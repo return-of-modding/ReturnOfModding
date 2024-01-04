@@ -818,6 +818,48 @@ namespace lua::game_maker
 				}
 			};
 
+			auto script_loop_over = [&](std::string type, const std::string& custom_type_name = "", double start = 0.0) {
+				const char* asset_name{"<undefined>"};
+
+				std::string routine_name = type + "_get_name";
+
+				if (custom_type_name.size())
+				{
+					type = custom_type_name;
+				}
+
+				double i;
+
+				for (i = start; true; ++i)
+				{
+					RValue asset = gm::call(routine_name, i);
+					if (asset.type == RValueType::STRING)
+					{
+						asset_name = asset.ref_string->m_thing;
+						// if the asset does not exist, its name will be "<undefined>"
+						// but since in GM an asset can't start with '<', it's faster to just check for the first character.
+						// (It seems GM internally does the exact same check)
+						if (asset_name && asset_name[0] != '<')
+						{
+							constants[asset_name]                                      = i;
+							constant_types[asset_name]                                 = type;
+							constants_type_sorted[type].get_or_create<sol::table>()[i] = asset_name;
+							gm::script_asset_cache[asset_name]                         = i;
+						}
+						else
+						{
+							break;
+						}
+					}
+					else
+					{
+						break;
+					}
+				}
+
+				return i;
+			};
+
 			asset_loop_over("object");
 			asset_loop_over("sprite");
 			room_loop_over();
@@ -827,8 +869,8 @@ namespace lua::game_maker
 			asset_loop_over("timeline");
 			asset_loop_over("tileset");
 			asset_loop_over("shader");
-			asset_loop_over("script");                         // runtime funcs
-			asset_loop_over("script", "gml_script", 100001.0); // gml scripts
+			script_loop_over("script");                         // runtime funcs
+			script_loop_over("script", "gml_script", 100001.0); // gml scripts
 
 			ns["_returnofmodding_constants_internal_"].get_or_create<sol::table>()["update_room_cache"] = room_loop_over;
 		}

@@ -29,7 +29,7 @@ namespace gm
 		if (((e_stacktrace.type & MASK_TYPE_RVALUE) == ARRAY) && e_stacktrace.ref_array && e_stacktrace.ref_array->m_Array
 		    && e_stacktrace.ref_array->length > 0)
 		{
-			auto thelen{e_stacktrace.ref_array->length};
+			const auto thelen{e_stacktrace.ref_array->length};
 			for (auto i{0}; i < thelen; ++i)
 			{
 				const auto& item{e_stacktrace.ref_array->m_Array[i]};
@@ -112,15 +112,10 @@ namespace gm
 		// Script Execute
 		else if (arg_count > 0)
 		{
-			// TODO: cache the asset_get_index call
-			const auto& asset_get_index = gm::get_code_function("asset_get_index");
-			RValue script_function_name{name.data()};
-			RValue script_function_index;
-			asset_get_index.function_ptr(&script_function_index, nullptr, nullptr, 1, &script_function_name);
-			if (script_function_index.type == RValueType::REAL)
+			if (const auto it = gm::script_asset_cache.find(name.data()); it != gm::script_asset_cache.end())
 			{
 				RValue* arranged_args = (RValue*)alloca(sizeof(RValue) * (arg_count + 1));
-				arranged_args[0]      = script_function_index;
+				arranged_args[0]      = (*it).second;
 				for (size_t i = 0; i < arg_count; i++)
 				{
 					arranged_args[i + 1] = args[i];
@@ -143,6 +138,17 @@ namespace gm
 					}
 				}
 				return res;
+			}
+			else
+			{
+				const auto& asset_get_index = gm::get_code_function("asset_get_index");
+				RValue script_function_name{name.data()};
+				RValue script_function_index;
+				asset_get_index.function_ptr(&script_function_index, nullptr, nullptr, 1, &script_function_name);
+				if (script_function_index.type == RValueType::REAL)
+				{
+					gm::script_asset_cache[name.data()] = script_function_index.asInt32();
+				}
 			}
 		}
 
