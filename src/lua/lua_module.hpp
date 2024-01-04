@@ -20,6 +20,9 @@ namespace big
 		std::vector<sol::protected_function> m_pre_code_execute_callbacks;
 		std::vector<sol::protected_function> m_post_code_execute_callbacks;
 
+		std::unordered_map<void*, std::vector<sol::protected_function>> m_pre_script_execute_callbacks;
+		std::unordered_map<void*, std::vector<sol::protected_function>> m_post_script_execute_callbacks;
+
 		std::vector<std::unique_ptr<lua::gui::gui_element>> m_independent_gui;
 
 		std::vector<std::unique_ptr<lua_patch>> m_registered_patches;

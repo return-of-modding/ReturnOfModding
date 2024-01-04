@@ -3,7 +3,10 @@
 #include "rorr/gm/Code_Function_GET_the_function.hpp"
 #include "rorr/gm/EVariableType.hpp"
 #include "rorr/gm/Variable_BuiltIn.hpp"
+#include "rorr/gm/YYGMLFuncs.hpp"
 
+#include <hde64.h>
+#include <lua/lua_manager.hpp>
 #include <rorr/gm/CScript.hpp>
 #include <rorr/gm/CScriptRef.hpp>
 
@@ -43,7 +46,7 @@ namespace lua::game_maker
 	// Table: gm
 	// Name: pre_code_execute
 	// Param: callback: function: callback that match signature function, return value can be True if the original method we are hooking should be called, false if it should be skipped ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) )
-	// Registers a callback that will be called right before any game function is called.
+	// Registers a callback that will be called right before any object function is called.
 	static void pre_code_execute(sol::protected_function cb, sol::this_environment env)
 	{
 		big::lua_module* mdl = big::lua_module::this_from(env);
@@ -55,12 +58,123 @@ namespace lua::game_maker
 	// Table: gm
 	// Name: post_code_execute
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) )
-	// Registers a callback that will be called right after any game function is called.
+	// Registers a callback that will be called right after any object function is called.
 	static void post_code_execute(sol::protected_function cb, sol::this_environment env)
 	{
 		big::lua_module* mdl = big::lua_module::this_from(env);
 		if (mdl)
 			mdl->m_post_code_execute_callbacks.push_back(cb);
+	}
+
+	static RValue* central_script_hook(CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args)
+	{
+#pragma region Figure out which original function to call
+		constexpr size_t e8_instruction_length = 5;
+		uintptr_t original_func_ptr            = (uintptr_t)_ReturnAddress() - e8_instruction_length;
+
+		hde64s instruction;
+		hde64_disasm((void*)original_func_ptr, &instruction);
+		if (instruction.flags & F_ERROR)
+		{
+			LOG(FATAL) << "Fucked.";
+		}
+
+		if (instruction.flags & F_RELATIVE)
+		{
+			intptr_t imm = 0;
+			if (instruction.flags & F_IMM8)
+				imm = (int8_t)instruction.imm.imm8;
+			else if (instruction.flags & F_IMM16)
+				imm = (int16_t)instruction.imm.imm16;
+			else if (instruction.flags & F_IMM32)
+				imm = (int32_t)instruction.imm.imm32;
+			else
+				imm = (int64_t)instruction.imm.imm64;
+
+			original_func_ptr += imm + instruction.len;
+		}
+		// Access to static memory address
+		//else if (instruction.flags & F_MODRM && instruction.modrm_mod == 0 && instruction.modrm_rm == 0b101)
+		//{
+		//	original_func_ptr += (int32_t)instruction.disp.disp32;
+		//	original_func_ptr += instruction.len;
+		//}
+		else
+		{
+			LOG(FATAL) << "Fucked.";
+		}
+#pragma endregion Figure out which original function to call
+
+		const auto call_orig_if_true = big::g_lua_manager->pre_script_execute((void*)original_func_ptr, self, other, result, arg_count, args);
+
+		if (call_orig_if_true)
+		{
+			const auto res = big::hooking::detour_hook_helper::get_original<PFUNC_YYGMLScript>((void*)original_func_ptr)(self, other, result, arg_count, args);
+		}
+
+		big::g_lua_manager->post_script_execute((void*)original_func_ptr, self, other, result, arg_count, args);
+
+		return result;
+	}
+
+	// Lua API: Function
+	// Table: gm
+	// Name: pre_script_hook
+	// Param: script_function_index: number: index of the game script function to hook, for example `gm.constants.callback_execute`
+	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), arg_count (number), args (RValue array) ) -> Return true or false depending on if you want the orig method to be called.
+	// Registers a callback that will be called right before any game script function is called.
+	static void pre_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
+	{
+		big::lua_module* mdl = big::lua_module::this_from(env);
+		if (mdl)
+		{
+			const int script_function_index = (int)script_function_index_double;
+			const auto cscript = big::g_pointers->m_rorr.m_script_data(script_function_index - 100'000);
+			if (cscript)
+			{
+				std::stringstream hook_name;
+				hook_name << mdl->guid() << " | " << script_function_index << " | "
+				          << mdl->m_pre_script_execute_callbacks.size();
+
+				LOG(INFO) << "hook_name: " << hook_name.str();
+
+				const auto original_func_ptr = (void*)cscript->m_funcs->m_script_function;
+
+				big::hooking::detour_hook_helper::add(hook_name.str(), original_func_ptr, (void*)&central_script_hook);
+
+				mdl->m_pre_script_execute_callbacks[original_func_ptr].push_back(cb);
+			}
+		}
+	}
+
+	// Lua API: Function
+	// Table: gm
+	// Name: post_script_hook
+	// Param: script_function_index: number: index of the game script function to hook, for example `gm.constants.callback_execute`
+	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), arg_count (number), args (RValue array) )
+	// Registers a callback that will be called right after any game script function is called.
+	static void post_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
+	{
+		big::lua_module* mdl = big::lua_module::this_from(env);
+		if (mdl)
+		{
+			const int script_function_index = script_function_index_double;
+			const auto cscript = big::g_pointers->m_rorr.m_script_data(script_function_index - 100'000);
+			if (cscript)
+			{
+				std::stringstream hook_name;
+				hook_name << mdl->guid() << " | " << script_function_index << " | "
+				          << mdl->m_post_script_execute_callbacks.size();
+
+				LOG(INFO) << "hook_name: " << hook_name.str();
+
+				const auto original_func_ptr = (void*)cscript->m_funcs->m_script_function;
+
+				big::hooking::detour_hook_helper::add(hook_name.str(), original_func_ptr, (void*)&central_script_hook);
+
+				mdl->m_post_script_execute_callbacks[original_func_ptr].push_back(cb);
+			}
+		}
 	}
 
 	// Lua API: Function
@@ -877,6 +991,9 @@ namespace lua::game_maker
 
 		ns["pre_code_execute"]  = pre_code_execute;
 		ns["post_code_execute"] = post_code_execute;
+
+		ns["pre_script_hook"] = pre_script_hook;
+		ns["post_script_hook"] = post_script_hook;
 
 		ns["call"] = sol::overload(lua_gm_call, lua_gm_call_global);
 
