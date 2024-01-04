@@ -12,6 +12,28 @@
 
 #define BIND_USERTYPE(lua_variable, type_name, field_name) lua_variable[#field_name] = &type_name::field_name;
 
+static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
+{
+	switch (res.type & MASK_TYPE_RVALUE)
+	{
+	case STRING: return sol::make_object<const char*>(this_state_, res.ref_string->get());
+	case REAL:
+	case _BOOL:
+	case _INT32:
+	case _INT64: return sol::make_object<double>(this_state_, res.asReal());
+	case ARRAY: return sol::make_object<std::span<RValue>>(this_state_, res.ref_array->array());
+	case REF: return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
+	case PTR: return sol::make_object<void*>(this_state_, res.ptr);
+	case OBJECT:
+		return res.yy_object_base->type == YYObjectBaseType::CINSTANCE ?
+		    sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr) :
+		    sol::make_object<YYObjectBase*>(this_state_, res.yy_object_base);
+	case UNDEFINED:
+	case UNSET: return sol::lua_nil;
+	default: return sol::make_object<RValue>(this_state_, res);
+	}
+}
+
 static RValue parse_sol_object(sol::object arg)
 {
 	if (arg.get_type() == sol::type::number)
@@ -129,7 +151,7 @@ namespace lua::game_maker
 		if (mdl)
 		{
 			const int script_function_index = (int)script_function_index_double;
-			const auto cscript = big::g_pointers->m_rorr.m_script_data(script_function_index - 100'000);
+			const auto cscript              = big::g_pointers->m_rorr.m_script_data(script_function_index - 100'000);
 			if (cscript)
 			{
 				std::stringstream hook_name;
@@ -159,7 +181,7 @@ namespace lua::game_maker
 		if (mdl)
 		{
 			const int script_function_index = script_function_index_double;
-			const auto cscript = big::g_pointers->m_rorr.m_script_data(script_function_index - 100'000);
+			const auto cscript              = big::g_pointers->m_rorr.m_script_data(script_function_index - 100'000);
 			if (cscript)
 			{
 				std::stringstream hook_name;
@@ -216,7 +238,6 @@ namespace lua::game_maker
 		return gm::call(name, parse_variadic_args(args));
 	}
 
-	static std::span<RValue, 0> dummy_rvalue_array{};
 	void bind(sol::state& state)
 	{
 		auto ns = state["gm"].get_or_create<sol::table>();
@@ -377,30 +398,9 @@ namespace lua::game_maker
 
 			// Lua API: Field
 			// Class: RValue
-			// Field: value: number
-			type["value"] = sol::property([](RValue& inst) {
-				return inst.asReal();
-			});
-
-			// Lua API: Field
-			// Class: RValue
-			// Field: object: YYObjectBase
-			type["object"] = sol::property([](RValue& inst) {
-				return inst.asObject();
-			});
-
-			// Lua API: Field
-			// Class: RValue
-			// Field: cinstance: CInstance
-			type["cinstance"] = sol::property([](RValue& inst) {
-				return (CInstance*)inst.asObject();
-			});
-
-			// Lua API: Field
-			// Class: RValue
-			// Field: array: table of RValues
-			type["array"] = sol::property([](RValue& inst) {
-				return inst.ref_array && inst.isArray() ? inst.ref_array->array() : dummy_rvalue_array;
+			// Field: value: The actual value behind the RValue, or RValue if the type is not handled yet.
+			type["value"] = sol::property([](RValue& inst, sol::this_state this_state_) {
+				return RValue_to_lua(inst, this_state_);
 			});
 
 			// Lua API: Field
@@ -584,26 +584,7 @@ namespace lua::game_maker
 					    const auto res =
 					        gm::call("variable_instance_get", std::to_array<RValue, 2>({self.as<CInstance&>().id, key.as<const char*>()}));
 
-					    switch (res.type & MASK_TYPE_RVALUE)
-					    {
-					    case STRING: return sol::make_object<const char*>(this_state_, res.ref_string->get());
-					    case REAL:
-					    case _BOOL:
-					    case _INT32:
-					    case _INT64: return sol::make_object<double>(this_state_, res.asReal());
-					    case ARRAY:
-						    return sol::make_object<std::span<RValue>>(this_state_,
-						        res.ref_array && res.isArray() ? res.ref_array->array() : dummy_rvalue_array);
-					    case REF:
-					    case PTR: return sol::make_object<void*>(this_state_, res.ptr);
-					    case OBJECT:
-						    return res.yy_object_base->type == YYObjectBaseType::CINSTANCE ?
-						        sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr) :
-						        sol::make_object<YYObjectBase*>(this_state_, res.yy_object_base);
-					    case UNDEFINED:
-					    case UNSET: return sol::lua_nil;
-					    default: return sol::make_object<RValue>(this_state_, res);
-					    }
+					    return RValue_to_lua(res, this_state_);
 				    }
 			    },
 			    sol::meta_function::new_index,
@@ -814,12 +795,17 @@ namespace lua::game_maker
 			// Lua API: Field
 			// Table: gm.CInstance
 			// Field: instances_all: CInstance table of all (active or unactive) game maker object instances
-			CInstance_table["instances_all"] = &gm::CInstances_all;
+			CInstance_table["instances_all"] = std::ref(gm::CInstances_all);
 
 			// Lua API: Field
 			// Table: gm.CInstance
 			// Field: instances_active: CInstance table of all active game maker object instances
-			CInstance_table["instances_active"] = &gm::CInstances_active;
+			CInstance_table["instances_active"] = std::ref(gm::CInstances_active);
+
+			// Lua API: Field
+			// Table: gm.CInstance
+			// Field: instance_id_to_CInstance: table of all game maker object instances ids to their corresponding CInstance
+			CInstance_table["instance_id_to_CInstance"] = std::ref(gm::CInstance_id_to_CInstance);
 		}
 
 		// Lua API: Class
@@ -992,7 +978,7 @@ namespace lua::game_maker
 		ns["pre_code_execute"]  = pre_code_execute;
 		ns["post_code_execute"] = post_code_execute;
 
-		ns["pre_script_hook"] = pre_script_hook;
+		ns["pre_script_hook"]  = pre_script_hook;
 		ns["post_script_hook"] = post_script_hook;
 
 		ns["call"] = sol::overload(lua_gm_call, lua_gm_call_global);
