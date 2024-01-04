@@ -139,43 +139,7 @@ namespace lua::game_maker
 		return result;
 	}
 
-	// Lua API: Function
-	// Table: gm
-	// Name: pre_script_hook
-	// Param: script_function_index: number: index of the game script function to hook, for example `gm.constants.callback_execute`
-	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), arg_count (number), args (RValue array) ) -> Return true or false depending on if you want the orig method to be called.
-	// Registers a callback that will be called right before any game script function is called.
-	static void pre_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
-	{
-		big::lua_module* mdl = big::lua_module::this_from(env);
-		if (mdl)
-		{
-			const int script_function_index = (int)script_function_index_double;
-			const auto cscript              = big::g_pointers->m_rorr.m_script_data(script_function_index - 100'000);
-			if (cscript)
-			{
-				std::stringstream hook_name;
-				hook_name << mdl->guid() << " | " << script_function_index << " | "
-				          << mdl->m_pre_script_execute_callbacks.size();
-
-				LOG(INFO) << "hook_name: " << hook_name.str();
-
-				const auto original_func_ptr = (void*)cscript->m_funcs->m_script_function;
-
-				big::hooking::detour_hook_helper::add(hook_name.str(), original_func_ptr, (void*)&central_script_hook);
-
-				mdl->m_pre_script_execute_callbacks[original_func_ptr].push_back(cb);
-			}
-		}
-	}
-
-	// Lua API: Function
-	// Table: gm
-	// Name: post_script_hook
-	// Param: script_function_index: number: index of the game script function to hook, for example `gm.constants.callback_execute`
-	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), arg_count (number), args (RValue array) )
-	// Registers a callback that will be called right after any game script function is called.
-	static void post_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
+	static std::pair<big::lua_module*, void*> make_central_script_hook(const double script_function_index_double, sol::this_environment& env)
 	{
 		big::lua_module* mdl = big::lua_module::this_from(env);
 		if (mdl)
@@ -194,8 +158,44 @@ namespace lua::game_maker
 
 				big::hooking::detour_hook_helper::add(hook_name.str(), original_func_ptr, (void*)&central_script_hook);
 
-				mdl->m_post_script_execute_callbacks[original_func_ptr].push_back(cb);
+				return std::make_pair(mdl, original_func_ptr);
 			}
+			else
+			{
+				LOG(FATAL) << "Could not find a corresponding script function index (" << script_function_index << ")";
+			}
+		}
+
+		return {};
+	}
+
+	// Lua API: Function
+	// Table: gm
+	// Name: pre_script_hook
+	// Param: script_function_index: number: index of the game script function to hook, for example `gm.constants.callback_execute`
+	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), arg_count (number), args (RValue array) ) -> Return true or false depending on if you want the orig method to be called.
+	// Registers a callback that will be called right before any game script function is called.
+	static void pre_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
+	{
+		const auto [mdl, original_func_ptr] = make_central_script_hook(script_function_index_double, env);
+		if (mdl && original_func_ptr)
+		{
+			mdl->m_pre_script_execute_callbacks[original_func_ptr].push_back(cb);
+		}
+	}
+
+	// Lua API: Function
+	// Table: gm
+	// Name: post_script_hook
+	// Param: script_function_index: number: index of the game script function to hook, for example `gm.constants.callback_execute`
+	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), arg_count (number), args (RValue array) )
+	// Registers a callback that will be called right after any game script function is called.
+	static void post_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
+	{
+		const auto [mdl, original_func_ptr] = make_central_script_hook(script_function_index_double, env);
+		if (mdl && original_func_ptr)
+		{
+			mdl->m_post_script_execute_callbacks[original_func_ptr].push_back(cb);
 		}
 	}
 
