@@ -10,10 +10,10 @@ namespace big
 		explicit detour_hook(const std::string& name, void* target, void* detour);
 		~detour_hook() noexcept;
 
-		detour_hook(detour_hook&& that)            = delete;
-		detour_hook& operator=(detour_hook&& that) = delete;
-		detour_hook(detour_hook const&)            = delete;
-		detour_hook& operator=(detour_hook const&) = delete;
+		//detour_hook(detour_hook&& that)            = delete;
+		//detour_hook& operator=(detour_hook&& that) = delete;
+		//detour_hook(detour_hook const&)            = delete;
+		//detour_hook& operator=(detour_hook const&) = delete;
 
 		void set_instance(const std::string& name, void* detour);
 		void set_instance(const std::string& name, void* target, void* detour);
