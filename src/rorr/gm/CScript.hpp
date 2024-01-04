@@ -8,19 +8,22 @@ struct CStream
 	void* internal_buffer;
 };
 
+struct CCode;
+struct YYGMLFuncs;
+struct CInstance;
+
 struct CScript
 {
-	void** pVMT;
-	CStream* s_text;
-	CCode* s_code;
-	YYGMLFuncs* s_pFunc;
-	CInstance* s_pStaticObject;
+	int (**_vptr$CScript)(void);
+	CCode* m_code;
+	YYGMLFuncs* m_funcs;
+	CInstance* m_static_object;
 
 	union {
-		const char* m_script_name; // example: gml_Script_init_player
-		int s_compiledIndex;
+		const char* m_script;
+		int m_compiled_index;
 	};
 
-	const char* m_name;
+	const char* m_script_name; // example: gml_Script_init_player
 	int m_offset;
 };
