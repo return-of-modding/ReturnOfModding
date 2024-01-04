@@ -1,13 +1,14 @@
 #pragma once
 
 #include "hooks/hooking.hpp"
+#include "CInstance.hpp"
 
-struct CInstance;
 
 namespace gm
 {
 	inline std::vector<CInstance*> CInstances_all;
 	inline std::vector<CInstance*> CInstances_active;
+	inline std::unordered_map<int, CInstance*> CInstance_id_to_CInstance;
 
 	using CInstance_ctor = CInstance* (*)(CInstance* this_, float a2, float a3, int a4, int a5, bool a6);
 	inline CInstance* hook_CInstance_ctor(CInstance* this_, float a2, float a3, int a4, int a5, bool a6)
@@ -15,6 +16,8 @@ namespace gm
 		auto* res = big::g_hooking->get_original<hook_CInstance_ctor>()(this_, a2, a3, a4, a5, a6);
 
 		CInstances_all.push_back(res);
+
+		CInstance_id_to_CInstance[res->id] = res;
 
 		return res;
 	}
@@ -25,6 +28,8 @@ namespace gm
 		std::erase_if(CInstances_all, [=](CInstance* other) {
 			return this_ == other;
 		});
+
+		CInstance_id_to_CInstance.erase(this_->id);
 
 		auto* res = big::g_hooking->get_original<hook_CInstance_dctor>()(this_);
 
