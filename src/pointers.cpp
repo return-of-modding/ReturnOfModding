@@ -139,6 +139,15 @@ namespace big
             {
 				g_pointers->m_rorr.m_io_update_m = ptr.sub(0x8A).as<gm::IO_UpdateM_t>();
             }
+        },
+        // Script_Data
+        {
+            "SD",
+            "E8 ? ? ? ? 33 C9 0F B7 D3 ?",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_script_data = ptr.add(1).rip().as<gm::Script_Data_t>();
+            }
         }
         >(); // don't leave a trailing comma at the end
 		// clang-format on
