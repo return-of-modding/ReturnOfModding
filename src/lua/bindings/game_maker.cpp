@@ -25,7 +25,7 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 	case REF: return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
 	case PTR: return sol::make_object<void*>(this_state_, res.ptr);
 	case OBJECT:
-		return res.yy_object_base->type == YYObjectBaseType::CINSTANCE ?
+		return res.yy_object_base->type == YYObjectBaseType::CINSTANCE || res.yy_object_base->type == YYObjectBaseType::YYOBJECTBASE ?
 		    sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr) :
 		    sol::make_object<YYObjectBase*>(this_state_, res.yy_object_base);
 	case UNDEFINED:
