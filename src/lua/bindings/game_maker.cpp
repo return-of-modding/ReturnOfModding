@@ -403,7 +403,7 @@ namespace lua::game_maker
 						    return;
 					    }
 
-					    gm::call("struct_set", std::to_array<RValue, 3>({yyobject, key.as<const char*>(), parse_sol_object(key)}));
+					    gm::call("struct_set", std::to_array<RValue, 3>({yyobject, key.as<const char*>(), parse_sol_object(value)}));
 				    }
 			    });
 
@@ -659,7 +659,7 @@ namespace lua::game_maker
 						    return;
 					    }
 
-					    gm::call("variable_instance_set", std::to_array<RValue, 3>({self.as<CInstance&>().id, key.as<const char*>(), parse_sol_object(key)}));
+					    gm::call("variable_instance_set", std::to_array<RValue, 3>({self.as<CInstance&>().id, key.as<const char*>(), parse_sol_object(value)}));
 				    }
 			    });
 
