@@ -19,14 +19,26 @@ namespace gm
 
 			if (call_orig_if_true)
 			{
-				no_error = big::g_hooking->get_original<hook_Code_Execute>()(self, other, code, result, flags);
+				try
+				{
+					no_error = big::g_hooking->get_original<hook_Code_Execute>()(self, other, code, result, flags);
+				}
+				catch (...)
+				{
+				}
 			}
 
 			big::g_lua_manager->post_code_execute(self, other, code, result, flags);
 		}
 		else
 		{
-			no_error = big::g_hooking->get_original<hook_Code_Execute>()(self, other, code, result, flags);
+			try
+			{
+				no_error = big::g_hooking->get_original<hook_Code_Execute>()(self, other, code, result, flags);
+			}
+			catch (...)
+			{
+			}
 		}
 
 		return no_error;
