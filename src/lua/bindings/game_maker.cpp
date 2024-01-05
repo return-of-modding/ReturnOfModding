@@ -868,6 +868,9 @@ namespace lua::game_maker
 
 				return RValue_to_lua(val, this_state_);
 			});
+
+			sol::protected_function ipairs_func = type[sol::meta_function::ipairs];
+			type[sol::meta_function::pairs]     = ipairs_func;
 		}
 
 		// Lua API: Class
