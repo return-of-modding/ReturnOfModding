@@ -143,10 +143,19 @@ namespace big
         // Script_Data
         {
             "SD",
-            "E8 ? ? ? ? 33 C9 0F B7 D3 ?",
+            "E8 ? ? ? ? 33 C9 0F B7 D3",
             [](memory::handle ptr)
             {
 				g_pointers->m_rorr.m_script_data = ptr.add(1).rip().as<gm::Script_Data_t>();
+            }
+        },
+        // StructCreate
+        {
+            "SC",
+            "48 8B D9 45 33 C9 33 C9",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_struct_create = ptr.sub(0x6).as<gm::StructCreate_t>();
             }
         }
         >(); // don't leave a trailing comma at the end

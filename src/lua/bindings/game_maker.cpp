@@ -244,6 +244,17 @@ namespace lua::game_maker
 		return RValue_to_lua(gm::call(name, parse_variadic_args(args)), this_state_);
 	}
 
+	// Lua API: Function
+	// Table: gm
+	// Name: struct_create
+	// Returns: RValue: The freshly made empty struct, wrapped around an RValue.
+	static RValue lua_struct_create()
+	{
+		RValue out_res;
+		big::g_pointers->m_rorr.m_struct_create(&out_res);
+		return out_res;
+	}
+
 	void bind(sol::state& state)
 	{
 		auto ns = state["gm"].get_or_create<sol::table>();
@@ -996,6 +1007,8 @@ namespace lua::game_maker
 
 		ns["variable_global_get"] = lua_gm_variable_global_get;
 		ns["variable_global_set"] = lua_gm_variable_global_set;
+
+		ns["struct_create"] = lua_struct_create;
 
 		auto meta_gm = state.create_table();
 		// Wrapper so that users can do gm.room_goto(new_room) for example instead of gm.call("room_goto", new_room)
