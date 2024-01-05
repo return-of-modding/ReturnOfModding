@@ -13,14 +13,14 @@ local timer_in_seconds = 0
 local rotation_interval_in_seconds = 10  -- in seconds
 
 local function delta_time_in_seconds()
-    return gm.variable_global_get("delta_time").value / 1000000
+    return gm.variable_global_get("delta_time") / 1000000
 end
 
 -- can't hook into game callbacks yet, so this will do
 hooks["gml_Object_oP_Step_2"] = function(self)
     if self.class == survivor_setup.coolguy_id then
         -- do coolguy stuff
-        if self.local_client_is_authority > 0.5 then -- don't call if this isn't our player
+        if self.local_client_is_authority then -- don't call if this isn't our player
             timer_in_seconds = timer_in_seconds + delta_time_in_seconds()
 
             if timer_in_seconds >= rotation_interval_in_seconds then
