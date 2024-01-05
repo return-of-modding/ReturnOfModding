@@ -783,14 +783,6 @@ namespace lua::game_maker
 			// Field: object_name: string
 			type["object_name"] = sol::property(&CInstance::object_name);
 
-			// Lua API: Function
-			// Class: CInstance
-			// Name: variable_instance_get_names
-			// Return all the game defined variable names of the given object, for example with an `oP` (Player) object instance you will be able to do `print(myoPInstance.user_name)`
-			type["variable_instance_get_names"] = [](CInstance& self) {
-				return gm::call("variable_instance_get_names", self.id).ref_array;
-			};
-
 			auto CInstance_table = ns["CInstance"].get_or_create<sol::table>();
 
 			// Lua API: Field
