@@ -366,7 +366,46 @@ namespace lua::game_maker
 		// Name: YYObjectBase
 		// Class representing an object coming from the game maker engine
 		{
-			sol::usertype<YYObjectBase> type = state.new_usertype<YYObjectBase>("YYObjectBase");
+			sol::usertype<YYObjectBase> type = state.new_usertype<YYObjectBase>(
+			    "YYObjectBase",
+			    sol::meta_function::index,
+			    [](sol::this_state this_state_, sol::object self, sol::stack_object key) -> sol::reference {
+				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
+				    if (v)
+				    {
+					    return v.value();
+				    }
+				    else
+				    {
+					    const auto yyobject = self.as<YYObjectBase*>();
+					    if (!key.is<const char*>() || yyobject->type != YYObjectBaseType::YYOBJECTBASE)
+					    {
+						    return sol::lua_nil;
+					    }
+
+					    const auto res = gm::call("struct_get", std::to_array<RValue, 2>({yyobject, key.as<const char*>()}));
+
+					    return RValue_to_lua(res, this_state_);
+				    }
+			    },
+			    sol::meta_function::new_index,
+			    [](sol::object self, sol::stack_object key, sol::stack_object value) {
+				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
+				    if (v)
+				    {
+					    self.as<sol::table&>().raw_set(key, value);
+				    }
+				    else
+				    {
+					    const auto yyobject = self.as<YYObjectBase*>();
+					    if (!key.is<const char*>() || yyobject->type != YYObjectBaseType::YYOBJECTBASE)
+					    {
+						    return;
+					    }
+
+					    gm::call("struct_set", std::to_array<RValue, 3>({yyobject, key.as<const char*>(), parse_sol_object(key)}));
+				    }
+			    });
 
 			// Lua API: Field
 			// Class: YYObjectBase
