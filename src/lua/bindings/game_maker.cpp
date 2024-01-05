@@ -247,12 +247,12 @@ namespace lua::game_maker
 	// Lua API: Function
 	// Table: gm
 	// Name: struct_create
-	// Returns: RValue: The freshly made empty struct, wrapped around an RValue.
-	static RValue lua_struct_create()
+	// Returns: YYObjectBase*: The freshly made empty struct
+	static YYObjectBase* lua_struct_create()
 	{
 		RValue out_res;
 		big::g_pointers->m_rorr.m_struct_create(&out_res);
-		return out_res;
+		return out_res.yy_object_base;
 	}
 
 	void bind(sol::state& state)
