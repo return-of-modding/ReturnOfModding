@@ -16,7 +16,7 @@ Table containing helpers for interacting with the game maker engine.
 
 - Type: `constants_type_sorted[type_name][i] = constant_name`
 
-## Functions (7)
+## Functions (8)
 
 ### `pre_code_execute(callback)`
 
@@ -74,11 +74,11 @@ gm.post_script_hook(script_function_index, callback)
   - `name` (string): name of the variable
 
 - **Returns:**
-  - `RValue`: Returns the global variable value.
+  - `value`: The actual value behind the RValue, or RValue if the type is not handled yet.
 
 **Example Usage:**
 ```lua
-RValue = gm.variable_global_get(name)
+value = gm.variable_global_get(name)
 ```
 
 ### `variable_global_set(name, new_value)`
@@ -101,11 +101,21 @@ gm.variable_global_set(name, new_value)
   - `args` (any): (optional)
 
 - **Returns:**
-  - `RValue`: Returns the result of the function call if there is one.
+  - `value`: The actual value behind the RValue, or RValue if the type is not handled yet.
 
 **Example Usage:**
 ```lua
-RValue = gm.call(name, self, other, args)
+value = gm.call(name, self, other, args)
+```
+
+### `struct_create()`
+
+- **Returns:**
+  - `RValue`: The freshly made empty struct, wrapped around an RValue.
+
+**Example Usage:**
+```lua
+RValue = gm.struct_create()
 ```
 
 
