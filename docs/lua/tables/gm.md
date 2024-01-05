@@ -111,11 +111,11 @@ value = gm.call(name, self, other, args)
 ### `struct_create()`
 
 - **Returns:**
-  - `RValue`: The freshly made empty struct, wrapped around an RValue.
+  - `YYObjectBase*`: The freshly made empty struct
 
 **Example Usage:**
 ```lua
-RValue = gm.struct_create()
+YYObjectBase* = gm.struct_create()
 ```
 
 
