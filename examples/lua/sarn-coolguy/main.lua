@@ -1,5 +1,41 @@
 survivor_setup = require("sarn-coolguy_setup/survivor_setup")
 
+local coolguy = survivor_setup.coolguy
+if coolguy ~= nil then
+    local survivors = gm.variable_global_get("class_survivor")
+
+    local function set_family_info(surv_skin_family)
+        local skin_structs = gm.variable_instance_get(surv_skin_family, "elements")
+        local new_struct = gm.struct_create()
+        -- local new_struct = gm.array_get(skin_structs, 1)
+        gm.struct_set(new_struct, "index", 57)
+        gm.struct_set(new_struct, "skin_id", 1)
+        gm.struct_set(new_struct, "achievement_id", -1)
+        gm.array_push(skin_structs, new_struct)
+    end
+
+    local function print_family_info(surv_skin_family)
+        local skin_structs = gm.variable_instance_get(surv_skin_family, "elements")
+        local skin_struct_fields_names = gm.variable_instance_get_names(skin_structs[1])
+        for j = 1, #skin_structs do
+            for i = 1, #skin_struct_fields_names do
+                local variable_value = gm.variable_instance_get(skin_structs[j], skin_struct_fields_names[i]) or "nil"
+                print("["..i.."] " .. skin_struct_fields_names[i] .. ": " .. variable_value)
+            end
+        end
+    end
+
+    local survivor = survivors[3]
+    log.warning(survivor[2] .. ".skin_family")
+    -- set_family_info(survivor[11])
+    print_family_info(survivor[11])
+    log.warning("coolguy.skin_family")
+    print_family_info(coolguy.skin_family)
+
+    log.warning(survivor[17])
+    log.warning(coolguy.namespace)
+end
+
 local hooks = {}
 
 -- messing with these two is pretty fun.
