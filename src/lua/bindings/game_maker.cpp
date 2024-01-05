@@ -809,6 +809,24 @@ namespace lua::game_maker
 		}
 
 		// Lua API: Class
+		// Name: RefDynamicArrayOfRValue
+		// Class representing a game maker RValue array
+		{
+			sol::usertype<RefDynamicArrayOfRValue> type = state.new_usertype<RefDynamicArrayOfRValue>("RefDynamicArrayOfRValue", sol::base_classes, sol::bases<YYObjectBase>(), sol::meta_function::index, [](sol::this_state this_state_, RefDynamicArrayOfRValue& self, int pos) -> sol::reference {
+				// lua index adjustment
+				pos -= 1;
+				if (pos < 0 || pos >= self.length)
+				{
+					return sol::lua_nil;
+				}
+
+				RValue& val = self.m_Array[pos];
+
+				return RValue_to_lua(val, this_state_);
+			});
+		}
+
+		// Lua API: Class
 		// Name: CCode
 		// Class representing a game function
 		{

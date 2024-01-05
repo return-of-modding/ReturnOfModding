@@ -148,6 +148,13 @@ RValue::RValue(YYObjectBase* obj)
 	this->yy_object_base = obj;
 }
 
+RValue::RValue(RefDynamicArrayOfRValue* arr)
+{
+	flags           = 0;
+	type            = ARRAY;
+	this->ref_array = arr;
+}
+
 RValue::RValue(const char* v)
 {
 	flags = 0;
@@ -447,7 +454,6 @@ double RValue::asReal() const
 		}
 		catch (...)
 		{
-
 		}
 	}
 	default: LOG(FATAL) << "unhandled " << (type & MASK_TYPE_RVALUE);
@@ -479,7 +485,6 @@ int RValue::asInt32() const
 		}
 		catch (...)
 		{
-			
 		}
 	}
 	default: LOG(FATAL) << "unhandled " << (type & MASK_TYPE_RVALUE);
@@ -516,7 +521,6 @@ bool RValue::asBoolean() const
 		}
 		catch (...)
 		{
-			
 		}
 	}
 	default: LOG(FATAL) << "unhandled " << (type & MASK_TYPE_RVALUE);
@@ -544,7 +548,6 @@ long long RValue::asInt64() const
 		}
 		catch (...)
 		{
-			
 		}
 	}
 	default: LOG(FATAL) << "unhandled " << (type & MASK_TYPE_RVALUE);
@@ -623,19 +626,4 @@ YYObjectBase* RValue::asObject() const
 RValue::operator void*() const
 {
 	return asPointer();
-}
-
-const RefDynamicArrayOfRValue* RValue::asArray() const
-{
-	if ((type & MASK_TYPE_RVALUE) == ARRAY)
-		return ref_array;
-	else
-		LOG(FATAL) << "unhandled";
-
-	return nullptr;
-}
-
-std::span<RValue> RefDynamicArrayOfRValue::array()
-{
-	return std::span(this->m_Array, this->length);
 }
