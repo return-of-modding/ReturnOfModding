@@ -17,15 +17,15 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 	switch (res.type & MASK_TYPE_RVALUE)
 	{
 	case STRING: return sol::make_object<const char*>(this_state_, res.ref_string->get());
+	case _BOOL: return sol::make_object<bool>(this_state_, res.asBoolean());
 	case REAL:
-	case _BOOL:
 	case _INT32:
 	case _INT64: return sol::make_object<double>(this_state_, res.asReal());
-	case ARRAY: return sol::make_object<std::span<RValue>>(this_state_, res.ref_array->array());
+	case ARRAY: return sol::make_object<RefDynamicArrayOfRValue*>(this_state_, res.ref_array);
 	case REF: return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
 	case PTR: return sol::make_object<void*>(this_state_, res.ptr);
 	case OBJECT:
-		return res.yy_object_base->type == YYObjectBaseType::CINSTANCE || res.yy_object_base->type == YYObjectBaseType::YYOBJECTBASE ?
+		return res.yy_object_base->type == YYObjectBaseType::CINSTANCE ?
 		    sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr) :
 		    sol::make_object<YYObjectBase*>(this_state_, res.yy_object_base);
 	case UNDEFINED:
@@ -42,6 +42,12 @@ static RValue parse_sol_object(sol::object arg)
 		return RValue(arg.as<std::string>());
 	else if (arg.get_type() == sol::type::boolean)
 		return RValue(arg.as<bool>());
+	else if (arg.is<RefDynamicArrayOfRValue*>())
+		return RValue(arg.as<RefDynamicArrayOfRValue*>());
+	else if (arg.is<CInstance*>())
+		return RValue(arg.as<CInstance*>());
+	else if (arg.is<YYObjectBase*>())
+		return RValue(arg.as<YYObjectBase*>());
 	else if (arg.is<RValue>())
 		return arg.as<RValue>();
 
@@ -203,10 +209,10 @@ namespace lua::game_maker
 	// Table: gm
 	// Name: variable_global_get
 	// Param: name: string: name of the variable
-	// Returns: RValue: Returns the global variable value.
-	static RValue lua_gm_variable_global_get(std::string_view name)
+	// Returns: value: The actual value behind the RValue, or RValue if the type is not handled yet.
+	static sol::object lua_gm_variable_global_get(sol::this_state this_state_, std::string_view name)
 	{
-		return gm::variable_global_get(name);
+		return RValue_to_lua(gm::variable_global_get(name), this_state_);
 	}
 
 	// Lua API: Function
@@ -227,15 +233,15 @@ namespace lua::game_maker
 	// Param: self: CInstance: (optional)
 	// Param: other: CInstance: (optional)
 	// Param: args: any: (optional)
-	// Returns: RValue: Returns the result of the function call if there is one.
-	static RValue lua_gm_call(std::string_view name, CInstance* self, CInstance* other, sol::variadic_args args)
+	// Returns: value: The actual value behind the RValue, or RValue if the type is not handled yet.
+	static sol::object lua_gm_call(sol::this_state this_state_, std::string_view name, CInstance* self, CInstance* other, sol::variadic_args args)
 	{
-		return gm::call(name, self, other, parse_variadic_args(args));
+		return RValue_to_lua(gm::call(name, self, other, parse_variadic_args(args)), this_state_);
 	}
 
-	static RValue lua_gm_call_global(std::string_view name, sol::variadic_args args)
+	static sol::object lua_gm_call_global(sol::this_state this_state_, std::string_view name, sol::variadic_args args)
 	{
-		return gm::call(name, parse_variadic_args(args));
+		return RValue_to_lua(gm::call(name, parse_variadic_args(args)), this_state_);
 	}
 
 	void bind(sol::state& state)
@@ -358,16 +364,18 @@ namespace lua::game_maker
 
 			// Lua API: Field
 			// Class: YYObjectBase
-			// Field: cinstance: CInstance
+			// Field: cinstance: CInstance or nil if not a CInstance
 			type["cinstance"] = sol::property([](YYObjectBase& inst, sol::this_state this_state_) {
 				return inst.type == YYObjectBaseType::CINSTANCE ? sol::make_object(this_state_, (CInstance*)&inst) : sol::lua_nil;
 			});
 
 			// Lua API: Field
 			// Class: YYObjectBase
-			// Field: script_name: string
+			// Field: script_name: string or nil if not a SCRIPTREF
 			type["script_name"] = sol::property([](YYObjectBase& inst, sol::this_state this_state_) {
-				return inst.type == YYObjectBaseType::SCRIPTREF ? ((CScriptRef*)&inst)->m_call_script->m_script_name : "";
+				return inst.type == YYObjectBaseType::SCRIPTREF ?
+				    sol::make_object(this_state_, ((CScriptRef*)&inst)->m_call_script->m_script_name) :
+				    sol::lua_nil;
 			});
 		}
 
@@ -780,14 +788,7 @@ namespace lua::game_maker
 			// Name: variable_instance_get_names
 			// Return all the game defined variable names of the given object, for example with an `oP` (Player) object instance you will be able to do `print(myoPInstance.user_name)`
 			type["variable_instance_get_names"] = [](CInstance& self) {
-				const auto var_names = gm::call("variable_instance_get_names", self.id).asArray();
-				// TODO: Cache it?
-				std::vector<std::string> res;
-				for (int i = 0; i < var_names->length; i++)
-				{
-					res.emplace_back(var_names->m_Array[i].asString());
-				}
-				return res;
+				return gm::call("variable_instance_get_names", self.id).ref_array;
 			};
 
 			auto CInstance_table = ns["CInstance"].get_or_create<sol::table>();
@@ -1006,7 +1007,7 @@ namespace lua::game_maker
 
 		auto meta_gm = state.create_table();
 		// Wrapper so that users can do gm.room_goto(new_room) for example instead of gm.call("room_goto", new_room)
-		meta_gm.set_function(sol::meta_function::index, [](sol::table self, std::string key) -> sol::reference {
+		meta_gm.set_function(sol::meta_function::index, [](sol::this_state this_state_, sol::table self, std::string key) -> sol::reference {
 			auto v = self.raw_get<sol::optional<sol::reference>>(key);
 			if (v)
 			{
@@ -1021,11 +1022,11 @@ namespace lua::game_maker
 
 				self.raw_set(key,
 				    sol::overload(
-				        [key](sol::variadic_args args) {
-					        return gm::call(key, parse_variadic_args(args));
+				        [key, this_state_](sol::variadic_args args) {
+					        return RValue_to_lua(gm::call(key, parse_variadic_args(args)), this_state_);
 				        },
-				        [key](CInstance* self, CInstance* other, sol::variadic_args args) {
-					        return gm::call(key, self, other, parse_variadic_args(args));
+				        [key, this_state_](CInstance* self, CInstance* other, sol::variadic_args args) {
+					        return RValue_to_lua(gm::call(key, self, other, parse_variadic_args(args)), this_state_);
 				        }));
 
 				return self.raw_get<sol::reference>(key);
