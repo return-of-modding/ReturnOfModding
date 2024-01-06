@@ -333,10 +333,9 @@ do
 			if step.func then
 				data = step.func(data)
 			end
-			--if data == nil then return end
-			pd = util.merge({},step,{ data = data, base = pd })
+			pd = util.merge(step,{ data = data, base = pd })
 		end
-		return util.merge({},ed,pd)
+		util.merge(ed,pd)
 	end
 end
 
@@ -732,7 +731,7 @@ local function imgui_on_render()
 				ImGui.PopStyleVar()
 				ImGui.SameLine()
 				if ImGui.Button("|<-##Resolve" .. did) then
-					details[did] = resolve(dd)
+					resolve(dd)
 				end
 			end
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
