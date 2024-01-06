@@ -132,15 +132,3 @@ To know the specific instance variables of a given object defined by the game ca
 
 - Type: `string`
 
-## Functions (1)
-
-### `variable_instance_get_names()`
-
-Return all the game defined variable names of the given object, for example with an `oP` (Player) object instance you will be able to do `print(myoPInstance.user_name)`
-
-**Example Usage:**
-```lua
-CInstance:variable_instance_get_names()
-```
-
-

@@ -19,6 +19,22 @@ local myArray = gm.array_create(1, 1)
     -- log.info(n)
 -- end
 
+-- local xd = gm.variable_instance_get_names(gm.variable_global_get("callback_name_to_id"))
+local xd = gm.variable_global_get("callback_names")
+for i = 1, #xd do
+    print(i .. ": " .. xd[i])
+end
+
+gm.post_script_hook(gm.constants.callback_execute, function(self, other, result, args)
+    -- local callback_type = xd[args[1].value]
+    -- if callback_type ~= nil then
+    --     print(callback_type.tostring)
+    --     for i = 2, #args do
+    --         print(args[i].tostring)
+    --     end
+    -- end
+end)
+
 local new_room = 0
 local show_debug_overlay = true
 
@@ -31,11 +47,11 @@ function imgui_dump(cinstance)
 
     local sprite_index = cinstance.sprite_index
     local sprite_name = gm.sprite_get_name(sprite_index)
-    ImGui.Text("Sprite Name: " .. sprite_name.tostring .. " (Index: " .. cinstance.sprite_index .. ")")
+    ImGui.Text("Sprite Name: " .. sprite_name ~= nil and sprite_name.tostring or "undefined" .. " (Index: " .. cinstance.sprite_index .. ")")
 
     local layer_id = cinstance.layer
     local layer_name = gm.layer_get_name(layer_id)
-        ImGui.Text("Layer Name: " .. layer_name.tostring .. " (Index: " .. cinstance.layer .. ")")
+    ImGui.Text("Layer Name: " .. layer_name .. " (Index: " .. cinstance.layer .. ")")
 
     ImGui.Text("Depth: " .. cinstance.depth .. " | " .. cinstance.i_currentdepth)
 end
@@ -44,44 +60,41 @@ local instance_var_to_input = {}
 function imgui_dump_instance_variables(cinstance)
     local instance_variable_names = gm.variable_instance_get_names(cinstance.id)
 
-    if instance_variable_names.type == RValueType.ARRAY then
-        local arr = instance_variable_names.array
-        ImGui.Text("Instance Variable Count: " .. #arr)
+    ImGui.Text("Instance Variable Count: " .. #instance_variable_names)
 
-        for i = 1, #arr do
-            local variable_name = arr[i].tostring
-            local variable_identifier = variable_name .. cinstance.id
+    for i = 1, #instance_variable_names do
+        local variable_name = instance_variable_names[i].value
+        local variable_identifier = variable_name .. cinstance.id
 
-            if instance_var_to_input[variable_identifier] == nil then
-                instance_var_to_input[variable_identifier] = gm.variable_instance_get(cinstance.id, variable_name).tostring
-            end
+        if instance_var_to_input[variable_identifier] == nil then
+            instance_var_to_input[variable_identifier] = gm.variable_instance_get(cinstance.id, variable_name)
+        end
 
-            local new_text_value, res = ImGui.InputText(variable_name .. "##input_text" .. variable_identifier, instance_var_to_input[variable_identifier], 256)
-            instance_var_to_input[variable_identifier] = new_text_value
+        local new_text_value, res = ImGui.InputText(variable_name .. "##input_text" .. variable_identifier, tostring(instance_var_to_input[variable_identifier]), 256)
+        instance_var_to_input[variable_identifier] = new_text_value
 
-            if ImGui.Button("Save##btn" .. variable_identifier) then
-                local new_value = tonumber(new_text_value)
-                if new_value ~= nil then
-                    gm.variable_instance_set(cinstance.id, variable_name, new_value)
-                end
+        if ImGui.Button("Save##btn" .. variable_identifier) then
+            local new_value = tonumber(new_text_value)
+            if new_value ~= nil then
+                gm.variable_instance_set(cinstance.id, variable_name, new_value)
             end
         end
     end
 end
 
 gui.add_imgui(function()
-    local mouse_x = gm.variable_global_get("mouse_x").value
-    local mouse_y = gm.variable_global_get("mouse_y").value
+    local mouse_x = gm.variable_global_get("mouse_x")
+    local mouse_y = gm.variable_global_get("mouse_y")
     if ImGui.Begin("Instance Under Cursor") then
         local instance_nearest = gm.instance_nearest(mouse_x, mouse_y, EVariableType.ALL)
-        ImGui.Text("Cursor (" .. mouse_x .. ", " .. mouse_y .. ")")
-        ImGui.Separator()
-        if instance_nearest.type == RValueType.REF then
+        if instance_nearest ~= nil then
+            ImGui.Text("Cursor (" .. mouse_x .. ", " .. mouse_y .. ")")
+            ImGui.Separator()
             for i = 1, #gm.CInstance.instances_active do
-                if gm.CInstance.instances_active[i].id == instance_nearest.value then
+                if gm.CInstance.instances_active[i].id == instance_nearest.id then
                     imgui_dump(gm.CInstance.instances_active[i])
                     ImGui.Separator()
-
+    
                     break
                 end
             end
@@ -90,8 +103,8 @@ gui.add_imgui(function()
     ImGui.End()
 
     if ImGui.Begin("Room") then
-        local current_room = gm.variable_global_get("room").value
-        local current_room_name = gm.room_get_name(current_room).tostring
+        local current_room = gm.variable_global_get("room")
+        local current_room_name = gm.room_get_name(current_room)
         ImGui.Text("Current Room: " .. current_room_name .. "(" .. current_room .. ")")
         local input_new_room, b = ImGui.InputInt("New Room ID", new_room)
         new_room = input_new_room
@@ -160,7 +173,6 @@ gui.add_imgui(function()
             -- print(tostring(myArray))
 			gm.array_push(myArray, 8)
 			log.info(myArray.tostring)
-			log.info(string.format("%x", myArray.value * 256) )
 
             -- local bla = gm.array_create(2, 2)
             -- log.info(bla.tostring)
@@ -181,7 +193,7 @@ gui.add_imgui(function()
         end
 
         if ImGui.Button("Dump Game Global Variables") then
-            local game_globals = gm.variable_instance_get_names(EVariableType.GLOBAL).array
+            local game_globals = gm.variable_instance_get_names(EVariableType.GLOBAL)
             for i = 1, #game_globals do
                 log.info(game_globals[i].tostring)
             end

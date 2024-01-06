@@ -4,6 +4,8 @@
 #include "gm/Code_Execute.hpp"
 #include "gm/Code_Function_GET_the_function_t.hpp"
 #include "gm/RVariableRoutine.hpp"
+#include "gm/Script_Data.hpp"
+#include "gm/StructCreate.hpp"
 #include "gm/debug_console.hpp"
 #include "gm/inputs.hpp"
 
@@ -41,6 +43,10 @@ namespace big
 		gm::debug_console_output_t m_debug_console_output;
 
 		gm::IO_UpdateM_t m_io_update_m;
+
+		gm::Script_Data_t m_script_data;
+
+		gm::StructCreate_t m_struct_create;
 	};
 #pragma pack(pop)
 	static_assert(sizeof(rorr_pointers) % 8 == 0, "Pointers are not properly aligned");

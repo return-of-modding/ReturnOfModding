@@ -154,26 +154,7 @@ struct _RefThing
 
 typedef _RefThing<const char*> RefString;
 
-struct RefDynamicArrayOfRValue : YYObjectBase
-{
-	int m_refCount;
-	int m_flags; // flag set = is readonly for example
-	RValue* m_Array;
-	void* m_Owner;
-	int visited;
-	int length;
-
-	std::span<RValue> array();
-};
-
-// 136
-static constexpr auto RefDynamicArrayOfRValue_offset_ref_count = offsetof(RefDynamicArrayOfRValue, m_refCount);
-// 144
-static constexpr auto RefDynamicArrayOfRValue_offset_array = offsetof(RefDynamicArrayOfRValue, m_Array);
-// 152
-static constexpr auto RefDynamicArrayOfRValue_offset_owner = offsetof(RefDynamicArrayOfRValue, m_Owner);
-// 164
-static constexpr auto RefDynamicArrayOfRValue_offset_length = offsetof(RefDynamicArrayOfRValue, length);
+struct RefDynamicArrayOfRValue;
 
 #pragma pack(push, 4)
 struct DValue
@@ -227,6 +208,7 @@ struct RValue
 	RValue(std::nullptr_t, bool undefined);
 	RValue(void* v);
 	RValue(YYObjectBase* obj);
+	RValue(RefDynamicArrayOfRValue* arr);
 	RValue(const char* v);
 	RValue(std::string v);
 	RValue(std::wstring v);
@@ -264,7 +246,6 @@ struct RValue
 	long long asInt64() const;
 	void* asPointer() const;
 	YYObjectBase* asObject() const;
-	const RefDynamicArrayOfRValue* asArray() const;
 	bool isNumber() const;
 	bool isUnset() const;
 	bool isArray() const;
@@ -278,3 +259,48 @@ struct RValue
 };
 
 #pragma pack(pop)
+
+struct RefDynamicArrayOfRValue : YYObjectBase
+{
+	int m_refCount;
+	int m_flags; // flag set = is readonly for example
+	RValue* m_Array;
+	void* m_Owner;
+	int visited;
+	int length;
+
+	using value_type = RValue;
+	using iterator   = RValue*;
+	using reference  = RValue&;
+	using size_type  = int;
+
+	iterator begin()
+	{
+		return iterator(m_Array);
+	}
+	iterator end()
+	{
+		return iterator(m_Array + length);
+	}
+	size_type size() const noexcept
+	{
+		return length;
+	}
+	size_type max_size() const noexcept
+	{
+		return length;
+	}
+	bool empty() const noexcept
+	{
+		return length == 0;
+	}
+};
+
+// 136
+static constexpr auto RefDynamicArrayOfRValue_offset_ref_count = offsetof(RefDynamicArrayOfRValue, m_refCount);
+// 144
+static constexpr auto RefDynamicArrayOfRValue_offset_array = offsetof(RefDynamicArrayOfRValue, m_Array);
+// 152
+static constexpr auto RefDynamicArrayOfRValue_offset_owner = offsetof(RefDynamicArrayOfRValue, m_Owner);
+// 164
+static constexpr auto RefDynamicArrayOfRValue_offset_length = offsetof(RefDynamicArrayOfRValue, length);

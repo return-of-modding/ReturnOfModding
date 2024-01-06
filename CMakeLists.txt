@@ -48,6 +48,7 @@ target_include_directories(ReturnOfModding PRIVATE
     "${cxxopts_SOURCE_DIR}/include"
     "${json_SOURCE_DIR}/single_include"
     "${imgui_SOURCE_DIR}"
+    "${minhook_SOURCE_DIR}/src/hde"
     "${tomlplusplus_BINARY_DIR}/include"
     "${cpp-semver_SOURCE_DIR}/include"
 )

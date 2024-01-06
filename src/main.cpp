@@ -23,11 +23,11 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		    nullptr,
 		    0,
 		    [](PVOID) -> DWORD {
-			    std::this_thread::sleep_for(4000ms);
-
 			    HWND target_window{};
 			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
 				    std::this_thread::sleep_for(10ms);
+
+				std::this_thread::sleep_for(2000ms);
 
 			    //threads::suspend_all_but_one();
 			    //debug::wait_until_debugger();
@@ -74,8 +74,9 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 				    g_hooking->enable();
 				    LOG(INFO) << "Hooking enabled.";
 
+					std::this_thread::sleep_for(3000ms);
 					while (!g_gml_safe)
-					    std::this_thread::sleep_for(500ms);
+					    std::this_thread::sleep_for(3000ms);
 
 					YYObjectPinMap::init_pin_map();
 			    }

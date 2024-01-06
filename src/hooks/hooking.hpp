@@ -1,10 +1,10 @@
 #pragma once
 #include "MinHook.h"
+#include "call_hook.hpp"
 #include "common.hpp"
 #include "detour_hook.hpp"
 #include "vmt_hook.hpp"
 #include "vtable_hook.hpp"
-#include "call_hook.hpp"
 
 namespace big
 {
@@ -42,6 +42,8 @@ namespace big
 
 			void enable_hook_if_hooking_is_already_running();
 
+			static inline std::unordered_map<void*, detour_hook> m_target_func_to_detour_hook;
+
 			template<auto detour_function>
 			struct hook_to_detour_hook_helper
 			{
@@ -49,6 +51,38 @@ namespace big
 			};
 
 		public:
+			template<typename T>
+			static T get_original(void* target)
+			{
+				if (!m_target_func_to_detour_hook.contains(target))
+				{
+					LOG(FATAL) << "This is fucked.";
+					Logger::FlushQueue();
+				}
+
+				return m_target_func_to_detour_hook[target].get_original<T>();
+			}
+
+			static void add(const std::string& name, void* target, void* detour)
+			{
+				if (m_target_func_to_detour_hook.contains(target))
+				{
+					// In our case since the detour is a central detour we only want one.
+					return;
+				}
+
+				m_target_func_to_detour_hook[target] = detour_hook(name, nullptr, detour);
+
+				detour_hook_helper d{};
+				d.m_detour_hook = &m_target_func_to_detour_hook[target];
+
+				d.m_detour_hook->set_target_and_create_hook(target);
+
+				d.enable_hook_if_hooking_is_already_running();
+
+				m_detour_hook_helpers.push_back(d);
+			}
+
 			template<auto detour_function>
 			static void add(const std::string& name, void* target)
 			{

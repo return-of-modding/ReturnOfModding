@@ -16,7 +16,7 @@ local function init()
                 if f then
                     local v = gm.array_get(t.arr, f.idx)
                     if f.typ then
-                        return v[f.typ]
+                        return v
                     elseif f.decode then
                         return f.decode(v)
                     end
@@ -48,9 +48,9 @@ local function init()
     local skill_family_mt = {
         __index = function(t,k)
             if type(k) == "number" then
-                if k >= 0 and k < gm.array_length(t.elements).value then
+                if k >= 0 and k < gm.array_length(t.elements) then
                     -- the actual value in the array is a 'skill loadout unlockable' object, so get the skill id from it
-                    return Skill(gm.variable_struct_get(gm.array_get(t.elements, k), "skill_id").value)
+                    return Skill(gm.variable_struct_get(gm.array_get(t.elements, k), "skill_id"))
                 end
             end
             return nil
@@ -62,28 +62,82 @@ local function init()
         return setmetatable({struct=struct_loadout_family, elements=elements}, skill_family_mt)
     end
     Skill = gm_array_class("class_skill", {
-        namespace  = {idx=0,typ="tostring"},
-        identifier = {idx=1,typ="tostring"},
+        namespace  = {idx=0},
+        identifier = {idx=1},
 
-        sprite     = {idx=4,typ="value"},
-        subimage   = {idx=5,typ="value"},
+        token_name = {idx=2},
+        token_description = {idx=3},
+
+        sprite     = {idx=4},
+        subimage   = {idx=5},
+
+        cooldown     = {idx=6},
+        damage   = {idx=7},
+        max_stock   = {idx=8},
+        start_with_stock   = {idx=9},
+        auto_restock   = {idx=10},
+        required_stock   = {idx=11},
+        require_key_press   = {idx=12},
+        allow_buffered_input   = {idx=13},
+        use_delay   = {idx=14},
+        animation   = {idx=15},
+        is_utility   = {idx=16},
+        is_primary   = {idx=17},
+        required_interrupt_priority   = {idx=18},
+        hold_facing_direction   = {idx=19},
+        override_strafe_direction   = {idx=20},
+        ignore_aim_direction   = {idx=21},
+        disable_aim_stall   = {idx=22},
+        does_change_activity_state   = {idx=23},
+
+        on_can_activate   = {idx=24},
+        on_activate   = {idx=25},
+        on_step   = {idx=26},
+        on_equipped   = {idx=27},
+        on_unequipped   = {idx=28},
+
+        upgrade_skill   = {idx=29},
     })
     Survivor = gm_array_class("class_survivor", {
-        namespace  = {idx=0,typ="tostring"},
-        identifier = {idx=1,typ="tostring"},
+        namespace  = {idx=0},
+        identifier = {idx=1},
+
+        token_name = {idx=2},
+        token_name_upper = {idx=3},
+        token_description = {idx=4},
+        token_end_quote = {idx=5},
         
         skill_family_z = {idx=6,decode=wrap_skill_family},
         skill_family_x = {idx=7,decode=wrap_skill_family},
         skill_family_c = {idx=8,decode=wrap_skill_family},
         skill_family_v = {idx=9,decode=wrap_skill_family},
+        skin_family = {idx=10,decode=nil},
+        all_loadout_families = {idx=11,decode=nil},
+        all_skill_families = {idx=12,decode=nil},
 
-        sprite_loadout        = {idx=13,typ="value"},
-        sprite_title          = {idx=14,typ="value"},
-        sprite_idle           = {idx=15,typ="value"},
-        sprite_portrait       = {idx=16,typ="value"},
-        sprite_portrait_small = {idx=17,typ="value"},
+        sprite_loadout        = {idx=13},
+        sprite_title          = {idx=14},
+        sprite_idle           = {idx=15},
+        sprite_portrait       = {idx=16},
+        sprite_portrait_small = {idx=17},
+        sprite_palette = {idx=18},
+        sprite_portrait_palette = {idx=19},
+        sprite_loadout_palette = {idx=20},
+        sprite_credits = {idx=21},
+        primary_color         = {idx=22},
+        select_sound_id         = {idx=23},
 
-        primary_color         = {idx=22,typ="value"},
+        log_id         = {idx=24},
+
+        achievement_id         = {idx=25},
+
+        on_init         = {idx=26},
+        on_step         = {idx=27},
+        on_remove         = {idx=28},
+
+        is_secret         = {idx=29},
+
+        cape_offset         = {idx=30},
     })
 
     -- for registering language strings
@@ -91,7 +145,7 @@ local function init()
     local language_map
     local function language_register(d, root)
         if language_map == nil then
-            language_map = gm.variable_global_get("_language_map").value
+            language_map = gm.variable_global_get("_language_map")
         end
         if root == nil then
             root = ""
@@ -115,13 +169,21 @@ local function init()
         end
     end
 
-    survivor_setup.coolguy_id = gm.survivor_create("coolguymod", "coolguy").value
+    survivor_setup.coolguy_id = gm.survivor_create("coolguymod", "coolguy")
     local coolguy = Survivor(survivor_setup.coolguy_id)
+    survivor_setup.coolguy = coolguy
 
     -- configure properties
+    local sprite_test = gm.constants.sSelectCommando_PAL4
     coolguy.sprite_loadout = gm.constants.sSelectCommando_PAL4
+    coolguy.sprite_title = sprite_test
+    coolguy.sprite_idle = sprite_test
     coolguy.sprite_portrait = gm.constants.sCommandoPortrait_PAL4
     coolguy.sprite_portrait_small = gm.constants.sCommandoPortraitSmall_PAL5
+    coolguy.sprite_palette = 713
+    coolguy.sprite_portrait_palette = 713
+    coolguy.sprite_loadout_palette = 713
+    coolguy.sprite_credits = sprite_test
     coolguy.primary_color = 0x70D19D -- gamemaker uses BBGGRR colour
 
     -- configure skills
@@ -129,6 +191,23 @@ local function init()
     coolguy.skill_family_x[0].sprite = gm.constants.sMobSkills
     coolguy.skill_family_c[0].sprite = gm.constants.sMobSkills
     coolguy.skill_family_v[0].sprite = gm.constants.sMobSkills
+
+    local function add_skin_to_family(surv_skin_family, actor_skin_id)
+        local skin_structs = surv_skin_family.elements
+
+        -- local new_struct = gm.struct_create()
+
+        skin_structs[1].index = 57
+
+        -- new_struct.index = actor_skin_id
+        -- new_struct.skin_id = #skin_structs + 1
+        -- new_struct.achievement_id = -1
+
+        -- gm.array_push(skin_structs, new_struct)
+    end
+
+    local new_actor_skin_id = gm.actor_skin_create("coolguymod", "coolguy_first_skin")
+    add_skin_to_family(coolguy.skin_family, new_actor_skin_id)
 
     -- set up strings
     language_register{
@@ -174,7 +253,5 @@ gm.pre_code_execute(function(self, other, code, result, flags)
         hooks[code.name](self)
     end
 end)
-
-log.info("executed all this code again", survivor_setup)
 
 return survivor_setup
