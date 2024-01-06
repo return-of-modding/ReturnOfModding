@@ -72,82 +72,17 @@ root = {
 }
 
 local function root_entries()
-	return { path = 'root', name = 'root', data = root, loop_type = pairs}
+	return { path = 'root', name = 'root', show = 'root', data = root, iter = pairs}
 end
 
-do
-	local skill_family_id_register = setmetatable({},{__mode="k"})
-	local skill_family_proxy_register = setmetatable({},{__mode="v"})
-	
-	local skill_family_meta = {
-		__index = function(s,k)
-			local id = skill_family_id_register[s]
-			if k == "skill" then
-				return hardcoded.class.class_skill[id["skill_id"].value]
-			end
-			return id[k]
-		end,
-		__newindex = function(s,k,v)
-			local id = skill_family_id_register[s]
-			id[k] = v
-		end,
-		__len = function(s)
-			local id = skill_family_id_register[s]
-			return #id
-		end,
-		__next = function(s,k)
-			local id = skill_family_id_register[s]
-			local j = k
-			local k,v = next(id,k)
-			if k == nil and id[j] ~= nil then
-				return "skill", hardcoded.class.class_skill[id["skill_id"].value]
-			end
-			return k,v
-		end,
-		__pairs = function(s,k)
-			local id = skill_family_id_register[s]
-			return function(_,k)
-				local j = k
-				local k,v = next(id,k)
-				if k == nil and id[j] ~= nil then
-					return "skill", hardcoded.class.class_skill[id["skill_id"].value]
-				end
-				return k,v
-			end,s,k
-		end,
-		__inext = function(s,k)
-			local id = skill_family_id_register[s]
-			return inext(id,k)
-		end,
-		__ipairs = function(s,k)
-			local id = skill_family_id_register[s]
-			return ipairs(id,k)
-		end
-	}
-
-	function root.helpers.proxy_skill_family_element(id)
-		local proxy = skill_family_proxy_register[id]
-		if proxy then return proxy end
-		proxy = setmetatable({},skill_family_meta)
-		skill_family_id_register[proxy] = id
-		skill_family_proxy_register[id] = proxy
-        return proxy
-    end
+function root.helpers.get_skill_by_id(id)
+	return hardcoded.class.class_skill[id]
 end
 
-local get, len
+local len
 do
-	local function _get(t,k)
-		return t[k]
-	end
-	
 	local function _len(t)
 		return #t
-	end
-	
-	function get(t,k)
-		local s,v = pcall(_get,t,k)
-		if s then return v end
 	end
 	
 	function len(t)
@@ -159,98 +94,106 @@ end
 local entrify
 do
 	-- to avoid making these many times
-	local keys_struct_skill = {'struct',{'root','helpers',"proxy_skill_family_element"}}
 	local keys_map = {{'proxy','map'}}
-	local keys_struct = {'struct'}
-	local keys_object = {'object'}
-	local keys_array = {'array'}
+	local keys_variables = {{'proxy','variables'}}
+	local keys_struct = {{'proxy','struct'}}
+	local keys_struct_skill = {{'root','helpers','get_skill_by_id'}}
+	
 	local extra = {}
 	
-	function entrify(k,v)
+	function entrify(name,data,parent)
 		util.clear(extra)
-		local data_type = type(v)
-		local rvalue_type = nil
-		local object_type = nil
-		local loop_type = nil
+		local data_type, sol_type = type(data)
+		local type_name = sol_type or data_type
+		local iter = nil
 		local keys = nil
 		local info = nil
-		local meta = getmetatable(v)
-		if data_type == "table" then
-			loop_type = pairs
-			info = meta and meta.__name or data_type
-			local n = len(v)
-			if n then info = "table[" .. n .. "]" end
-		elseif data_type == "userdata" then
-			rvalue_type = get(v,"type_name")
-			if rvalue_type == "REAL" and type(k) == "string" and k:sub(#k-3) == "_map" then
-				local w = v.value
-				if true or gm.call('ds_exists',w,1).lua_value then
-					local data = proxy.map(w)
-					table.insert(extra,{
-						name = tostring(k),
-						info = "ds_map",
-						data = data,
-						key = k,
-						keys = keys_map,
-						loop_type = pairs
-					})
-				end
-			end
-			if rvalue_type == "OBJECT" then
-				local o = v.object
-				object_type = get(o,"type_name")
-				loop_type = pairs
-				if object_type == "YYOBJECTBASE" then
-					v = v.struct
-					local n = math.floor(#v)
-					info = "struct[" .. n .. "]"
-					local sid = v.skill_id
-					sid = sid and sid.value
+		if data_type == "number" and type(name) == "string" and name:sub(#name-3) == "_map" then
+			local func = proxy.map
+			local map = func(data)
+			local type_name = select(2,type(map))
+			table.insert(extra,{
+				func = func,
+				info = type_name,
+				data = map,
+				show = name .. '_data',
+				keys = keys_map,
+				iter = pairs,
+				type = type_name
+			})
+		elseif data_type == "table" then
+			iter = pairs
+			info = sol_type or data_type
+			local n = len(data)
+			if n then info = info .. "[" .. n .. "]" end
+		elseif sol_type then
+			if sol_type:match("Object") then
+				iter = pairs
+				if data.type_name == "YYOBJECTBASE" then
+					data = proxy.struct(data)
+					keys = keys_struct
+					local type_name = select(2,type(data))
+					info = type_name .. "[" .. math.floor(#data) .. "]"
+					local sid = data.skill_id
 					if sid then
-						keys = keys_struct_skill
-						v = root.helpers.proxy_skill_family_element(v)
-					else
-						keys = keys_struct
+						local func = root.helpers.get_skill_by_id
+						local skill = func(sid)
+						if skill then
+							local type_name = select(2,type(skill))
+							table.insert(extra,{
+								func = func,
+								info = type_name .. "[" .. #skill .. "]",
+								data = skill,
+								name = "skill_id",
+								show = "skill",
+								keys = keys_struct_skill,
+								iter = pairs,
+								type = type_name
+							})
+						end
 					end
 				else
-					keys = keys_object
-					v = o
-					info = object_type
+					info = data.type_name
 				end
-			elseif rvalue_type == "ARRAY" then
-				local n = math.floor(gm.array_length(v).value)
-				v = v.array
-				info = rvalue_type .. "[" .. n .. "]"
-				loop_type = ipairs
-				keys = keys_array
-			elseif rvalue_type == nil then
-				if tostring(v):match('<') then
-					loop_type = ipairs
-					info = meta.__name or data_type
-					local n = math.floor(#v)
-					info = info .. "[" .. n .. "]"
-				elseif meta and meta.__next then
-					loop_type = pairs
-					info = meta.__name or data_type
-					if info:match("CInstance") then
-						info = v.object_name .." (" .. v.object_index .. " @ " .. v.id .. ")"
-					end
-					local n = len(v)
-					if n then info = info .. "[" .. n .. "]" end
-				end
+			elseif sol_type:match("Array") then
+				local n = math.floor(#data)
+				info = sol_type .. "[" .. n .. "]"
+				iter = ipairs
+			elseif tostring(data):match('<') then -- span or container
+				iter = ipairs
+				info = sol_type .. "[" .. math.floor(#data) .. "]"
+			elseif sol_type and sol_type:match("Instance") then
+				iter = pairs
+				info = data.object_name .." (" .. data.object_index .. " @ " .. data.id .. ")"
+				local func = proxy.variables
+				local variables = func(data)
+				local type_name = select(2,type(variables))
+				table.insert(extra,{
+					func = func,
+					info = type_name .. "[" .. math.floor(#variables) .. "]",
+					data = variables,
+					show = "variables",
+					keys = keys_struct_skill,
+					iter = pairs,
+					type = type_name
+				})
 			end
 		end
-		return {
-			name = tostring(k),
+		local ed = {
 			info = info,
-			data = v,
-			key = k,
+			data = data,
+			name = name,
+			show = tostring(name),
 			keys = keys,
-			loop_type = loop_type,
-			data_type = data_type,
-			rvalue_type = rvalue_type,
-			object_type = object_type
-		}, table.unpack(extra)
+			iter = iter,
+			type = type_name,
+		}
+		ed.self = ed
+		for _,sd in ipairs(extra) do
+			sd.self = ed
+			if not sd.show then sd.show = sd.name end
+		end
+		return ed, table.unpack(extra)
 	end
 end
 
@@ -304,7 +247,10 @@ local function path_part_key(key)
 end
 
 local function path_part(ed,path)
-	path = (path or '') .. path_part_key(ed.key)
+	path = (path or '')
+	if ed.name then
+		path = path .. path_part_key(ed.name)
+	end
 	if ed.keys then
 		for _, key in ipairs(ed.keys) do
 			if type(key) == "table" then
@@ -323,7 +269,7 @@ local function path_part(ed,path)
 			else
 				-- extend current path
 				local part = path_part_key(key)
-				if part == nil then return "<" .. ed.name .. ">" end
+				if part == nil then return "<" .. ed.show or '???' .. ">" end
 				path = path .. part
 			end
 		end
@@ -334,11 +280,11 @@ end
 local function unfold(ed)
 	if ed.entries then return ed.entries end
 	ed.path = ed.path or path_part(ed)	
-	local loop_type = ed.loop_type
+	local iter = ed.iter
 	local entries = {}
-	if loop_type then
-		for k,v in loop_type(ed.data) do
-			for _,sd in util.vararg(entrify(k,v)) do
+	if iter ~= nil then
+		for k,v in iter(ed.data) do
+			for _,sd in util.vararg(entrify(k,v,ed)) do
 				if sd ~= nil then
 					table.insert(entries,sd)
 				end
@@ -369,21 +315,32 @@ end
 
 local resolve
 do
-	local steps = {}
+	local step = {}
+	local show = {}
+	local func = {}
+	local self = {}
 	function resolve(ed)
-		util.clear(steps)
+		util.iclear(step,func,self)
 		local pd = ed
 		local i = 0
 		while pd.parent do
 			i = i + 1
-			steps[i] = pd.key
+			step[i] = pd.name
+			show[i] = pd.show
+			func[i] = pd.func
+			self[i] = pd.self
 			pd = pd.parent
 		end
 		for j = i, 1, -1 do
-			local step = steps[j]
-			local data = pd.data[step]
+			local step = step[j]
+			local func = func[j]
+			local self = self[j]
+			local data = self[step]
+			if func then
+				data = func(data)
+			end
 			--if data == nil then return end
-			pd = entrify(step,data)
+			pd = entrify(show[j],data,self)
 		end
 		refresh(ed)
 		return util.merge(ed,pd)
@@ -408,30 +365,28 @@ do
 		if ImGui.IsItemHovered() then
 			local message
 			if value_part then
-				if sd.rvalue_type == "STRING" then 
-					message = gm.call('ds_map_find_value',gm.variable_global_get("_language_map").value,sd.data.tostring)
-					if message.type == RValueType.STRING then message = message.tostring else message = nil end
-				elseif sd.data_type == "string" then
-					message = gm.call('ds_map_find_value',gm.variable_global_get("_language_map").value,sd.data)
-					if message.type == RValueType.STRING then message = message.tostring else message = nil end
+				if sd.type == "string" then
+					message = gm.call('ds_map_find_value',gm.variable_global_get("_language_map"),sd.data)
+					if type(message) ~= "string" then message = nil end
 				end
 			end
 			if message == nil then
-				local enum = type(dd.key) == "string" and type(sd.data) == "number" and hardcoded.array[dd.key]
+				local enum = type(dd.name) == "string" and type(sd.data) == "number" and hardcoded.array[dd.name]
 				if enum then
 					enum = enum[sd.data]
-				elseif type(dd.data.class_name) == "string" then
-					enum = dd.data.class_name:upper()
-					enum = hardcoded.array[enum][hardcoded.enum[enum][sd.key]]
+				else
+					local _type = select(2,type(dd.data))
+					_type = _type and _type:upper()
+					if _type and _type:sub(1,6) == "CLASS_" then
+						enum = hardcoded.array[_type][hardcoded.enum[_type][sd.show]]
+					end
 				end
 				if not enum then return end
-				local description = enum.description
-				local value = enum.value
-				if value then
-					message = tostring_literal(value)
+				if enum.value then
+					message = tostring_literal(enum.value)
 				end
-				if description then
-					message = (message and message .. ' ' or '') .. '-- ' .. description
+				if enum.description then
+					message = (message and message .. ' ' or '') .. '-- ' .. enum.description
 				end
 			end
 			if message ~= nil then
@@ -447,11 +402,11 @@ do
 		if entries then
 			local skipped = false
 			for _,sd in ipairs(entries) do
-				if #filter ~= 0 and not sd.name:match(filter) then
+				if #filter ~= 0 and not sd.show:match(filter) then
 					skipped = true
 				else
 					local id = did .. sd.path
-					if sd.info then
+					if sd.iter then
 						if dd.mode ~= 1 then 
 							-- iterable
 							ImGui.PushStyleColor(ImGuiCol.HeaderHovered,0)
@@ -469,7 +424,7 @@ do
 							end
 							ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFF20FF)
 							ImGui.SameLine()
-							ImGui.Text(sd.name)
+							ImGui.Text(sd.show)
 							ImGui.PopStyleColor()
 							try_tooltip(dd,sd,false)
 							ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
@@ -484,28 +439,23 @@ do
 							ImGui.Text("")
 							ImGui.SameLine()
 							ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFFFF20)
-							ImGui.Text(sd.name)
+							ImGui.Text(sd.show)
 							ImGui.PopStyleColor()
 							try_tooltip(dd,sd,false)
-							if
-								sd.data_type ~= "function" and sd.data_type ~= "thread" and
-								(sd.rvalue_type == "UNDEFINED" or (sd.rvalue_type ~= nil and sd.data.lua_value ~= nil) or (sd.data_type ~= "userdata" and sd.data))
-							then
-								local value = sd.rvalue_type == nil and sd.data or sd.data.lua_value
-								local value_text = tostring_literal(value)
+							if sd.type ~= "function" and sd.type ~= "thread" then
 								ImGui.SameLine()
 								ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
 								ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 								ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
 								ImGui.PushItemWidth(ImGui.GetContentRegionAvail() - ImGui.CalcTextSize('|'))
-								local text, enter_pressed = ImGui.InputText("##Text" .. id, dd.texts[id] or value_text, 65535, ImGuiInputTextFlags.EnterReturnsTrue)
+								local text, enter_pressed = ImGui.InputText("##Text" .. id, dd.texts[id] or tostring_literal(sd.data), 65535, ImGuiInputTextFlags.EnterReturnsTrue)
 								ImGui.PopItemWidth()
 								ImGui.PopStyleColor()
 								ImGui.PopStyleColor()
 								ImGui.PopStyleVar()
 								try_tooltip(dd,sd,true)
 								if enter_pressed then
-									dd.data[sd.key] = peval(text)
+									dd.data[sd.show] = peval(text)
 									dd.texts[id] = nil
 								else
 									dd.texts[id] = text
@@ -513,9 +463,9 @@ do
 							else
 								ImGui.PushStyleColor(ImGuiCol.Text, 0xFF2020FF)
 								ImGui.SameLine()
-								ImGui.Text(tostring(sd.rvalue_type or sd.data))
+								ImGui.Text(tostring(sd.data))
 								ImGui.PopStyleColor()
-								if sd.data_type == "function" then
+								if sd.type == "function" then
 									ImGui.SameLine()
 									ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
 									ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
@@ -553,16 +503,13 @@ do
 									else
 										dd.texts[id] = text
 									end
-									if dd.data and sd.key == "call" then
+									if dd.data and sd.show == "call" then
 										local params = dd.data.params
 										if params == nil then
 											local name = dd.data.name
 											if name == nil then
 												local script_name = dd.data.script_name
 												if script_name ~= nil then
-													if type(script_name) == "userdata" then
-														script_name = script_name.tostring
-													end
 													name = script_name:sub(script_prefix_index)
 												end
 											end
@@ -572,22 +519,22 @@ do
 													params = script.params
 												end
 											end
-											if params ~= nil then
-												ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
-												ImGui.Text("")
+										end
+										if params ~= nil then
+											ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
+											ImGui.Text("")
+											ImGui.SameLine()
+											ImGui.Text("")
+											ImGui.SameLine()
+											ImGui.Text("params:")
+											for _,p in ipairs(params) do
 												ImGui.SameLine()
-												ImGui.Text("")
-												ImGui.SameLine()
-												ImGui.Text("params:")
-												for _,p in ipairs(params) do
-													ImGui.SameLine()
-													ImGui.Text(p.name)
-													if p.value and ImGui.IsItemHovered() then
-														ImGui.SetTooltip(p.value);
-													end
+												ImGui.Text(p.name)
+												if p.value and ImGui.IsItemHovered() then
+													ImGui.SetTooltip(p.value);
 												end
-												ImGui.PopStyleColor()
 											end
+											ImGui.PopStyleColor()
 										end
 									end
 								end
@@ -631,9 +578,15 @@ local function render_tree(ed,filter,bid,ids)
 		ImGui.SetNextItemOpen(_unfolded)
 		ImGui.SameLine()
 		ImGui.TreeNode("##Node" .. ids)
+		if ed.self ~= ed then
+			ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
+			ImGui.SameLine()
+			ImGui.Text(ed.self.show)
+			ImGui.PopStyleColor()
+		end
 		ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFF20FF)
 		ImGui.SameLine()
-		ImGui.Text(ed.name)
+		ImGui.Text(ed.show)
 		ImGui.PopStyleColor()
 		if ed.info ~= nil then
 			ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
@@ -647,8 +600,8 @@ local function render_tree(ed,filter,bid,ids)
 		if entries then
 			local skipped = false
 			for _,sd in ipairs(entries) do
-				if sd.info then 
-					if not unfolded[ids .. '.' .. sd.index] and #filter ~= 0 and not sd.name:match(filter) then
+				if sd.iter then 
+					if not unfolded[ids .. '.' .. sd.index] and #filter ~= 0 and not sd.show:match(filter) then
 						skipped = true
 					else
 						render_tree(sd,filter,bid,ids)

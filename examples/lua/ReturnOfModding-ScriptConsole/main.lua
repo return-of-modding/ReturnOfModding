@@ -380,7 +380,8 @@ local function console_mode_definitions(get_md)
 		tprint = function(...)
 			for _,o in util.vararg(...) do
 				console.log.print(get_md(),false,o)
-				if type(o) == "table" or type(o) == "userdata" then
+				local t = type(o)
+				if t == "table" or t == "userdata" then
 					for k,v in pairs(o) do
 						console.log.print(get_md(),false,k,v)
 					end
@@ -390,7 +391,8 @@ local function console_mode_definitions(get_md)
 		mprint = function(m,...)
 			for _,o in util.vararg(...) do
 				console.log.print(get_md(),false,o)
-				if type(o) == "table" or type(o) == "userdata" then
+				local t = type(o)
+				if t == "table" or t == "userdata" then
 					for k,v in pairs(o) do
 						console.log.print(get_md(),false,k,m(v))
 					end
