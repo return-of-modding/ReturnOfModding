@@ -101,7 +101,7 @@ do
 	
 	local extra = {}
 	
-	function entrify(name,data,parent)
+	function entrify(name,data,base)
 		util.clear(extra)
 		local data_type, sol_type = type(data)
 		local type_name = sol_type or data_type
@@ -115,8 +115,9 @@ do
 			table.insert(extra,{
 				func = func,
 				info = type_name,
+				name = name,
 				data = map,
-				show = name .. '_data',
+				show = 'data',
 				keys = keys_map,
 				iter = pairs,
 				type = type_name
@@ -171,9 +172,10 @@ do
 				table.insert(extra,{
 					func = func,
 					info = type_name .. "[" .. math.floor(#variables) .. "]",
+					name = "id",
 					data = variables,
 					show = "variables",
-					keys = keys_struct_skill,
+					keys = keys_variables,
 					iter = pairs,
 					type = type_name
 				})
@@ -181,6 +183,7 @@ do
 		end
 		local ed = {
 			info = info,
+			base = base,
 			data = data,
 			name = name,
 			show = tostring(name),
@@ -188,9 +191,8 @@ do
 			iter = iter,
 			type = type_name,
 		}
-		ed.self = ed
 		for _,sd in ipairs(extra) do
-			sd.self = ed
+			sd.base = ed
 			if not sd.show then sd.show = sd.name end
 		end
 		return ed, table.unpack(extra)
@@ -308,7 +310,7 @@ local function refresh(ed)
 	if ed == nil then return end
 	if ed.entries == nil then return end
 	for _,ed in ipairs(ed.entries) do
-		refresh(ed.entries)
+		refresh(ed)
 	end
 	ed.entries = nil
 end 
@@ -316,34 +318,25 @@ end
 local resolve
 do
 	local step = {}
-	local show = {}
-	local func = {}
-	local self = {}
 	function resolve(ed)
-		util.iclear(step,func,self)
+		util.iclear(step)
 		local pd = ed
 		local i = 0
-		while pd.parent do
+		while pd.base do
 			i = i + 1
-			step[i] = pd.name
-			show[i] = pd.show
-			func[i] = pd.func
-			self[i] = pd.self
-			pd = pd.parent
+			step[i] = pd
+			pd = pd.base
 		end
 		for j = i, 1, -1 do
 			local step = step[j]
-			local func = func[j]
-			local self = self[j]
-			local data = self[step]
-			if func then
-				data = func(data)
+			local data = pd.data[step.name]
+			if step.func then
+				data = step.func(data)
 			end
 			--if data == nil then return end
-			pd = entrify(show[j],data,self)
+			pd = util.merge({},step,{ data = data, base = pd })
 		end
-		refresh(ed)
-		return util.merge(ed,pd)
+		return util.merge({},ed,pd)
 	end
 end
 
@@ -402,7 +395,7 @@ do
 		if entries then
 			local skipped = false
 			for _,sd in ipairs(entries) do
-				if #filter ~= 0 and not sd.show:match(filter) then
+				if #filter ~= 0 and not (tostring(sd.name):match(filter) or (sd.info and sd.info:match(filter))) then
 					skipped = true
 				else
 					local id = did .. sd.path
@@ -455,7 +448,10 @@ do
 								ImGui.PopStyleVar()
 								try_tooltip(dd,sd,true)
 								if enter_pressed then
-									dd.data[sd.show] = peval(text)
+									dd.data[sd.name] = peval(text)
+									dd.texts[id] = nil
+									refresh(dd)
+								elseif text == "" then 
 									dd.texts[id] = nil
 								else
 									dd.texts[id] = text
@@ -578,10 +574,10 @@ local function render_tree(ed,filter,bid,ids)
 		ImGui.SetNextItemOpen(_unfolded)
 		ImGui.SameLine()
 		ImGui.TreeNode("##Node" .. ids)
-		if ed.self ~= ed then
+		if ed.func ~= nil then
 			ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
 			ImGui.SameLine()
-			ImGui.Text(ed.self.show)
+			ImGui.Text(ed.base.show)
 			ImGui.PopStyleColor()
 		end
 		ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFF20FF)
@@ -601,7 +597,7 @@ local function render_tree(ed,filter,bid,ids)
 			local skipped = false
 			for _,sd in ipairs(entries) do
 				if sd.iter then 
-					if not unfolded[ids .. '.' .. sd.index] and #filter ~= 0 and not sd.show:match(filter) then
+					if not unfolded[ids .. '.' .. sd.index] and #filter ~= 0 and not (tostring(sd.name):match(filter) or (sd.info and sd.info:match(filter))) then
 						skipped = true
 					else
 						render_tree(sd,filter,bid,ids)
@@ -736,7 +732,7 @@ local function imgui_on_render()
 				ImGui.PopStyleVar()
 				ImGui.SameLine()
 				if ImGui.Button("|<-##Resolve" .. did) then
-					resolve(dd)
+					details[did] = resolve(dd)
 				end
 			end
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)

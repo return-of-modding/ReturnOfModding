@@ -326,7 +326,7 @@ local function define_proxy_meta(name,get_names,exists,get,set,id_register)
 			if k == nil then
 				i = 0
 			elseif type(k) ~= "number" then
-				i = util.perform_lookup(names,k)
+				i = util.perform_index(names,k)
 			end
 			if i == nil then return nil end
 			k = names[i+1]
@@ -337,7 +337,7 @@ local function define_proxy_meta(name,get_names,exists,get,set,id_register)
 		__pairs = function(s,k)
 			local names = _get_names(s)
 			if not names then return null end
-			local names_lookup = util.build_lookup(names)
+			local names_lookup = util.build_index(names)
 			local id = id_register[s]
 			return function(_,k)
 				local i
@@ -359,7 +359,7 @@ local function define_proxy_meta(name,get_names,exists,get,set,id_register)
 			if k == nil then
 				i = 0
 			elseif type(k) ~= "number" then
-				i = util.perform_lookup(names,k)
+				i = util.perform_index(names,k)
 			end
 			if i == nil then return nil end
 			k = names[i+1]
@@ -370,7 +370,7 @@ local function define_proxy_meta(name,get_names,exists,get,set,id_register)
 		__ipairs = function(s,k)
 			local names = _get_names(s)
 			if not names then return null end
-			local names_lookup = util.build_lookup(names)
+			local names_lookup = util.build_index(names)
 			local id = id_register[s]
 			return function(_,k)
 				local i
@@ -806,7 +806,7 @@ local function gm_next_delayed_load(ccode)
 				if proxy then return proxy end
 				proxy = setmetatable({}, util.merge({ __name = name },gm_instance_meta))
 				instances[id] = proxy
-				gm_instance_id_register[proxy] = id
+				gm_instance_id_register[proxy] = math.floor(id)
 				gm_class_name_register[proxy] = name
 				gm_instance_fields_register[proxy] = fields
 				return proxy
