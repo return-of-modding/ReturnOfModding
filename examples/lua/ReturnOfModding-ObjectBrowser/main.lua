@@ -652,8 +652,19 @@ end
 
 local frame_period = 60
 local frame_counter = 0
-local selector_filter_text = ''
-local selector_filter = ''
+
+local function imgui_on_any_render()
+	if not gui.is_open() and ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) then
+		local mouse_x = math.floor(gm.variable_global_get("mouse_x"))
+		local mouse_y = math.floor(gm.variable_global_get("mouse_y"))
+		local instance = gm.instance_nearest(mouse_x, mouse_y, EVariableType.ALL)
+		if instance ~= nil then
+			local text = instance.object_name .. ' (' .. instance.object_index .. ' @ ' .. instance.id .. ')'
+			ImGui.SetTooltip(text .. '\n(' .. mouse_x .. ', ' .. mouse_y .. ')', ImGui.GetCursorScreenPos())
+			if ImGui.IsKeyPressed(ImGuiKey.F) and root.instances then root.instances.nearest = instance end
+		end
+	end
+end
 
 local function imgui_on_render()
 	local should_refresh = false
@@ -662,61 +673,6 @@ local function imgui_on_render()
 		should_refresh = true
 	end
 	frame_counter = frame_counter + 1
-	if ImGui.Begin("Instance Selector") then
-		local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
-		local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
-		local num, y_max, x_total, x_filter = calculate_text_sizes('Filter: ')
-		local x,y = ImGui.GetContentRegionAvail()
-		-- height of InputText == font_size + frame_padding.y
-		-- and we're going to change frame_padding.y temporarily later on
-		-- such that InputText's height == max y
-		local x_input = x - x_total - item_spacing_x*num
-		ImGui.Text("Filter: ")
-		ImGui.SameLine()
-		ImGui.PushItemWidth(x_input)
-		ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
-		ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
-		local enter_pressed
-		selector_filter_text, enter_pressed = ImGui.InputText("##TextSelector", selector_filter_text, 65535, ImGuiInputTextFlags.EnterReturnsTrue)
-		ImGui.PopStyleColor()
-		ImGui.PopStyleVar()
-		ImGui.PopItemWidth()
-		if enter_pressed then
-			selector_filter = selector_filter_text
-		end
-		if true then --ImGui.IsKeyDown(ImGuiKeyMod.Shift) then
-			local mouse_x = gm.variable_global_get("mouse_x")
-			local mouse_y = gm.variable_global_get("mouse_y")
-			local instance = gm.instance_nearest(mouse_x, mouse_y, EVariableType.ALL)
-			if instance ~= nil then
-				local text = instance.object_name .. ' (' .. instance.object_index .. ' @ ' .. instance.id .. ')'
-				if #selector_filter == 0 or text:match(selector_filter) then
-					ImGui.Separator()
-					ImGui.Text("Nearest: ")
-					ImGui.SameLine()
-					ImGui.Text(text)
-					if root.instances then root.instances.nearest = instance end
-				end
-			end
-			local text
-			instance = nil
-			for i,v in ipairs(gm.CInstance.instances_active) do
-				text = v.object_name .. ' (' .. v.object_index .. ' @ ' .. v.id .. ')'
-				if text:match(selector_filter) then
-					instance = v
-					break
-				end
-			end
-			if instance ~= nil then
-				ImGui.Separator()
-				ImGui.Text("Filtered: ")
-				ImGui.SameLine()
-				ImGui.Text(text)
-				if root.instances then root.instances.filtered = instance end
-			end
-		end
-	end
-	ImGui.End()
 	for bid,bd in pairs(browsers) do
 		if bid == 1 and ImGui.Begin("Object Browser") or ImGui.Begin("Object Browser##" .. bid, true) then
 			bd.index = bid
@@ -838,6 +794,7 @@ end
 
 create_browser(root_entries())
 gui.add_imgui(imgui_on_render)
+gui.add_always_draw_imgui(imgui_on_any_render)
 gm.pre_code_execute( function(_,_,ccode)
 	if not root.instances then
 		root.instances = {
