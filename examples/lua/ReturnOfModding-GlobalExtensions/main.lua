@@ -683,6 +683,7 @@ local function gm_next_delayed_load(ccode)
 	
 	endow_with_pairs_and_next(getmetatable(gm_instance_list))
 	endow_with_pairs_and_next(getmetatable(gm_instance))
+	endow_with_pairs_and_next(getmetatable(CInstance))
 	endow_with_pairs_and_next(getmetatable(gm_object))
 	endow_with_pairs_and_next(getmetatable(ccode))
 

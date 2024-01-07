@@ -57,19 +57,12 @@ end
 
 root = {
 	lua = _G,
+	gm = gm,
 	mods = mods,
-	code = {
-		pre = {},
-		post = {}
-	},
 	helpers = {},
 	globals = proxy.globals,
 	constants = proxy.constants,
 	hardcoded = hardcoded,
-	instances = {
-		all = gm.CInstance.instances_all,
-		active = gm.CInstance.instances_active
-	}
 }
 
 local function root_entries()
@@ -233,6 +226,8 @@ do
 				end
 			elseif sol_type:match("Array") then
 				iter = ipairs
+			elseif tostring(data):match('unordered_map') then
+				iter = pairs
 			elseif tostring(data):match('<') then -- span or container
 				iter = ipairs
 			elseif sol_type and sol_type:match("Instance") then
@@ -289,6 +284,9 @@ do
 		if t == nil then return nil end
 		if t:match('Array') then
 			return 'array'
+		end
+		if t:match('unordered_map') then
+			return 'map'
 		end
 		if t:match('span') then
 			return 'span'
@@ -659,6 +657,13 @@ local function imgui_on_render()
 		should_refresh = true
 	end
 	frame_counter = frame_counter + 1
+	local mouse_x = gm.variable_global_get("mouse_x")
+    local mouse_y = gm.variable_global_get("mouse_y")
+    local instance_nearest = gm.instance_nearest(mouse_x, mouse_y, EVariableType.ALL)
+    if instance_nearest ~= nil then
+        instance_nearest = gm.CInstance.instance_id_to_CInstance[instance_nearest.id]
+		if root.instances then root.instances.nearest = instance_nearest end
+    end
 	for bid,bd in pairs(browsers) do
 		if bid == 1 and ImGui.Begin("Object Browser") or ImGui.Begin("Object Browser##" .. bid, true) then
 			bd.index = bid
@@ -780,15 +785,12 @@ end
 
 create_browser(root_entries())
 gui.add_imgui(imgui_on_render)
-gm.pre_code_execute( function(...)
-	util.clear(root.code.pre)
-	for i,v in util.vararg(...) do
-		root.code.pre[i] = v
-	end
-end )
-gm.post_code_execute( function(...)
-	util.clear(root.code.post)
-	for i,v in util.vararg(...) do
-		root.code.post[i] = v
+gm.pre_code_execute( function(_,_,ccode)
+	if not root.instances then
+		root.instances = {
+			all = gm.CInstance.instances_all,
+			active = gm.CInstance.instances_active,
+			stable = gm.CInstance.instance_id_to_CInstance
+		}
 	end
 end )
