@@ -66,6 +66,7 @@ namespace big
 		bool pre_script_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args);
 		void post_script_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args);
 
+		void always_draw_independent_gui();
 		void draw_independent_gui();
 
 		std::weak_ptr<lua_module> get_module(const std::string& module_guid);

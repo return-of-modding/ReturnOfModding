@@ -442,6 +442,19 @@ namespace big
 		}
 	}
 
+	void lua_manager::always_draw_independent_gui()
+	{
+		std::lock_guard guard(m_module_lock);
+
+		for (const auto& module : m_modules)
+		{
+			for (const auto& element : module->m_always_draw_independent_gui)
+			{
+				element->draw();
+			}
+		}
+	}
+
 	void lua_manager::draw_independent_gui()
 	{
 		std::lock_guard guard(m_module_lock);
