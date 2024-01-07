@@ -546,6 +546,7 @@ local ds_map_proxy_meta = {
 }
 
 function proxy.map(id)
+	if type(id) ~= "number" or id < 0 then return nil end
 	local proxy = ds_map_proxy_register[id]
 	if proxy then return proxy end
 	local proxy = setmetatable({},ds_map_proxy_meta)
@@ -802,6 +803,7 @@ local function gm_next_delayed_load(ccode)
 		return setmetatable({},{
 			__name = "ArrayClass",
 			__call = function(_,id)
+				if type(id) ~= "number" or id < 0 then return nil end
 				local proxy = instances[id]
 				if proxy then return proxy end
 				proxy = setmetatable({}, util.merge({ __name = name },gm_instance_meta))

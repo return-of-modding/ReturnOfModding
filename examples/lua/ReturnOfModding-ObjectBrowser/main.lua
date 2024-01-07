@@ -35,6 +35,7 @@ local detail_filters = {
 
 local function create_browser(entry)
 	local id = #browsers + 1
+	unfolded[tostring(id)] = true
 	browsers[id] = util.merge({
 		index = id,
 		filter_text = '',
@@ -76,139 +77,13 @@ local function root_entries()
 end
 
 function root.helpers.get_skill_by_id(id)
+	if type(id) ~= "number" or id < 0 then return nil end
 	return hardcoded.class.class_skill[id]
 end
 
-local len
-do
-	local function _len(t)
-		return #t
-	end
-	
-	function len(t)
-		local s,v = pcall(_len,t)
-		if s then return math.floor(v) end
-	end
-end
-
-local entrify
-do
-	-- to avoid making these many times
-	local keys_map = {{'proxy','map'}}
-	local keys_variables = {{'proxy','variables'}}
-	local keys_struct = {{'proxy','struct'}}
-	local keys_struct_skill = {{'root','helpers','get_skill_by_id'}}
-	
-	local extra = {}
-	
-	function entrify(name,data,base)
-		util.clear(extra)
-		local data_type, sol_type = type(data)
-		local type_name = sol_type or data_type
-		local iter = nil
-		local keys = nil
-		local info = nil
-		local func = nil
-		if data_type == "number" and name == "id" and base ~= nil and base.type and base.type:match('Instance') then
-			local func = proxy.variables
-			local variables = func(base.data)
-			local type_name = select(2,type(variables))
-			table.insert(extra,{
-				func = func,
-				base = base,
-				info = type_name .. "[" .. math.floor(#variables) .. "]",
-				name = "id",
-				data = variables,
-				show = "variables",
-				keys = keys_variables,
-				iter = pairs,
-				type = type_name
-			})
-		end
-		if data_type == "number" and name == "skill_id" and base and base.type and base.type:match('Struct') then
-			local func = root.helpers.get_skill_by_id
-			local skill = func(data)
-			if skill then
-				local type_name = select(2,type(skill))
-				table.insert(extra,{
-					func = func,
-					base = base,
-					info = type_name .. "[" .. #skill .. "]",
-					data = skill,
-					name = "skill_id",
-					show = "skill",
-					keys = keys_struct_skill,
-					iter = pairs,
-					type = type_name
-				})
-			end
-		end
-		if data_type == "number" and type(name) == "string" and name:sub(#name-3) == "_map" then
-			local func = proxy.map
-			local map = func(data)
-			local type_name = select(2,type(map))
-			table.insert(extra,{
-				func = func,
-				info = type_name,
-				name = name,
-				data = map,
-				show = 'data',
-				keys = keys_map,
-				iter = pairs,
-				type = type_name
-			})
-		elseif data_type == "table" then
-			iter = pairs
-			info = sol_type or data_type
-			local n = len(data)
-			if n then info = info .. "[" .. n .. "]" end
-		elseif sol_type then
-			if sol_type:match("Object") then
-				iter = pairs
-				if data.type_name == "YYOBJECTBASE" then
-					func = proxy.struct
-					data = func(data)
-					keys = keys_struct
-					type_name = select(2,type(data))
-					info = type_name .. "[" .. math.floor(#data) .. "]"
-				else
-					info = data.type_name
-				end
-			elseif sol_type:match("Array") then
-				local n = math.floor(#data)
-				info = sol_type .. "[" .. n .. "]"
-				iter = ipairs
-			elseif tostring(data):match('<') then -- span or container
-				iter = ipairs
-				info = sol_type .. "[" .. math.floor(#data) .. "]"
-			elseif sol_type and sol_type:match("Instance") then
-				iter = pairs
-				info = data.object_name .." (" .. data.object_index .. " @ " .. data.id .. ")"
-			end
-		end
-		local show = tostring(name)
-		local ed = {
-			fake = false,
-			info = info,
-			base = base,
-			func = func,
-			data = data,
-			name = name,
-			show = show,
-			text = info and show .. '|' .. info or show,
-			keys = keys,
-			iter = iter,
-			type = type_name,
-		}
-		for _,sd in ipairs(extra) do
-			sd.fake = true
-			if not sd.base then sd.base = ed end
-			if not sd.show then sd.show = sd.name end
-			sd.text = sd.base.info and sd.base.show .. '|' .. sd.base.info or sd.base.show
-			sd.text = sd.text .. '|' .. (sd.info and sd.show .. '|' .. sd.info or sd.show)
-		end
-		return ed, table.unpack(extra)
-	end
+function root.helpers.get_achievement_by_id(id)
+	if type(id) ~= "number" or id < 0 then return nil end
+	return hardcoded.class.class_achievement[id]
 end
 
 local excludedFieldNames = util.build_lookup{ "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while" }
@@ -291,38 +166,201 @@ local function path_part(ed,path)
 	return path
 end
 
-local function unfold(ed)
-	if ed.entries then return ed.entries end
-	ed.path = ed.path or path_part(ed)	
-	local iter = ed.iter
-	local func = ed.func
-	local entries = {}
-	if iter ~= nil then
-		ed.data = func and func(ed.base.data[ed.name]) or (ed.base and ed.base.data[ed.name]) or ed.data
-		for k,v in iter(ed.data) do
-			for _,sd in util.vararg(entrify(k,v,ed)) do
-				if sd ~= nil then
-					table.insert(entries,sd)
+local entrify
+do
+	-- to avoid making these many times
+	local keys_map = {{'proxy','map'}}
+	local keys_variables = {{'proxy','variables'}}
+	local keys_struct = {{'proxy','struct'}}
+	local keys_struct_skill = {{'root','helpers','get_skill_by_id'}}
+	local keys_struct_achievement = {{'root','helpers','get_achievement_by_id'}}
+	
+	local extra = {}
+	
+	function entrify(name,data,base)
+		util.clear(extra)
+		local data_type, sol_type = type(data)
+		local type_name = sol_type or data_type
+		local iter = nil
+		local keys = nil
+		local info = nil
+		local func = nil
+		if base ~= nil and base.type and (data_type == "number" or data_type == "nil") then
+			if name == "id" and base.type:match('instance') then
+				table.insert(extra,{
+					func = proxy.variables,
+					base = base,
+					name = "id",
+					show = "variables",
+					keys = keys_variables,
+					iter = pairs
+				})
+			elseif name == "skill_id" and base.type:match('Struct') then
+				table.insert(extra,{
+					func = root.helpers.get_skill_by_id,
+					base = base,
+					name = "skill_id",
+					show = "skill",
+					keys = keys_struct_skill,
+					iter = pairs,
+				})
+			elseif name == "achievement_id" and base.type:match('Struct') then
+				table.insert(extra,{
+					func = root.helpers.get_achievement_by_id,
+					base = base,
+					name = "achievement_id",
+					show = "achievement",
+					keys = keys_struct_achievement,
+					iter = pairs,
+				})
+			elseif type(name) == "string" and name:sub(#name-3) == "_map" then
+				table.insert(extra,{
+					func = proxy.map,
+					name = name,
+					show = 'data',
+					keys = keys_map,
+					iter = pairs,
+				})
+			end
+		elseif data_type == "table" then
+			iter = pairs
+		elseif sol_type then
+			if sol_type:match("Object") then
+				iter = pairs
+				if data.type == YYObjectBaseType.YYOBJECTBASE then
+					func = proxy.struct
+					keys = keys_struct
 				end
+			elseif sol_type:match("Array") then
+				iter = ipairs
+			elseif tostring(data):match('<') then -- span or container
+				iter = ipairs
+			elseif sol_type and sol_type:match("Instance") then
+				iter = pairs
+				info = data.object_name .." (" .. data.object_index .. " @ " .. data.id .. ")"
 			end
 		end
+		local ed = {
+			fake = false,
+			info = info,
+			base = base,
+			func = func,
+			name = name,
+			keys = keys,
+			iter = iter
+		}
+		if func == nil then ed.data = data end
+		for _,sd in ipairs(extra) do
+			sd.fake = true
+			if not sd.base then sd.base = ed end
+		end
+		return ed, table.unpack(extra)
 	end
-	for i,sd in ipairs(entries) do
-		sd.index = i
-		sd.path = path_part(sd,ed.path)
+end
+
+local function resolve(ed)
+	local func = ed.func
+	local base = ed.base
+	if func then
+		if base.iter then
+			ed.data = func(base.data[ed.name])
+		else
+			ed.data = func(base.data)
+		end
+	elseif base and base.iter then
+		ed.data = base and base.data[ed.name]
 	end
-	ed.entries = entries
-	return entries
+	return ed
 end
 
 local function refresh(ed)
-	if ed == nil then return end
-	if ed.entries == nil then return end
-	for _,ed in ipairs(ed.entries) do
-		refresh(ed)
-	end
+	if ed == nil then return ed end
+	if ed.entries == nil then return ed end
+	--for _,ed in ipairs(ed.entries) do
+	--	refresh(ed)
+	--end
 	ed.entries = nil
-end 
+	return resolve(ed)
+end
+
+local unfold
+do
+	local function type_name(o,t)
+		if t == nil then return nil end
+		if t:match('Array') then
+			return 'array'
+		end
+		if t:match('span') then
+			return 'span'
+		end
+		if t:match('vector') then
+			return 'vector'
+		end
+		if t:match('container') then
+			return 'container'
+		end
+		if t:match('Instance') then
+			return 'instance'
+		end
+		if t:match('Object') then
+			if o.type == YYObjectBaseType.SCRIPTREF then
+				return 'script'
+			end
+			return o.type_name
+		end
+		return t
+	end
+
+	local function _len(t)
+		return #t
+	end
+	
+	function len(t)
+		local s,v = pcall(_len,t)
+		if s then return math.floor(v) end
+	end
+
+	function unfold(ed)
+		if ed.entries then return ed.entries end
+		ed.path = ed.path or path_part(ed)
+		local data = ed.data
+		if ed.data == nil then data = resolve(ed).data end
+		local iter = ed.iter
+		local entries = {}
+		if iter ~= nil and data ~= nil then
+			for k,v in iter(data) do
+				for _,sd in util.vararg(entrify(k,v,ed)) do
+					if sd ~= nil then
+						table.insert(entries,sd)
+					end
+				end
+			end
+		end
+		for i,sd in ipairs(entries) do
+			sd.index = i
+			sd.path = path_part(sd,ed.path)
+			local data = sd.data
+			if data == nil then data = resolve(sd).data end
+			local ta,tb = type(data)
+			sd.type = sd.type or type_name(data,tb) or ta 
+			sd.info = sd.info or sd.type
+			local size = len(data)
+			if size then
+				sd.size = size
+				sd.info = sd.info .. '[' .. size .. ']'
+			end
+			if not sd.show then sd.show = tostring(sd.name) end
+			sd.text = sd.info and sd.show .. '|' .. sd.info or sd.show
+			if sd.fake then
+				local base = sd.base
+				local info = base.info
+				sd.text = sd.text .. '|' .. (info and (base.show .. '|' .. info) or base.show)
+			end
+		end
+		ed.entries = entries
+		return entries
+	end
+end
 
 local render_details
 do
@@ -544,8 +582,7 @@ do
 	end
 end
 
-local function render_tree(ed,filter,bid,ids)
-	local root = ids == nil
+local function render_tree(ed,filter,ids)
 	ids = (ids and (ids .. '.') or '') .. ed.index
 	local show = ed.path ~= "root"
 	local _unfolded = unfolded[ids] == true
@@ -556,7 +593,7 @@ local function render_tree(ed,filter,bid,ids)
 		ImGui.PopStyleColor()
 		ImGui.PopStyleColor()
 		if ImGui.IsItemHovered() then
-			if not root and ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Left) then
+			if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Left) then
 				_unfolded = not _unfolded
 			end
 			if ImGui.IsItemClicked(ImGuiMouseButton.Middle) then
@@ -596,7 +633,7 @@ local function render_tree(ed,filter,bid,ids)
 					if not unfolded[ids .. '.' .. sd.index] and #filter ~= 0 and not sd.text:match(filter) then
 						skipped = true
 					else
-						render_tree(sd,filter,bid,ids)
+						render_tree(sd,filter,ids)
 					end
 				end
 			end
@@ -623,8 +660,8 @@ local function imgui_on_render()
 	end
 	frame_counter = frame_counter + 1
 	for bid,bd in pairs(browsers) do
-		local open
 		if bid == 1 and ImGui.Begin("Object Browser") or ImGui.Begin("Object Browser##" .. bid, true) then
+			bd.index = bid
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
 			local num, y_max, x_total, x_filter = calculate_text_sizes('Filter: ')
@@ -667,8 +704,7 @@ local function imgui_on_render()
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			if ImGui.BeginListBox("##Box" .. bid,x_box,y_box) then
 				ImGui.PopStyleColor()
-				unfolded[tostring(bid)] = true
-				render_tree(bd,bd.filter,bid)
+				render_tree(bd,bd.filter)
 				ImGui.EndListBox()
 			else
 				ImGui.PopStyleColor()
@@ -680,6 +716,7 @@ local function imgui_on_render()
 	end
 	for did,dd in pairs(details) do
 		if ImGui.Begin("Object Details##" .. did, true) then
+			dd.index = did
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
 			local num, y_max, x_total, x_swap, x_filter = calculate_text_sizes('...','Filter: ')
