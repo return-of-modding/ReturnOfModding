@@ -449,51 +449,32 @@ do
 	end
 end
 
+local tab_selected = false
+
 local function imgui_on_render()
 	if ImGui.Begin("Script Console", true, ImGuiWindowFlags.NoTitleBar) then
-		if ImGui.BeginTabBar("Mode",ImGuiTabBarFlags.Reorderable) then
+		if ImGui.BeginTabBar("Mode") then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
-			local top_num, top_y_max, top_x_total, x_clear, x_copy = calculate_text_sizes("Clear","Copy")
-			local bot_num, bot_y_max, bot_x_total, x_up, x_down = calculate_text_sizes("^","v","|")
+			local bot_num, bot_y_max, bot_x_total, x_focus = calculate_text_sizes("|")
 			local x,y = ImGui.GetContentRegionAvail()
-			local x_bar = x - top_x_total - item_spacing_x*top_num
 			local x_input = x - bot_x_total - item_spacing_x*bot_num
 			-- height of InputText == font_size + frame_padding.y
 			-- and we're going to change frame_padding.y temporarily later on
 			-- such that InputText's height == max y
 			local y_input = bot_y_max - ImGui.GetFontSize() - frame_padding_y 
-			local box_y = y - top_y_max - bot_y_max - item_spacing_y*2
+			local box_y = y - bot_y_max - item_spacing_y*2
 			for mi,md in ipairs(console.modes) do
 				local ds = md.name
 				local ms = tostring(mi)
-				if ImGui.BeginTabItem(ds) then
+				if (tab_selected and console.mode == md) and ImGui.BeginTabItem(ds, ImGuiTabItemFlags.SetSelected) or ImGui.BeginTabItem(ds) then
+					if not tab_selected then console.mode = md end
+					if console.mode == md then tab_selected = false end
 					ImGui.EndTabItem()
-					console.mode = md
 					if autoexec then
 						local name = autoexec
 						autoexec = nil
 						run_console_command(md,"exec " .. name)
-					end
-					ImGui.InvisibleButton("##Spacer" .. ms, x_bar, top_y_max)
-					ImGui.SameLine()
-					if ImGui.Button("Clear##" .. ms, x_clear, top_y_max) then
-						util.iclear(md.shown,md.raw,md.selected,md.colors)
-					end
-					ImGui.SameLine()
-					if ImGui.Button("Copy##" .. ms, x_copy, top_y_max) then
-						local text
-						for hi,b in ipairs(md.selected) do
-							if b then 
-								local line = md.raw[hi] or md.shown[hi]
-								if text == nil then
-									text = line
-								else
-									text = text .. '\n' .. line
-								end
-							end
-						end
-						ImGui.SetClipboardText(text)
 					end
 					ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 					if ImGui.BeginListBox("##Box" .. ms,x,box_y) then
@@ -522,28 +503,52 @@ local function imgui_on_render()
 					md.current_text, md.enter_pressed = ImGui.InputText("##Text" .. ms, md.current_text, 65535, ImGuiInputTextFlags.EnterReturnsTrue)
 					ImGui.PopStyleVar()
 					ImGui.PopItemWidth()
-					local changed_offset
-					ImGui.SameLine()
-					if ImGui.Button("^##" .. ms, x_up, bot_y_max) then
-						md.history_offset = md.history_offset + 1
-						if md.history_offset > #md.history then
-							md.history_offset = #md.history
+					if ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) then
+						if not ImGui.IsItemFocused() and not ImGui.IsItemActive() then
+							if ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) and ImGui.IsKeyPressed(ImGuiKey.C) then
+								local text
+								for hi,b in ipairs(md.selected) do
+									if b then 
+										local line = md.raw[hi] or md.shown[hi]
+										if text == nil then
+											text = line
+										else
+											text = text .. '\n' .. line
+										end
+									end
+								end
+								ImGui.SetClipboardText(text)
+							end
+							if ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) and ImGui.IsKeyPressed(ImGuiKey.Z) then
+								util.iclear(md.shown,md.raw,md.selected,md.colors)
+							end
+							if ImGui.IsKeyPressed(ImGuiKey.Tab) then
+								tab_selected = true
+								local n = #console.modes
+								console.mode = console.modes[mi % n + 1]
+							end
 						end
-						changed_offset = true
-					end
-					ImGui.SameLine()
-					if ImGui.Button("v##" .. ms, x_down, bot_y_max) then
-						md.history_offset = md.history_offset - 1
-						if md.history_offset < 0 then
-							md.history_offset = 0
+						local changed_offset
+						if ImGui.IsKeyPressed(ImGuiKey.UpArrow) then
+							md.history_offset = md.history_offset + 1
+							if md.history_offset > #md.history then
+								md.history_offset = #md.history
+							end
+							changed_offset = true
 						end
-						changed_offset = true
-					end
-					if changed_offset then
-						if md.history_offset == 0 then
-							md.current_text = ""
-						else
-							md.current_text = md.history[#md.history-md.history_offset+1]
+						if ImGui.IsKeyPressed(ImGuiKey.DownArrow) then
+							md.history_offset = md.history_offset - 1
+							if md.history_offset < 0 then
+								md.history_offset = 0
+							end
+							changed_offset = true
+						end
+						if changed_offset then
+							if md.history_offset == 0 then
+								md.current_text = ""
+							else
+								md.current_text = md.history[#md.history-md.history_offset+1]
+							end
 						end
 					end
 				end
