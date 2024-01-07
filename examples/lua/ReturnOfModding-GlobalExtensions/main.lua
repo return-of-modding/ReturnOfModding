@@ -657,6 +657,7 @@ local function imgui_next_delayed_load()
 	endow_with_pairs_and_next(getmetatable(imgui_style))
 	endow_with_pairs_and_next(getmetatable(imgui_vector))
 	endow_with_pairs_and_next(getmetatable(ImGuiKey))
+	endow_with_pairs_and_next(getmetatable(ImGuiKeyMod))
 	
 	if ImGui.GetStyleVar == nil then
 		local imgui_vector_meta = getmetatable(imgui_vector)
