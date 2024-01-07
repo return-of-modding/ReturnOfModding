@@ -668,8 +668,8 @@ end
 local frame_period = 60
 local frame_counter = 0
 
-local function imgui_on_any_render()
-	if not gui.is_open() and ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) then
+local function imgui_off_render()
+	if ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) then
 		local mouse_x = math.floor(gm.variable_global_get("mouse_x"))
 		local mouse_y = math.floor(gm.variable_global_get("mouse_y"))
 		local instance = gm.instance_nearest(mouse_x, mouse_y, EVariableType.ALL)
@@ -677,7 +677,8 @@ local function imgui_on_any_render()
 			local text1 = instance.object_name .. ' (' .. instance.object_index .. ' @ ' .. instance.id .. ')'
 			local text2 = '(' .. mouse_x .. ', ' .. mouse_y .. ')'
 			ImGui.SetTooltip(text1 .. '\n' .. text2, ImGui.GetCursorScreenPos())
-			if ImGui.IsKeyPressed(ImGuiKey.F) and root.instances then root.instances.nearest = instance end
+			if root.instances then root.instances.recent = instance end
+			if ImGui.IsKeyPressed(ImGuiKey.F) and root.instances then root.instances.selected = instance end
 		end
 	end
 end
@@ -810,7 +811,7 @@ end
 
 create_browser(root_entries())
 gui.add_imgui(imgui_on_render)
-gui.add_always_draw_imgui(imgui_on_any_render)
+gui.add_always_draw_imgui(function() if not gui.is_open() then return imgui_off_render() end end)
 gm.pre_code_execute( function(_,_,ccode)
 	if not root.instances then
 		root.instances = {

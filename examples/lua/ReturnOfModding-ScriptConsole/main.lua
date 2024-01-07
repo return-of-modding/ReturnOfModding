@@ -238,6 +238,8 @@ end
 
 
 console.aliases = {}
+console.binds = {}
+console.ibinds = {}
 
 console.command_help = {
 	{"help","[0..1]","lists the available commands"},
@@ -245,7 +247,10 @@ console.command_help = {
 	{"lua","[1..]","executes lua code and shows the result"},
 	{"luae","[1]","executes lua file with args and shows the result"},
 	{"exec","[1]","executes a file containing a list of console commands"},
-	{"alias","[0..2]","defines a command that acts as a shortcut for other commands"}
+	{"alias","[0..2]","defines a command that represents multiple commands"},
+	{"bind","[0..2]","binds a key combination to run commands during gameplay"},
+	{"ibind","[0..2]","binds a key combination to run commands on the mod gui"}
+
 }
 
 console.commands = {
@@ -338,6 +343,48 @@ console.commands = {
 		end
 		console.aliases[name] = text
 	end,
+	bind = function(md,name,...)
+		if name == nil then
+			for k,v in pairs(console.binds) do
+				console.log.echo(md, true, k,v)
+			end
+			return
+		end
+		local text = ""
+		for _, arg in util.vararg(...) do
+			text = text .. ' ' .. arg
+		end
+		text = text:sub(2,#text)
+		if #text == 0 then
+			local msg = console.binds[name]
+			if not msg then 
+				return console.log.error(md, true, 'no bind by the name of "' .. name .. '" exists')
+			end
+			return console.log.echo(md, true, msg)
+		end
+		console.binds[name] = text
+	end,
+	ibind = function(md,name,...)
+		if name == nil then
+			for k,v in pairs(console.ibinds) do
+				console.log.echo(md, true, k,v)
+			end
+			return
+		end
+		local text = ""
+		for _, arg in util.vararg(...) do
+			text = text .. ' ' .. arg
+		end
+		text = text:sub(2,#text)
+		if #text == 0 then
+			local msg = console.ibinds[name]
+			if not msg then 
+				return console.log.error(md, true, 'no UI bind by the name of "' .. name .. '" exists')
+			end
+			return console.log.echo(md, true, msg)
+		end
+		console.ibinds[name] = text
+	end
 }
 
 console.modes = {
@@ -449,9 +496,37 @@ do
 	end
 end
 
+local function check_bind(m,k,v)
+	local pass = true
+	for key in k:gmatch("(%w+)") do
+		if ImGuiKeyMod[key] then
+			pass = pass and ImGui.IsKeyDown(ImGuiKeyMod[key])
+		elseif ImGuiKey[key] then
+			pass = pass and ImGui.IsKeyPressed(ImGuiKey[key])
+		else
+			pass = false
+		end
+		if not pass then break end
+	end
+	if pass then
+		run_console_multicommand(m,v)
+	end
+end
+
 local tab_selected = false
 
+local function imgui_off_render()
+	local m = console.mode
+	for k,v in pairs(console.binds) do
+		pcall(check_bind,m,k,v)
+	end
+end
+
 local function imgui_on_render()
+	local m = console.mode
+	for k,v in pairs(console.ibinds) do
+		pcall(check_bind,m,k,v)
+	end
 	if ImGui.Begin("Script Console", true, ImGuiWindowFlags.NoTitleBar) then
 		if ImGui.BeginTabBar("Mode") then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
@@ -572,6 +647,7 @@ local function imgui_on_render()
 end
 
 gui.add_imgui(imgui_on_render)
+gui.add_always_draw_imgui(function() if not gui.is_open() then return imgui_off_render() end end)
 
 function rcon(text)
 	return run_console_multicommand(console.mode,text)
