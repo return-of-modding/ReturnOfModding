@@ -37,7 +37,7 @@ local function create_browser(entry)
 	local id = #browsers + 1
 	browsers[id] = util.merge({
 		index = id,
-		text = '',
+		filter_text = '',
 		filter = ''
 	},entry)
 end
@@ -46,7 +46,7 @@ local function create_details(entry)
 	local id = #details + 1
 	details[id] = util.merge({
 		index = id,
-		text = '',
+		filter_text = '',
 		filter = '',
 		texts = {},
 		tooltips = {},
@@ -72,7 +72,7 @@ root = {
 }
 
 local function root_entries()
-	return { path = 'root', name = 'root', show = 'root', data = root, iter = pairs}
+	return { path = 'root', name = 'root', show = 'root', text = 'root', data = root, iter = pairs}
 end
 
 function root.helpers.get_skill_by_id(id)
@@ -108,6 +108,41 @@ do
 		local iter = nil
 		local keys = nil
 		local info = nil
+		local func = nil
+		if data_type == "number" and name == "id" and base ~= nil and base.type and base.type:match('Instance') then
+			local func = proxy.variables
+			local variables = func(base.data)
+			local type_name = select(2,type(variables))
+			table.insert(extra,{
+				func = func,
+				base = base,
+				info = type_name .. "[" .. math.floor(#variables) .. "]",
+				name = "id",
+				data = variables,
+				show = "variables",
+				keys = keys_variables,
+				iter = pairs,
+				type = type_name
+			})
+		end
+		if data_type == "number" and name == "skill_id" and base and base.type and base.type:match('Struct') then
+			local func = root.helpers.get_skill_by_id
+			local skill = func(data)
+			if skill then
+				local type_name = select(2,type(skill))
+				table.insert(extra,{
+					func = func,
+					base = base,
+					info = type_name .. "[" .. #skill .. "]",
+					data = skill,
+					name = "skill_id",
+					show = "skill",
+					keys = keys_struct_skill,
+					iter = pairs,
+					type = type_name
+				})
+			end
+		end
 		if data_type == "number" and type(name) == "string" and name:sub(#name-3) == "_map" then
 			local func = proxy.map
 			local map = func(data)
@@ -131,28 +166,11 @@ do
 			if sol_type:match("Object") then
 				iter = pairs
 				if data.type_name == "YYOBJECTBASE" then
-					data = proxy.struct(data)
+					func = proxy.struct
+					data = func(data)
 					keys = keys_struct
-					local type_name = select(2,type(data))
+					type_name = select(2,type(data))
 					info = type_name .. "[" .. math.floor(#data) .. "]"
-					local sid = data.skill_id
-					if sid then
-						local func = root.helpers.get_skill_by_id
-						local skill = func(sid)
-						if skill then
-							local type_name = select(2,type(skill))
-							table.insert(extra,{
-								func = func,
-								info = type_name .. "[" .. #skill .. "]",
-								data = skill,
-								name = "skill_id",
-								show = "skill",
-								keys = keys_struct_skill,
-								iter = pairs,
-								type = type_name
-							})
-						end
-					end
 				else
 					info = data.type_name
 				end
@@ -166,34 +184,28 @@ do
 			elseif sol_type and sol_type:match("Instance") then
 				iter = pairs
 				info = data.object_name .." (" .. data.object_index .. " @ " .. data.id .. ")"
-				local func = proxy.variables
-				local variables = func(data)
-				local type_name = select(2,type(variables))
-				table.insert(extra,{
-					func = func,
-					info = type_name .. "[" .. math.floor(#variables) .. "]",
-					name = "id",
-					data = variables,
-					show = "variables",
-					keys = keys_variables,
-					iter = pairs,
-					type = type_name
-				})
 			end
 		end
+		local show = tostring(name)
 		local ed = {
+			fake = false,
 			info = info,
 			base = base,
+			func = func,
 			data = data,
 			name = name,
-			show = tostring(name),
+			show = show,
+			text = info and show .. '|' .. info or show,
 			keys = keys,
 			iter = iter,
 			type = type_name,
 		}
 		for _,sd in ipairs(extra) do
-			sd.base = ed
+			sd.fake = true
+			if not sd.base then sd.base = ed end
 			if not sd.show then sd.show = sd.name end
+			sd.text = sd.base.info and sd.base.show .. '|' .. sd.base.info or sd.base.show
+			sd.text = sd.text .. '|' .. (sd.info and sd.show .. '|' .. sd.info or sd.show)
 		end
 		return ed, table.unpack(extra)
 	end
@@ -283,8 +295,10 @@ local function unfold(ed)
 	if ed.entries then return ed.entries end
 	ed.path = ed.path or path_part(ed)	
 	local iter = ed.iter
+	local func = ed.func
 	local entries = {}
 	if iter ~= nil then
+		ed.data = func and func(ed.base.data[ed.name]) or (ed.base and ed.base.data[ed.name]) or ed.data
 		for k,v in iter(ed.data) do
 			for _,sd in util.vararg(entrify(k,v,ed)) do
 				if sd ~= nil then
@@ -292,14 +306,9 @@ local function unfold(ed)
 				end
 			end
 		end
-	else
-		for _,sd in ipairs(ed.data()) do
-			table.insert(entries,sd)
-		end
 	end
 	for i,sd in ipairs(entries) do
 		sd.index = i
-		sd.parent = ed
 		sd.path = path_part(sd,ed.path)
 	end
 	ed.entries = entries
@@ -314,30 +323,6 @@ local function refresh(ed)
 	end
 	ed.entries = nil
 end 
-
-local resolve
-do
-	local step = {}
-	function resolve(ed)
-		util.iclear(step)
-		local pd = ed
-		local i = 0
-		while pd.base do
-			i = i + 1
-			step[i] = pd
-			pd = pd.base
-		end
-		for j = i, 1, -1 do
-			local step = step[j]
-			local data = pd.data[step.name]
-			if step.func then
-				data = step.func(data)
-			end
-			pd = util.merge(step,{ data = data, base = pd })
-		end
-		util.merge(ed,pd)
-	end
-end
 
 local render_details
 do
@@ -394,7 +379,7 @@ do
 		if entries then
 			local skipped = false
 			for _,sd in ipairs(entries) do
-				if #filter ~= 0 and not (tostring(sd.name):match(filter) or (sd.info and sd.info:match(filter))) then
+				if #filter ~= 0 and not sd.text:match(filter) then
 					skipped = true
 				else
 					local id = did .. sd.path
@@ -414,6 +399,12 @@ do
 									create_details(sd)
 								end
 							end
+							if sd.fake then
+								ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
+								ImGui.SameLine()
+								ImGui.Text(sd.name)
+								ImGui.PopStyleColor()
+							end
 							ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFF20FF)
 							ImGui.SameLine()
 							ImGui.Text(sd.show)
@@ -430,6 +421,12 @@ do
 							-- not iterable
 							ImGui.Text("")
 							ImGui.SameLine()
+							if sd.fake then
+								ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
+								ImGui.SameLine()
+								ImGui.Text(sd.name)
+								ImGui.PopStyleColor()
+							end
 							ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFFFF20)
 							ImGui.Text(sd.show)
 							ImGui.PopStyleColor()
@@ -573,10 +570,10 @@ local function render_tree(ed,filter,bid,ids)
 		ImGui.SetNextItemOpen(_unfolded)
 		ImGui.SameLine()
 		ImGui.TreeNode("##Node" .. ids)
-		if ed.func ~= nil then
+		if ed.fake then
 			ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
 			ImGui.SameLine()
-			ImGui.Text(ed.base.show)
+			ImGui.Text(ed.name)
 			ImGui.PopStyleColor()
 		end
 		ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFF20FF)
@@ -596,7 +593,7 @@ local function render_tree(ed,filter,bid,ids)
 			local skipped = false
 			for _,sd in ipairs(entries) do
 				if sd.iter then 
-					if not unfolded[ids .. '.' .. sd.index] and #filter ~= 0 and not (tostring(sd.name):match(filter) or (sd.info and sd.info:match(filter))) then
+					if not unfolded[ids .. '.' .. sd.index] and #filter ~= 0 and not sd.text:match(filter) then
 						skipped = true
 					else
 						render_tree(sd,filter,bid,ids)
@@ -644,12 +641,12 @@ local function imgui_on_render()
 			ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			local enter_pressed
-			bd.text, enter_pressed = ImGui.InputText("##Text" .. bid, bd.text, 65535, ImGuiInputTextFlags.EnterReturnsTrue)
+			bd.filter_text, enter_pressed = ImGui.InputText("##Text" .. bid, bd.filter_text, 65535, ImGuiInputTextFlags.EnterReturnsTrue)
 			ImGui.PopStyleColor()
 			ImGui.PopStyleVar()
 			ImGui.PopItemWidth()
 			if enter_pressed then
-				bd.filter = bd.text
+				bd.filter = bd.filter_text
 			end
 			if should_refresh then
 				refresh(bd)
@@ -661,7 +658,9 @@ local function imgui_on_render()
 				ImGui.SameLine()
 				ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
 				ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
+				ImGui.PushItemWidth(x_input)
 				ImGui.InputText("##Path" .. bid, path, #path, ImGuiInputTextFlags.ReadOnly)
+				ImGui.PopItemWidth()
 				ImGui.PopStyleColor()
 				ImGui.PopStyleVar()
 			end
@@ -684,15 +683,12 @@ local function imgui_on_render()
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
 			local num, y_max, x_total, x_swap, x_filter = calculate_text_sizes('...','Filter: ')
-			local _, y_max2, x_total2, x_resolve, x_path = calculate_text_sizes('...','Path:  ')
-			y_max = math.max(y_max,y_max2)
 			local x,y = ImGui.GetContentRegionAvail()
 			-- height of InputText == font_size + frame_padding.y
 			-- and we're going to change frame_padding.y temporarily later on
 			-- such that InputText's height == max y
 			local y_input = y_max - ImGui.GetFontSize() - frame_padding_y 
 			local x_input = x - x_total - item_spacing_x*num
-			local x_input2 = x - x_total2 - item_spacing_x*num
 			local y_box = y - y_max - item_spacing_y
 			local x_box = x
 			ImGui.Text("Filter: ")
@@ -701,7 +697,7 @@ local function imgui_on_render()
 			ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			local enter_pressed
-			dd.text, enter_pressed = ImGui.InputText("##Text" .. did, dd.text, 65535, ImGuiInputTextFlags.EnterReturnsTrue)
+			dd.filter_text, enter_pressed = ImGui.InputText("##Text" .. did, dd.filter_text, 65535, ImGuiInputTextFlags.EnterReturnsTrue)
 			ImGui.PopStyleColor()
 			ImGui.PopStyleVar()
 			ImGui.PopItemWidth()
@@ -711,12 +707,6 @@ local function imgui_on_render()
 				dd.mode = dd.mode%#detail_filters + 1
 			end
 			ImGui.PopStyleColor()
-			if enter_pressed then
-				dd.filter = dd.text
-			end
-			if should_refresh then
-				refresh(dd)
-			end
 			do
 				local path = dd.path or "???"
 				y_box = y_box - y_max - item_spacing_y
@@ -724,15 +714,17 @@ local function imgui_on_render()
 				ImGui.SameLine()
 				ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
 				ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
-				ImGui.PushItemWidth(x_input2)
+				ImGui.PushItemWidth(x_input)
 				ImGui.InputText("##Path" .. did, path, #path, ImGuiInputTextFlags.ReadOnly)
 				ImGui.PopItemWidth()
 				ImGui.PopStyleColor()
 				ImGui.PopStyleVar()
-				ImGui.SameLine()
-				if ImGui.Button("|<-##Resolve" .. did) then
-					resolve(dd)
-				end
+			end
+			if enter_pressed then
+				dd.filter = dd.filter_text
+			end
+			if should_refresh then
+				refresh(dd)
 			end
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			if ImGui.BeginListBox("##Box" .. did,x_box,y_box) then
