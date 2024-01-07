@@ -69,14 +69,19 @@ local function root_entries()
 	return { path = 'root', name = 'root', show = 'root', text = 'root', data = root, iter = pairs}
 end
 
+function root.helpers.get_skin_by_id(id)
+	if type(id) ~= "number" or id < 0 then return nil end
+	return hardcoded.class.class_actor_skin[id+1]
+end
+
 function root.helpers.get_skill_by_id(id)
 	if type(id) ~= "number" or id < 0 then return nil end
-	return hardcoded.class.class_skill[id]
+	return hardcoded.class.class_skill[id+1]
 end
 
 function root.helpers.get_achievement_by_id(id)
 	if type(id) ~= "number" or id < 0 then return nil end
-	return hardcoded.class.class_achievement[id]
+	return hardcoded.class.class_achievement[id+1]
 end
 
 local excludedFieldNames = util.build_lookup{ "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while" }
@@ -165,6 +170,7 @@ do
 	local keys_map = {{'proxy','map'}}
 	local keys_variables = {{'proxy','variables'}}
 	local keys_struct = {{'proxy','struct'}}
+	local keys_struct_skin = {{'root','helpers','get_skin_by_id'}}
 	local keys_struct_skill = {{'root','helpers','get_skill_by_id'}}
 	local keys_struct_achievement = {{'root','helpers','get_achievement_by_id'}}
 	
@@ -187,6 +193,15 @@ do
 					show = "variables",
 					keys = keys_variables,
 					iter = pairs
+				})
+			elseif name == "skin_id" and base.type:match('Struct') then
+				table.insert(extra,{
+					func = root.helpers.get_skin_by_id,
+					base = base,
+					name = "skin_id",
+					show = "skin",
+					keys = keys_struct_skin,
+					iter = pairs,
 				})
 			elseif name == "skill_id" and base.type:match('Struct') then
 				table.insert(extra,{
@@ -659,8 +674,9 @@ local function imgui_on_any_render()
 		local mouse_y = math.floor(gm.variable_global_get("mouse_y"))
 		local instance = gm.instance_nearest(mouse_x, mouse_y, EVariableType.ALL)
 		if instance ~= nil then
-			local text = instance.object_name .. ' (' .. instance.object_index .. ' @ ' .. instance.id .. ')'
-			ImGui.SetTooltip(text .. '\n(' .. mouse_x .. ', ' .. mouse_y .. ')', ImGui.GetCursorScreenPos())
+			local text1 = instance.object_name .. ' (' .. instance.object_index .. ' @ ' .. instance.id .. ')'
+			local text2 = '(' .. mouse_x .. ', ' .. mouse_y .. ')'
+			ImGui.SetTooltip(text1 .. '\n' .. text2, ImGui.GetCursorScreenPos())
 			if ImGui.IsKeyPressed(ImGuiKey.F) and root.instances then root.instances.nearest = instance end
 		end
 	end
@@ -765,7 +781,7 @@ local function imgui_on_render()
 				ImGui.SameLine()
 				ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
 				ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
-				ImGui.PushItemWidth(x_input)
+				ImGui.PushItemWidth(x)
 				ImGui.InputText("##Path" .. did, path, #path, ImGuiInputTextFlags.ReadOnly)
 				ImGui.PopItemWidth()
 				ImGui.PopStyleColor()
