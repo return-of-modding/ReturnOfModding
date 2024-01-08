@@ -7,7 +7,7 @@
 namespace gm
 {
 	inline bool ignore_gml_exceptions = true;
-	static void gml_exception_handler(const RValue& e)
+	inline void gml_exception_handler(const RValue& e)
 	{
 		std::stringstream exception_log;
 

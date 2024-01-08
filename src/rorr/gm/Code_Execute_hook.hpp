@@ -27,8 +27,9 @@ namespace gm
 				{
 					no_error = big::g_hooking->get_original<hook_Code_Execute>()(self, other, code, result, flags);
 				}
-				catch (...)
+				catch (const YYGMLException& e)
 				{
+					gml_exception_handler(e.GetExceptionObject());
 				}
 			}
 
@@ -40,8 +41,9 @@ namespace gm
 			{
 				no_error = big::g_hooking->get_original<hook_Code_Execute>()(self, other, code, result, flags);
 			}
-			catch (...)
+			catch (const YYGMLException& e)
 			{
+				gml_exception_handler(e.GetExceptionObject());
 			}
 		}
 

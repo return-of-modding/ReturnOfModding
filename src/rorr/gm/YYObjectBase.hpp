@@ -84,6 +84,8 @@ struct YYObjectBase : CInstanceBase
 
 // 120
 static constexpr auto YYObjectBase_offset_slot = offsetof(YYObjectBase, m_slot);
+// 124
+static constexpr auto YYObjectBase_offset_type = offsetof(YYObjectBase, type);
 
 struct CWeakRef : YYObjectBase
 {
