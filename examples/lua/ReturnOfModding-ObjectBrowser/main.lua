@@ -387,6 +387,20 @@ do
 	end
 end
 
+local function resolve_chain(...)
+	local ed = browsers[1]
+	for _,k in util.vararg(...) do
+		for j, sd in ipairs(unfold(ed)) do
+			log.warning(j,sd.name)
+			if sd.name == k then
+				ed = sd
+				break
+			end
+		end
+	end
+	return ed
+end
+
 local render_details
 do
 	local script_prefix = "gml_Script_"
@@ -707,10 +721,10 @@ local function imgui_off_render()
 				ImGui.PushStyleColor(v,0)
 			end
 			ImGui.SetNextWindowSize(0,0)
-			if ImGui.Begin("##Tooltip Position Hack Position", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
+			if ImGui.Begin("##Tooltip Position Hack", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
 				x,y = ImGui.GetWindowPos()
 			end
-			if ImGui.Begin("##Tooltip Position Hack Size", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
+			if ImGui.Begin("##Tooltip Size Hack", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
 				ImGui.Text(text)
 				w,h = ImGui.GetWindowSize()
 			end
@@ -724,10 +738,19 @@ local function imgui_off_render()
 			end
 			ImGui.End()
 			if root.instances then root.instances.recent = instance end
-			if ImGui.IsKeyPressed(ImGuiKey.F) and root.instances then root.instances.selected = instance end
+			if ImGui.IsMouseClicked(ImGuiMouseButton.Left) and root.instances then root.instances.selected = instance end
+			if ImGui.IsMouseClicked(ImGuiMouseButton.Middle) then
+				create_browser(resolve_chain("instances","stable",instance.id))
+			end
+			if ImGui.IsMouseClicked(ImGuiMouseButton.Right) then
+				create_details(resolve_chain("instances","stable",instance.id))
+			end
 		end
 	end
 end
+
+local closable_true = {true}
+local closable_false = {}
 
 local function imgui_on_render()
 	local should_refresh = false
@@ -737,7 +760,9 @@ local function imgui_on_render()
 	end
 	frame_counter = frame_counter + 1
 	for bid,bd in pairs(browsers) do
-		if bid == 1 and ImGui.Begin("Object Browser") or ImGui.Begin("Object Browser##" .. bid, true) then
+		local closable = closable_false
+		if bid ~= 1 then closable = closable_true end
+		if ImGui.Begin("Object Browser##" .. bid, table.unpack(closable)) then
 			bd.index = bid
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
@@ -786,7 +811,7 @@ local function imgui_on_render()
 			else
 				ImGui.PopStyleColor()
 			end
-		else
+		elseif closable == closable_true then
 			browsers[bid] = nil
 		end
 		ImGui.End()
