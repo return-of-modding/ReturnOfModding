@@ -1,14 +1,16 @@
-local _globals = {}
-util.merge(_globals,_G,util,proxy)
+globals = util.merge({},util,proxy)
 
 -- assume we load later than ObjectBrowser due to alphabetical order
 -- (optional dependency)
 local browser = mods['ReturnOfModding-ObjectBrowser']
-_globals.root = root or browser and browser.root
+globals.root = browser and browser.root
 
-globals = _globals
 local repl_environment = setmetatable({},{
-	__index = globals,
+	__index = function(_,k)
+		local v = globals[k]
+		if v ~= nil then return v end
+		return _G[k]
+	end,
 	__newindex = globals
 })
 
