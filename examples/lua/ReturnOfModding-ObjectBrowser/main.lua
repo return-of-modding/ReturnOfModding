@@ -168,6 +168,7 @@ local entrify
 do
 	-- to avoid making these many times
 	local keys_map = {{'proxy','map'}}
+	local keys_list = {{'proxy','list'}}
 	local keys_variables = {{'proxy','variables'}}
 	local keys_struct = {{'proxy','struct'}}
 	local keys_struct_skin = {{'root','helpers','get_skin_by_id'}}
@@ -228,6 +229,14 @@ do
 					show = 'data',
 					keys = keys_map,
 					iter = pairs,
+				})
+			elseif type(name) == "string" and name:sub(#name-4) == "_list" then
+				table.insert(extra,{
+					func = proxy.list,
+					name = name,
+					show = 'data',
+					keys = keys_list,
+					iter = ipairs,
 				})
 			end
 		elseif data_type == "table" then

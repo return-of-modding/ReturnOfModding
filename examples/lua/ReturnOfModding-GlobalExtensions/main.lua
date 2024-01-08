@@ -555,6 +555,56 @@ function proxy.map(id)
 	return proxy
 end
 
+local ds_list_id_register = setmetatable({},{__mode = "k"})
+local ds_list_proxy_register = setmetatable({},{__mode = "v"})
+
+local ds_list_proxy_meta = {
+	__name = "DataList",
+	__index = function(s,k)
+		if type(k) ~= "number" then return nil end
+		local id = ds_list_id_register[s]
+		return (gm.call('ds_list_find_value',id,k-1))
+	end,
+	__newindex = function(s,k,v)
+		local id = ds_list_id_register[s]
+		return gm.call('ds_list_set',id,k-1,(v))
+	end,
+	__len = function(s)
+		local id = ds_list_id_register[s]
+		return math.floor(gm.call('ds_list_size',id))
+	end,
+	__inext = function(s,k)
+		local id = ds_list_id_register[s]
+		k = (k or 0)
+		if type(k) ~= "number" then return nil end
+		local v = gm.call('ds_list_find_value',id,k)
+		if v == nil then return end
+		return k+1, v
+	end,
+	__ipairs = function(s,k)
+		local id = ds_list_id_register[s]
+		return function(_,k)
+			k = (k or 0)
+			if type(k) ~= "number" then return nil end
+			local v = gm.call('ds_list_find_value',id,k)
+			if v == nil then return end
+			return k+1, v
+		end,s,k
+	end
+}
+ds_list_proxy_meta.__next = ds_list_proxy_meta.__inext
+ds_list_proxy_meta.__pairs = ds_list_proxy_meta.__ipairs
+
+function proxy.list(id)
+	if type(id) ~= "number" or id < 0 then return nil end
+	local proxy = ds_list_proxy_register[id]
+	if proxy then return proxy end
+	local proxy = setmetatable({},ds_list_proxy_meta)
+	ds_list_proxy_register[id] = proxy
+	ds_list_id_register[proxy] = id
+	return proxy
+end
+
 _G.hardcoded = hardcoded or require("./hardcoded")
 hardcoded.enum = {}
 for k,v in pairs(hardcoded.array) do
