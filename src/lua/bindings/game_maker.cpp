@@ -861,7 +861,7 @@ namespace lua::game_maker
 					return sol::lua_nil;
 				}
 
-				int pos = position_.as<int>();
+				int pos = (int)position_.as<double>();
 				// lua index adjustment
 				pos -= 1;
 				if (pos < 0 || pos >= self.length)
