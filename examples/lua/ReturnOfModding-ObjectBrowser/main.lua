@@ -677,15 +677,52 @@ end
 local frame_period = 60
 local frame_counter = 0
 
+local tooltip_flags = --ImGuiWindowFlags.Tooltip |
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoSavedSettings |
+            ImGuiWindowFlags.AlwaysAutoResize |
+			ImGuiWindowFlags.AlwaysUseWindowPadding
+
 local function imgui_off_render()
 	if ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) then
 		local mouse_x = math.floor(gm.variable_global_get("mouse_x"))
 		local mouse_y = math.floor(gm.variable_global_get("mouse_y"))
 		local instance = gm.instance_nearest(mouse_x, mouse_y, EVariableType.ALL)
 		if instance ~= nil then
-			local text1 = instance.object_name .. ' (' .. instance.object_index .. ' @ ' .. instance.id .. ')'
-			local text2 = '(' .. mouse_x .. ', ' .. mouse_y .. ')'
-			ImGui.SetTooltip(text1 .. '\n' .. text2, ImGui.GetCursorScreenPos())
+			local vars = proxy.variables(instance.id)
+			
+			local text1 = instance.object_name:sub(2)
+			local name = vars.name
+			if name then text1 = text1 .. ':' .. name end
+			local name = vars.user_name
+			if name then text1 = text1 .. '\n' .. name end
+			local text2 = instance.object_index .. ' @ ' .. instance.id
+			local text3 = 'x = ' .. mouse_x .. ', y = ' .. mouse_y
+			local text = text1 .. '\n' .. text2 .. '\n' .. text3
+			
+			local x,y,w,h
+			for _,v in pairs(ImGuiCol) do
+				ImGui.PushStyleColor(v,0)
+			end
+			ImGui.SetNextWindowSize(0,0)
+			if ImGui.Begin("##Tooltip Position Hack Position", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
+				x,y = ImGui.GetWindowPos()
+			end
+			if ImGui.Begin("##Tooltip Position Hack Size", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
+				ImGui.Text(text)
+				w,h = ImGui.GetWindowSize()
+			end
+			for _ in pairs(ImGuiCol) do
+				ImGui.PopStyleColor()
+			end
+			
+			ImGui.SetNextWindowPos(x-w/2-10,y+15)
+			if ImGui.Begin("##Instance Selector", tooltip_flags ) then
+				ImGui.Text(text)
+			end
+			ImGui.End()
 			if root.instances then root.instances.recent = instance end
 			if ImGui.IsKeyPressed(ImGuiKey.F) and root.instances then root.instances.selected = instance end
 		end
