@@ -437,12 +437,34 @@ local function console_mode_definitions(get_md)
 				end
 			end
 		end,
+		itprint = function(...)
+			for _,o in util.vararg(...) do
+				console.log.print(get_md(),false,o)
+				local t = type(o)
+				if t == "table" or t == "userdata" then
+					for k,v in ipairs(o) do
+						console.log.print(get_md(),false,k,v)
+					end
+				end
+			end
+		end,
 		mprint = function(m,...)
 			for _,o in util.vararg(...) do
 				console.log.print(get_md(),false,o)
 				local t = type(o)
 				if t == "table" or t == "userdata" then
 					for k,v in pairs(o) do
+						console.log.print(get_md(),false,k,m(v))
+					end
+				end
+			end
+		end,
+		imprint = function(m,...)
+			for _,o in util.vararg(...) do
+				console.log.print(get_md(),false,o)
+				local t = type(o)
+				if t == "table" or t == "userdata" then
+					for k,v in ipairs(o) do
 						console.log.print(get_md(),false,k,m(v))
 					end
 				end
