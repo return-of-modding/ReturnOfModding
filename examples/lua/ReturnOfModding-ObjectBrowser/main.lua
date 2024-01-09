@@ -1,3 +1,92 @@
+colors = {
+	tree = 0xFFFF20FF,
+	leaf = 0xFFFFFF20,
+	info = 0xFF20FFFF,
+	fake = 0xEECCCCCC,
+	null = 0xFF2020FF
+}
+
+root = {
+	lua = _G,
+	gm = gm,
+	mods = mods,
+	colors = colors,
+	helpers = {},
+	globals = proxy.globals,
+	constants = proxy.constants,
+	hardcoded = hardcoded,
+}
+
+local filter_modes_browser = {
+	"tree",
+	"info"
+}
+
+local filter_modes_details = {
+	"leaf",
+	"info"
+}
+
+browsers = {}
+details = {}
+local unfolded = {}
+
+local function create_browser(entry)
+	local id = #browsers + 1
+	unfolded[id..'|root'] = true
+	browsers[id] = util.merge({
+		index = id,
+		filter_text = '',
+		filter = '',
+		texts = {},
+		tooltips = {},
+		mode = 1
+	},entry)
+end
+
+local function create_details(entry)
+	local id = #details + 1
+	details[id] = util.merge({
+		index = id,
+		filter_text = '',
+		filter = '',
+		texts = {},
+		tooltips = {},
+		mode = 1
+	},entry)
+end
+
+local function root_entries()
+	return { data = root, iter = pairs, chain = {}, funcs = {},
+		path = 'root', name = 'root', show = 'root', text = 'root'}
+end
+
+function root.helpers.int_to_hex(i)
+	return '0x' .. string.format("%x", i):upper()
+end
+
+function root.helpers.get_skin_by_id(id)
+	if type(id) ~= "number" or id < 0 then return nil end
+	return hardcoded.class.class_actor_skin(id)
+end
+
+function root.helpers.get_skill_by_id(id)
+	if type(id) ~= "number" or id < 0 then return nil end
+	return hardcoded.class.class_skill(id)
+end
+
+function root.helpers.get_achievement_by_id(id)
+	if type(id) ~= "number" or id < 0 then return nil end
+	return hardcoded.class.class_achievement(id)
+end
+
+local excludedFieldNames = util.build_lookup{ 
+	"and", "break", "do", "else", "elseif", "end",
+	"false", "for", "function", "if", "in", "local",
+	"nil", "not", "or", "repeat", "return", "then",
+	"true", "until", "while", "goto", "repeat", "until"
+}
+
 local calculate_text_sizes
 do
 	local calculate_text_sizes_x_buffer = {}
@@ -22,74 +111,6 @@ do
 		return n, my, sx, table.unpack(calculate_text_sizes_x_buffer, 1, n)
 	end
 end
-
-browsers = {}
-details = {}
-local unfolded = {}
-
-local detail_filters = {
-	0xFFFFFF20,
-	0xFF20FFFF,
-	0xFFFF20FF
-}
-
-local function create_browser(entry)
-	local id = #browsers + 1
-	unfolded[id..'|root'] = true
-	browsers[id] = util.merge({
-		index = id,
-		filter_text = '',
-		filter = ''
-	},entry)
-end
-
-local function create_details(entry)
-	local id = #details + 1
-	details[id] = util.merge({
-		index = id,
-		filter_text = '',
-		filter = '',
-		texts = {},
-		tooltips = {},
-		mode = 1
-	},entry)
-end
-
-root = {
-	lua = _G,
-	gm = gm,
-	mods = mods,
-	helpers = {},
-	globals = proxy.globals,
-	constants = proxy.constants,
-	hardcoded = hardcoded,
-}
-
-local function root_entries()
-	return { data = root, iter = pairs, chain = {}, funcs = {},
-		path = 'root', name = 'root', show = 'root', text = 'root'}
-end
-
-function root.helpers.get_skin_by_id(id)
-	if type(id) ~= "number" or id < 0 then return nil end
-	return hardcoded.class.class_actor_skin(id)
-end
-
-function root.helpers.get_skill_by_id(id)
-	if type(id) ~= "number" or id < 0 then return nil end
-	return hardcoded.class.class_skill(id)
-end
-
-function root.helpers.get_achievement_by_id(id)
-	if type(id) ~= "number" or id < 0 then return nil end
-	return hardcoded.class.class_achievement(id)
-end
-
-local excludedFieldNames = util.build_lookup{ 
-	"and", "break", "do", "else", "elseif", "end",
-	"false", "for", "function", "if", "in", "local",
-	"nil", "not", "or", "repeat", "return", "then",
-	"true", "until", "while", "goto", "repeat", "until" }
 
 local function tostring_literal(value)
 	if type(value) == "string" then
@@ -172,6 +193,7 @@ end
 local entrify
 do
 	-- to avoid making these many times
+	local keys_hex = {{'root','helpers','int_to_hex'}}
 	local keys_map = {{'proxy','map'}}
 	local keys_list = {{'proxy','list'}}
 	local keys_variables = {{'proxy','variables'}}
@@ -195,7 +217,7 @@ do
 				table.insert(extra,{
 					func = proxy.variables,
 					base = base,
-					name = "id",
+					name = name,
 					show = "variables",
 					keys = keys_variables,
 					iter = pairs
@@ -204,7 +226,7 @@ do
 				table.insert(extra,{
 					func = root.helpers.get_skin_by_id,
 					base = base,
-					name = "skin_id",
+					name = name,
 					show = "skin",
 					keys = keys_struct_skin,
 					iter = pairs,
@@ -213,7 +235,7 @@ do
 				table.insert(extra,{
 					func = root.helpers.get_skill_by_id,
 					base = base,
-					name = "skill_id",
+					name = name,
 					show = "skill",
 					keys = keys_struct_skill,
 					iter = pairs,
@@ -222,10 +244,18 @@ do
 				table.insert(extra,{
 					func = root.helpers.get_achievement_by_id,
 					base = base,
-					name = "achievement_id",
+					name = name,
 					show = "achievement",
 					keys = keys_struct_achievement,
 					iter = pairs,
+				})
+			elseif base.base and base.name == "colors" and base.base.name == "root" then
+				table.insert(extra,{
+					func = root.helpers.int_to_hex,
+					base = base,
+					name = name,
+					show = "hex",
+					keys = keys_hex,
 				})
 			elseif type(name) == "string" and name:sub(#name-3) == "_map" then
 				table.insert(extra,{
@@ -471,6 +501,7 @@ end
 --]]
 
 local render_details
+local render_browser
 do
 	local script_prefix = "gml_Script_"
 	local script_prefix_index = #script_prefix+1
@@ -513,24 +544,25 @@ do
 				end
 			end
 			if message ~= nil then
-				ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
+				ImGui.PushStyleColor(ImGuiCol.Text, colors.fake)
 				ImGui.SetTooltip(message);
 				ImGui.PopStyleColor()
 			end
 		end
 	end
 
-	function render_details(dd,filter,did)
+	function render_details(dd)
 		local entries = unfold(dd)
 		if entries then
+			local filter = dd.filter
 			local skipped = false
 			for _,sd in ipairs(entries) do
 				if #filter ~= 0 and not sd.text:match(filter) then
 					skipped = true
 				else
-					local id = did .. '|' .. sd.path
+					local id = dd.index .. '|' .. sd.path
 					if sd.iter then
-						if dd.mode ~= 1 then 
+						if dd.mode ~= 1 then
 							-- iterable
 							ImGui.PushStyleColor(ImGuiCol.HeaderHovered,0)
 							ImGui.PushStyleColor(ImGuiCol.HeaderActive,0)
@@ -546,134 +578,132 @@ do
 								end
 							end
 							if sd.fake then
-								ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
+								ImGui.PushStyleColor(ImGuiCol.Text, colors.fake)
 								ImGui.SameLine()
 								ImGui.Text(sd.name)
 								ImGui.PopStyleColor()
 							end
-							ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFF20FF)
+							ImGui.PushStyleColor(ImGuiCol.Text, colors.tree)
 							ImGui.SameLine()
 							ImGui.Text(sd.show)
 							ImGui.PopStyleColor()
 							try_tooltip(dd,sd,false)
-							ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
+							ImGui.PushStyleColor(ImGuiCol.Text, colors.info)
 							ImGui.SameLine()
 							ImGui.Text(sd.info)
 							ImGui.PopStyleColor()
 							try_tooltip(dd,sd,true)
 						end
 					else
-						if dd.mode ~= 3 then
-							-- not iterable
-							ImGui.Text("")
+						-- not iterable
+						ImGui.Text("")
+						if sd.fake then
+							ImGui.PushStyleColor(ImGuiCol.Text, colors.fake)
 							ImGui.SameLine()
-							if sd.fake then
-								ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
-								ImGui.SameLine()
-								ImGui.Text(sd.name)
-								ImGui.PopStyleColor()
-							end
-							ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFFFF20)
-							ImGui.Text(sd.show)
+							ImGui.Text(sd.name)
 							ImGui.PopStyleColor()
-							try_tooltip(dd,sd,false)
-							if sd.type ~= "function" and sd.type ~= "thread" then
+						end
+						ImGui.SameLine()
+						ImGui.PushStyleColor(ImGuiCol.Text, colors.leaf)
+						ImGui.Text(sd.show)
+						ImGui.PopStyleColor()
+						try_tooltip(dd,sd,false)
+						if sd.type ~= "function" and sd.type ~= "thread" then
+							ImGui.SameLine()
+							ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
+							ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
+							ImGui.PushStyleColor(ImGuiCol.Text, colors.info)
+							ImGui.PushItemWidth(ImGui.GetContentRegionAvail() - ImGui.CalcTextSize('|'))
+							local text, enter_pressed = ImGui.InputText("##Text" .. id, dd.texts[id] or tostring_literal(sd.data), 65535, sd.fake and ImGuiInputTextFlags.ReadOnly or ImGuiInputTextFlags.EnterReturnsTrue)
+							ImGui.PopItemWidth()
+							ImGui.PopStyleColor()
+							ImGui.PopStyleColor()
+							ImGui.PopStyleVar()
+							try_tooltip(dd,sd,true)
+							if enter_pressed then
+								dd.data[sd.name] = peval(text)
+								dd.texts[id] = nil
+								refresh(dd)
+							elseif text == "" then 
+								dd.texts[id] = nil
+							else
+								dd.texts[id] = text
+							end
+						else
+							ImGui.PushStyleColor(ImGuiCol.Text, colors.null)
+							ImGui.SameLine()
+							ImGui.Text(tostring(sd.data))
+							ImGui.PopStyleColor()
+							if sd.type == "function" then
 								ImGui.SameLine()
 								ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
 								ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
-								ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
-								ImGui.PushItemWidth(ImGui.GetContentRegionAvail() - ImGui.CalcTextSize('|'))
-								local text, enter_pressed = ImGui.InputText("##Text" .. id, dd.texts[id] or tostring_literal(sd.data), 65535, ImGuiInputTextFlags.EnterReturnsTrue)
+								ImGui.PushStyleColor(ImGuiCol.Text, colors.info)
+								ImGui.Text("(")
+								ImGui.SameLine()
+								ImGui.PushItemWidth(ImGui.GetContentRegionAvail() - ImGui.CalcTextSize('(|)'))
+								local text, enter_pressed = ImGui.InputText("##Text" .. id, dd.texts[id] or '', 65535, ImGuiInputTextFlags.EnterReturnsTrue)
+								local tooltip = dd.tooltips[id]
+								if tooltip and ImGui.IsItemHovered() then
+									ImGui.PushStyleColor(ImGuiCol.Text, tooltip.color)
+									ImGui.SetTooltip(tooltip.message);
+									ImGui.PopStyleColor()
+								end
 								ImGui.PopItemWidth()
+								ImGui.SameLine()
+								ImGui.Text(")")
 								ImGui.PopStyleColor()
 								ImGui.PopStyleColor()
 								ImGui.PopStyleVar()
-								try_tooltip(dd,sd,true)
 								if enter_pressed then
-									dd.data[sd.name] = peval(text)
-									dd.texts[id] = nil
-									refresh(dd)
-								elseif text == "" then 
+									local result = table.pack(pcall(sd.data, peval(text)))
+									if result.n > 1 then
+										local color, message
+										if result[1] then
+											color = colors.leaf
+											message = tostring_vararg(table.unpack(result, 2, result.n))
+										else 
+											color = colors.null
+											message = result[2]
+										end
+										dd.tooltips[id] = { message = message, color = color }
+									end
 									dd.texts[id] = nil
 								else
 									dd.texts[id] = text
 								end
-							else
-								ImGui.PushStyleColor(ImGuiCol.Text, 0xFF2020FF)
-								ImGui.SameLine()
-								ImGui.Text(tostring(sd.data))
-								ImGui.PopStyleColor()
-								if sd.type == "function" then
-									ImGui.SameLine()
-									ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
-									ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
-									ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
-									ImGui.Text("(")
-									ImGui.SameLine()
-									ImGui.PushItemWidth(ImGui.GetContentRegionAvail() - ImGui.CalcTextSize('(|)'))
-									local text, enter_pressed = ImGui.InputText("##Text" .. id, dd.texts[id] or '', 65535, ImGuiInputTextFlags.EnterReturnsTrue)
-									local tooltip = dd.tooltips[id]
-									if tooltip and ImGui.IsItemHovered() then
-										ImGui.PushStyleColor(ImGuiCol.Text, tooltip.color)
-										ImGui.SetTooltip(tooltip.message);
+								if dd.data and sd.show == "call" then
+									local params = dd.data.params
+									if params == nil then
+										local name = dd.data.name
+										if name == nil then
+											local script_name = dd.data.script_name
+											if script_name ~= nil then
+												name = script_name:sub(script_prefix_index)
+											end
+										end
+										if name ~= nil then
+											local script = hardcoded.script[name]
+											if script then 
+												params = script.params
+											end
+										end
+									end
+									if params ~= nil then
+										ImGui.PushStyleColor(ImGuiCol.Text, colors.fake)
+										ImGui.Text("")
+										ImGui.SameLine()
+										ImGui.Text("")
+										ImGui.SameLine()
+										ImGui.Text("params:")
+										for _,p in ipairs(params) do
+											ImGui.SameLine()
+											ImGui.Text(p.name)
+											if p.value and ImGui.IsItemHovered() then
+												ImGui.SetTooltip(p.value);
+											end
+										end
 										ImGui.PopStyleColor()
-									end
-									ImGui.PopItemWidth()
-									ImGui.SameLine()
-									ImGui.Text(")")
-									ImGui.PopStyleColor()
-									ImGui.PopStyleColor()
-									ImGui.PopStyleVar()
-									if enter_pressed then
-										local result = table.pack(pcall(sd.data, peval(text)))
-										if result.n > 1 then
-											local color, message
-											if result[1] then
-												color = 0xFFFFFF20
-												message = tostring_vararg(table.unpack(result, 2, result.n))
-											else 
-												color = 0xFF2020FF
-												message = result[2]
-											end
-											dd.tooltips[id] = { message = message, color = color }
-										end
-										dd.texts[id] = nil
-									else
-										dd.texts[id] = text
-									end
-									if dd.data and sd.show == "call" then
-										local params = dd.data.params
-										if params == nil then
-											local name = dd.data.name
-											if name == nil then
-												local script_name = dd.data.script_name
-												if script_name ~= nil then
-													name = script_name:sub(script_prefix_index)
-												end
-											end
-											if name ~= nil then
-												local script = hardcoded.script[name]
-												if script then 
-													params = script.params
-												end
-											end
-										end
-										if params ~= nil then
-											ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
-											ImGui.Text("")
-											ImGui.SameLine()
-											ImGui.Text("")
-											ImGui.SameLine()
-											ImGui.Text("params:")
-											for _,p in ipairs(params) do
-												ImGui.SameLine()
-												ImGui.Text(p.name)
-												if p.value and ImGui.IsItemHovered() then
-													ImGui.SetTooltip(p.value);
-												end
-											end
-											ImGui.PopStyleColor()
-										end
 									end
 								end
 							end
@@ -688,72 +718,191 @@ do
 			end
 		end
 	end
-end
 
-local function render_tree(ed,filter,bid)
-	ids = bid .. '|' .. ed.path
-	local show = ed.path ~= "root"
-	local _unfolded = unfolded[ids] == true
-	if show then
-		ImGui.PushStyleColor(ImGuiCol.HeaderHovered,0)
-		ImGui.PushStyleColor(ImGuiCol.HeaderActive,0)
-		ImGui.Selectable("##Select" .. ids, false)
-		ImGui.PopStyleColor()
-		ImGui.PopStyleColor()
-		if ImGui.IsItemHovered() then
-			if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Left) then
-				_unfolded = not _unfolded
-			end
-			if ImGui.IsItemClicked(ImGuiMouseButton.Middle) then
-				create_browser(ed)
-			end
-			if ImGui.IsItemClicked(ImGuiMouseButton.Right) then
-				create_details(ed)
-			end
-		end
-		unfolded[ids] = _unfolded
-		ImGui.SetNextItemOpen(_unfolded)
-		ImGui.SameLine()
-		ImGui.TreeNode("##Node" .. ids)
-		if ed.fake then
-			ImGui.PushStyleColor(ImGuiCol.Text, 0xEECCCCCC)
-			ImGui.SameLine()
-			ImGui.Text(ed.name)
-			ImGui.PopStyleColor()
-		end
-		ImGui.PushStyleColor(ImGuiCol.Text, 0xFFFF20FF)
-		ImGui.SameLine()
-		ImGui.Text(ed.show)
-		ImGui.PopStyleColor()
-		if ed.info ~= nil then
-			ImGui.PushStyleColor(ImGuiCol.Text, 0xFF20FFFF)
-			ImGui.SameLine()
-			ImGui.Text(ed.info)
-			ImGui.PopStyleColor()
-		end
-	end
-	if _unfolded then
-		local entries = unfold(ed)
-		if entries then
-			local skipped = false
-			for _,sd in ipairs(entries) do
-				if sd.iter then 
-					if not unfolded[bid .. '|' .. sd.path] and #filter ~= 0 and not sd.text:match(filter) then
-						skipped = true
+	function render_browser(bd,ed)
+		ids = bd.index .. '|' .. ed.path
+		local show = ed.path ~= "root"
+		local _unfolded = unfolded[ids] == true
+		if show then
+			if ed.iter then
+				-- iterable
+				ImGui.PushStyleColor(ImGuiCol.HeaderHovered,0)
+				ImGui.PushStyleColor(ImGuiCol.HeaderActive,0)
+				ImGui.Selectable("##Select" .. ids, false)
+				ImGui.PopStyleColor()
+				ImGui.PopStyleColor()
+				if ImGui.IsItemHovered() then
+					if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Left) then
+						_unfolded = not _unfolded
+					end
+					if ImGui.IsItemClicked(ImGuiMouseButton.Middle) then
+						create_browser(ed)
+					end
+					if ImGui.IsItemClicked(ImGuiMouseButton.Right) then
+						create_details(ed)
+					end
+				end
+				unfolded[ids] = _unfolded
+				ImGui.SetNextItemOpen(_unfolded)
+				ImGui.SameLine()
+				ImGui.TreeNode("##Node" .. ids)
+				if ed.fake then
+					ImGui.PushStyleColor(ImGuiCol.Text, colors.fake)
+					ImGui.SameLine()
+					ImGui.Text(ed.name)
+					ImGui.PopStyleColor()
+				end
+				ImGui.PushStyleColor(ImGuiCol.Text, colors.tree)
+				ImGui.SameLine()
+				ImGui.Text(ed.show)
+				ImGui.PopStyleColor()
+				if ed.info ~= nil then
+					ImGui.PushStyleColor(ImGuiCol.Text, colors.info)
+					ImGui.SameLine()
+					ImGui.Text(ed.info)
+					ImGui.PopStyleColor()
+				end
+			else
+				-- not iterable
+				ImGui.Text("\t")
+				ImGui.SameLine()
+				ImGui.Text("")
+				if ed.fake then
+					ImGui.PushStyleColor(ImGuiCol.Text, colors.fake)
+					ImGui.SameLine()
+					ImGui.Text(ed.name)
+					ImGui.PopStyleColor()
+				end
+				ImGui.SameLine()
+				ImGui.PushStyleColor(ImGuiCol.Text, colors.leaf)
+				ImGui.Text(ed.show)
+				ImGui.PopStyleColor()
+				if ed.type ~= "function" and ed.type ~= "thread" then
+					ImGui.SameLine()
+					ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
+					ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
+					ImGui.PushStyleColor(ImGuiCol.Text, colors.info)
+					ImGui.PushItemWidth(ImGui.GetContentRegionAvail() - ImGui.CalcTextSize('|'))
+					local text, enter_pressed = ImGui.InputText("##Text" .. ids, bd.texts[ids] or tostring_literal(ed.data), 65535, ed.fake and ImGuiInputTextFlags.ReadOnly or ImGuiInputTextFlags.EnterReturnsTrue)
+					ImGui.PopItemWidth()
+					ImGui.PopStyleColor()
+					ImGui.PopStyleColor()
+					ImGui.PopStyleVar()
+					try_tooltip(bd,ed,true)
+					if enter_pressed then
+						ed.base.data[ed.name] = peval(text)
+						bd.texts[ids] = nil
+						refresh(bd)
+					elseif text == "" then 
+						bd.texts[ids] = nil
 					else
-						render_tree(sd,filter,bid)
+						bd.texts[ids] = text
+					end
+				else
+					ImGui.PushStyleColor(ImGuiCol.Text, colors.null)
+					ImGui.SameLine()
+					ImGui.Text(tostring(ed.data))
+					ImGui.PopStyleColor()
+					if ed.type == "function" then
+						ImGui.SameLine()
+						ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, 0, 0)
+						ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
+						ImGui.PushStyleColor(ImGuiCol.Text, colors.info)
+						ImGui.Text("(")
+						ImGui.SameLine()
+						ImGui.PushItemWidth(ImGui.GetContentRegionAvail() - ImGui.CalcTextSize('(|)'))
+						local text, enter_pressed = ImGui.InputText("##Text" .. ids, bd.texts[ids] or '', 65535, ImGuiInputTextFlags.EnterReturnsTrue)
+						local tooltip = bd.tooltips[ids]
+						if tooltip and ImGui.IsItemHovered() then
+							ImGui.PushStyleColor(ImGuiCol.Text, tooltip.color)
+							ImGui.SetTooltip(tooltip.message);
+							ImGui.PopStyleColor()
+						end
+						ImGui.PopItemWidth()
+						ImGui.SameLine()
+						ImGui.Text(")")
+						ImGui.PopStyleColor()
+						ImGui.PopStyleColor()
+						ImGui.PopStyleVar()
+						if enter_pressed then
+							local result = table.pack(pcall(ed.data, peval(text)))
+							if result.n > 1 then
+								local color, message
+								if result[1] then
+									color = colors.leaf
+									message = tostring_vararg(table.unpack(result, 2, result.n))
+								else 
+									color = colors.null
+									message = result[2]
+								end
+								bd.tooltips[ids] = { message = message, color = color }
+							end
+							bd.texts[ids] = nil
+						else
+							bd.texts[ids] = text
+						end
+						if bd.data and ed.show == "call" then
+							local params = bd.data.params
+							if params == nil then
+								local name = bd.data.name
+								if name == nil then
+									local script_name = bd.data.script_name
+									if script_name ~= nil then
+										name = script_name:sub(script_prefix_index)
+									end
+								end
+								if name ~= nil then
+									local script = hardcoded.script[name]
+									if script then 
+										params = script.params
+									end
+								end
+							end
+							if params ~= nil then
+								ImGui.PushStyleColor(ImGuiCol.Text, colors.fake)
+								ImGui.Text("")
+								ImGui.SameLine()
+								ImGui.Text("")
+								ImGui.SameLine()
+								ImGui.Text("params:")
+								for _,p in ipairs(params) do
+									ImGui.SameLine()
+									ImGui.Text(p.name)
+									if p.value and ImGui.IsItemHovered() then
+										ImGui.SetTooltip(p.value);
+									end
+								end
+								ImGui.PopStyleColor()
+							end
+						end
 					end
 				end
 			end
-			if skipped then
-				ImGui.Text("")
-				ImGui.SameLine()
-				ImGui.Text("")
-				ImGui.SameLine()
-				ImGui.Text("...")
-			end
 		end
-		if show then ImGui.TreePop() end
+		if _unfolded then
+			local filter = bd.filter
+			local entries = unfold(ed)
+			if entries then
+				local skipped = false
+				for _,sd in ipairs(entries) do
+					if sd.iter or bd.mode == 2 then 
+						if not unfolded[bd.index .. '|' .. sd.path] and #filter ~= 0 and not sd.text:match(filter) then
+							skipped = true
+						else
+							render_browser(bd,sd)
+						end
+					end
+				end
+				if skipped then
+					ImGui.Text("")
+					ImGui.SameLine()
+					ImGui.Text("")
+					ImGui.SameLine()
+					ImGui.Text("...")
+				end
+			end
+			if show then ImGui.TreePop() end
+		end
 	end
 end
 
@@ -840,7 +989,7 @@ local function imgui_on_render()
 			bd.index = bid
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
-			local num, y_max, x_total, x_filter = calculate_text_sizes('Filter: ')
+			local num, y_max, x_total, x_swap, x_filter = calculate_text_sizes('...','Filter: ')
 			local x,y = ImGui.GetContentRegionAvail()
 			-- height of InputText == font_size + frame_padding.y
 			-- and we're going to change frame_padding.y temporarily later on
@@ -858,6 +1007,12 @@ local function imgui_on_render()
 			ImGui.PopStyleColor()
 			ImGui.PopStyleVar()
 			ImGui.PopItemWidth()
+			ImGui.PushStyleColor(ImGuiCol.Button, colors[filter_modes_browser[bd.mode]])
+			ImGui.SameLine()
+			if ImGui.Button("    ##Swap" .. bid) then
+				bd.mode = bd.mode%#filter_modes_browser + 1
+			end
+			ImGui.PopStyleColor()
 			if enter_pressed then
 				bd.filter = bd.filter_text
 			end
@@ -880,7 +1035,7 @@ local function imgui_on_render()
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			if ImGui.BeginListBox("##Box" .. bid,x_box,y_box) then
 				ImGui.PopStyleColor()
-				render_tree(bd,bd.filter,bid)
+				render_browser(bd,bd)
 				ImGui.EndListBox()
 			else
 				ImGui.PopStyleColor()
@@ -914,10 +1069,10 @@ local function imgui_on_render()
 			ImGui.PopStyleColor()
 			ImGui.PopStyleVar()
 			ImGui.PopItemWidth()
-			ImGui.PushStyleColor(ImGuiCol.Button, detail_filters[dd.mode])
+			ImGui.PushStyleColor(ImGuiCol.Button, colors[filter_modes_details[dd.mode]])
 			ImGui.SameLine()
 			if ImGui.Button("    ##Swap" .. did) then
-				dd.mode = dd.mode%#detail_filters + 1
+				dd.mode = dd.mode%#filter_modes_details + 1
 			end
 			ImGui.PopStyleColor()
 			do
@@ -942,7 +1097,7 @@ local function imgui_on_render()
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			if ImGui.BeginListBox("##Box" .. did,x_box,y_box) then
 				ImGui.PopStyleColor()
-				render_details(dd,dd.filter,did)
+				render_details(dd)
 				ImGui.EndListBox()
 			else
 				ImGui.PopStyleColor()
