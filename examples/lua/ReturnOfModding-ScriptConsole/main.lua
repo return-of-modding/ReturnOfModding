@@ -252,7 +252,6 @@ console.command_help = {
 	{"alias","[0..2]","defines a command that represents multiple commands"},
 	{"bind","[0..2]","binds a key combination to run commands during gameplay"},
 	{"ibind","[0..2]","binds a key combination to run commands on the mod gui"}
-
 }
 
 console.commands = {
@@ -391,7 +390,7 @@ console.commands = {
 
 console.modes = {
 	{
-		name = "Notebook",
+		name = "Notepad",
 		prefix = "[Notes]:",
 		on_enter = function(md) return function(text)
 			return console.log.info(md, true, text)
