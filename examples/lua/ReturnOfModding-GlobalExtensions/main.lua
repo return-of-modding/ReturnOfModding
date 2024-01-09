@@ -212,7 +212,7 @@ local function define_proxy_meta(name,get_names,exists,get,set,id_register)
 		__index = function(s,k)
 			if type(k) == "number" then
 				local names = _get_names(s)
-				if not names then return nil end
+				if names == nil or #names == 0 then return nil end
 				k = names[k]
 				if k == nil then return nil end
 				local id = id_register[s]
@@ -224,7 +224,7 @@ local function define_proxy_meta(name,get_names,exists,get,set,id_register)
 		end,
 		__newindex = function(s,k,v)
 			local names = _get_names(s)
-			if not names then return end
+			if names == nil or #names == 0 then return end
 			if type(k) == "number" then
 				k = names[k]
 				if k == nil then return end
@@ -237,12 +237,12 @@ local function define_proxy_meta(name,get_names,exists,get,set,id_register)
 		end,
 		__len = function(s)
 			local names = _get_names(s)
-			if not names then return 0 end
+			if names == nil or #names == 0 then return 0 end
 			return #names
 		end,
 		__next = function(s,k)
 			local names = _get_names(s)
-			if not names then return nil end
+			if names == nil or #names == 0 then return nil end
 			local i
 			if k == nil then
 				i = 0
@@ -257,7 +257,7 @@ local function define_proxy_meta(name,get_names,exists,get,set,id_register)
 		end,
 		__pairs = function(s,k)
 			local names = _get_names(s)
-			if not names then return null end
+			if names == nil or #names == 0 then return null end
 			local names_lookup = util.build_index(names)
 			local id = id_register[s]
 			return function(_,k)
@@ -275,7 +275,7 @@ local function define_proxy_meta(name,get_names,exists,get,set,id_register)
 		end,
 		__inext = function(s,k)
 			local names = _get_names(s)
-			if not names then return nil end
+			if names == nil or #names == 0 then return nil end
 			local i
 			if k == nil then
 				i = 0
@@ -290,7 +290,7 @@ local function define_proxy_meta(name,get_names,exists,get,set,id_register)
 		end,
 		__ipairs = function(s,k)
 			local names = _get_names(s)
-			if not names then return null end
+			if names == nil or #names == 0 then return null end
 			local names_lookup = util.build_index(names)
 			local id = id_register[s]
 			return function(_,k)
