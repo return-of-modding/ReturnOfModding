@@ -716,6 +716,7 @@ local function gm_next_delayed_load(ccode)
 			local array = proxy.globals[gm_class_name_register[t]]
 			local id = gm_instance_id_register[t]
 			array = array[id]
+			if array == nil then return nil end
 			return array[field]
 		end,
 		__newindex = function(t,k,v)
@@ -725,12 +726,15 @@ local function gm_next_delayed_load(ccode)
 			local array = proxy.globals[gm_class_name_register[t]]
 			local id = gm_instance_id_register[t]
 			array = array[id]
+			if array == nil then return end
 			array[field] = v
 		end,
 		__len = function(t)
 			local array = proxy.globals[gm_class_name_register[t]]
 			local id = gm_instance_id_register[t]
-			return #array[id]
+			local array = array[id]
+			if array == nil then return 0 end
+			return #array
 		end,
 		__next = function(t,k)
 			local field
@@ -740,6 +744,7 @@ local function gm_next_delayed_load(ccode)
 			local array = proxy.globals[gm_class_name_register[t]]
 			local id = gm_instance_id_register[t]
 			array = array[id]
+			if array == nil then return nil end
 			return k,array[field]
 		end,
 		__pairs = function(t,k)
@@ -747,6 +752,7 @@ local function gm_next_delayed_load(ccode)
 			local array = proxy.globals[gm_class_name_register[t]]
 			local id = gm_instance_id_register[t]
 			array = array[id]
+			if array == nil then return null end
 			return function(_,k)
 				local field
 				k, field = next(fields,k)
@@ -758,6 +764,7 @@ local function gm_next_delayed_load(ccode)
 			local array = proxy.globals[gm_class_name_register[t]]
 			local id = gm_instance_id_register[t]
 			array = array[id]
+			if array == nil then return nil end
 			local n = #array
 			if n == 0 then return nil end
 			if k ~= nil and (type(k) ~= "number" or k < 0 or n <= k) then return nil end
@@ -769,6 +776,7 @@ local function gm_next_delayed_load(ccode)
 			local array = proxy.globals[gm_class_name_register[t]]
 			local id = gm_instance_id_register[t]
 			array = array[id]
+			if array == nil then return nil end
 			local n = #array
 			if n == 0 then return null end
 			if k ~= nil and (type(k) ~= "number" or k < 0 or n <= k) then return nil end
@@ -788,7 +796,11 @@ local function gm_next_delayed_load(ccode)
 		local function get_proxy(id)
 			local proxy = instances[id]
 			if proxy then return proxy end
-			proxy = setmetatable({}, util.merge({ __name = name }, gm_instance_meta))
+			local _name = ''
+			for s in name:gmatch('_(%w+)') do
+				_name = _name .. s:sub(1,1):upper() .. s:sub(2)
+			end
+			proxy = setmetatable({}, util.merge({ __name = _name }, gm_instance_meta))
 			instances[id] = proxy
 			gm_instance_id_register[proxy] = math.floor(id)
 			gm_class_name_register[proxy] = name
@@ -797,7 +809,7 @@ local function gm_next_delayed_load(ccode)
 		end
 		
 		return setmetatable({},{
-			__name = "ArrayClass",
+			__name = "Class",
 			__call = function(_,id)
 				local n = #array
 				if n == 0 then return nil end

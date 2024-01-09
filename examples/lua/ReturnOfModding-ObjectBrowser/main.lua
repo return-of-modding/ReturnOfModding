@@ -348,7 +348,7 @@ local unfold
 do
 	local function type_name(o,t)
 		if t == nil then return nil end
-		if t:match('Array') then
+		if t:match('DynamicArray') then
 			return 'array'
 		end
 		if t:match('unordered_map') then
@@ -363,7 +363,7 @@ do
 		if t:match('container') then
 			return 'container'
 		end
-		if t:match('Instance') then
+		if t:match('CInstance') then
 			return 'instance'
 		end
 		if t:match('Object') then
