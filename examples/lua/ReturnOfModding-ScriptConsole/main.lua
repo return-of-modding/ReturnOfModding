@@ -463,6 +463,7 @@ for mi,md in ipairs(console.modes) do
 		shown = {},
 		raw = {},
 		selected = {},
+		selected_last = nil,
 		colors = {},
 		index = mi,
 		on_enter = md.on_enter(md),
@@ -556,13 +557,34 @@ local function imgui_on_render()
 					ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 					if ImGui.BeginListBox("##Box" .. ms,x,box_y) then
 						ImGui.PopStyleColor()
+						local selected = not ImGui.IsMouseClicked(ImGuiMouseButton.Left)
 						for li,ls in ipairs(md.shown) do
 							local tall = select(2,ImGui.CalcTextSize(ls, false, x-frame_padding_x*2-item_spacing_x))
-							md.selected[li] = ImGui.Selectable("##Select" .. ms .. tostring(li), md.selected[li] or false, ImGuiSelectableFlags.AllowDoubleClick, 0, tall)
-							if ImGui.IsItemHovered() and ImGui.IsItemClicked(ImGuiMouseButton.Right) then
-								local selected = not md.selected[li]
-								for oli in ipairs(md.selected) do
-									md.selected[oli] = selected
+							ImGui.Selectable("##Select" .. ms .. tostring(li), md.selected[li] or false, ImGuiSelectableFlags.AllowDoubleClick, 0, tall)
+							if ImGui.IsItemClicked(ImGuiMouseButton.Left) then
+								selected = true
+								if ImGui.IsKeyDown(ImGuiKeyMod.Shift) then
+									local ll = md.selected_last
+									if ll then
+										for i in ipairs(md.shown) do
+											md.selected[i] = false
+										end
+										local step = ll<li and -1 or 1
+										for i = li, ll, step do
+											md.selected[i] = true
+										end
+									else
+										md.selected_last = li
+									end
+								elseif ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) then
+									md.selected_last = li
+									md.selected[li] = not md.selected[li]
+								else
+									md.selected_last = li
+									for i in ipairs(md.shown) do
+										md.selected[i] = false
+									end
+									md.selected[li] = true
 								end
 							end
 							ImGui.SameLine()
@@ -570,6 +592,11 @@ local function imgui_on_render()
 							if color ~= nil then ImGui.PushStyleColor(ImGuiCol.Text, color) end
 							ImGui.TextWrapped(ls)
 							if color ~= nil then ImGui.PopStyleColor() end
+						end
+						if not selected then
+							for i in ipairs(md.shown) do
+								md.selected[i] = false
+							end
 						end
 						ImGui.EndListBox()
 					else
@@ -595,6 +622,16 @@ local function imgui_on_render()
 									end
 								end
 								ImGui.SetClipboardText(text)
+							end
+							if ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) and ImGui.IsKeyPressed(ImGuiKey.A) then
+								for i in ipairs(md.shown) do
+									md.selected[i] = true
+								end
+							end
+							if ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) and ImGui.IsKeyPressed(ImGuiKey.D) then
+								for i in ipairs(md.shown) do
+									md.selected[i] = false
+								end
 							end
 							if ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) and ImGui.IsKeyPressed(ImGuiKey.Z) then
 								util.iclear(md.shown,md.raw,md.selected,md.colors)
