@@ -709,7 +709,7 @@ local function imgui_off_render()
 		local mouse_y = math.floor(gm.variable_global_get("mouse_y"))
 		local instance = gm.instance_nearest(mouse_x, mouse_y, EVariableType.ALL)
 		if instance ~= nil then
-			root.instances.recent = instance
+			root.instances.nearest = instance
 			if ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) then
 				local vars = proxy.variables(instance.id)
 				
@@ -744,7 +744,9 @@ local function imgui_off_render()
 				end
 				ImGui.End()
 				
-				if ImGui.IsMouseClicked(ImGuiMouseButton.Left) and root.instances then root.instances.selected = instance end
+				if ImGui.IsMouseClicked(ImGuiMouseButton.Left) then
+					root.instances.selected = instance
+				end
 				if ImGui.IsMouseClicked(ImGuiMouseButton.Middle) then
 					create_browser(resolve_chain("instances","stable",instance.id))
 				end
