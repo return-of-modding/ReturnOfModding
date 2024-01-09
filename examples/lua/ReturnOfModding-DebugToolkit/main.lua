@@ -5,35 +5,7 @@ print("Initializing", nil, 5, "", 5.00000)
 
 demo.hello()
 
-local myArray = gm.array_create(1, 1)
-
--- local my_file = io.open("thing.json", "a+")
--- my_file:write("hi")
--- log.info(_ENV["!plugins_data_mod_folder_path"])
-
--- for n in pairs(_G) do
--- 	log.info(n)
--- end
-
--- for n in pairs(mods["ReturnOfModding-DebugToolkit"]) do
-    -- log.info(n)
--- end
-
--- local xd = gm.variable_instance_get_names(gm.variable_global_get("callback_name_to_id"))
-local xd = gm.variable_global_get("callback_names")
-for i = 1, #xd do
-    print(i .. ": " .. xd[i])
-end
-
-gm.post_script_hook(gm.constants.callback_execute, function(self, other, result, args)
-    -- local callback_type = xd[args[1].value]
-    -- if callback_type ~= nil then
-    --     print(callback_type.tostring)
-    --     for i = 2, #args do
-    --         print(args[i].tostring)
-    --     end
-    -- end
-end)
+-- local myArray = gm.array_create(1, 1)
 
 local new_room = 0
 local show_debug_overlay = true
@@ -47,7 +19,7 @@ function imgui_dump(cinstance)
 
     local sprite_index = cinstance.sprite_index
     local sprite_name = gm.sprite_get_name(sprite_index)
-    ImGui.Text("Sprite Name: " .. sprite_name ~= nil and sprite_name.tostring or "undefined" .. " (Index: " .. cinstance.sprite_index .. ")")
+    ImGui.Text("Sprite Name: " .. sprite_name ~= nil and sprite_name or "undefined" .. " (Index: " .. cinstance.sprite_index .. ")")
 
     local layer_id = cinstance.layer
     local layer_name = gm.layer_get_name(layer_id)
@@ -160,22 +132,22 @@ gui.add_imgui(function()
 		
 		if ImGui.Button("Test Array") then
             local localArray = gm.array_create(2, 4)
-            log.info(localArray.tostring)
+            log.info(localArray)
 
             gm.gc_collect()
 
-            log.info(localArray.tostring)
+            log.info(localArray)
 
-			-- log.info(myArray.tostring)
+			-- log.info(myArray)
             -- print(collectgarbage("count"))
             -- print(collectgarbage("collect"))
             -- print(collectgarbage("count"))
             -- print(tostring(myArray))
 			gm.array_push(myArray, 8)
-			log.info(myArray.tostring)
+			log.info(myArray)
 
             -- local bla = gm.array_create(2, 2)
-            -- log.info(bla.tostring)
+            -- log.info(bla)
         end
 
         if ImGui.Button("Dump Constants") then
@@ -195,12 +167,11 @@ gui.add_imgui(function()
         if ImGui.Button("Dump Game Global Variables") then
             local game_globals = gm.variable_instance_get_names(EVariableType.GLOBAL)
             for i = 1, #game_globals do
-                log.info(game_globals[i].tostring)
+                log.info(game_globals[i])
             end
             
             local game_instance_create = gm.variable_global_get("instance_create")
-            log.info(game_instance_create.tostring)
-            log.info(game_instance_create.type)
+            log.info(game_instance_create)
         end
     end
     ImGui.End()
@@ -231,6 +202,46 @@ gui.add_imgui(function()
     ImGui.End()
 end)
 
-gm.pre_code_execute(function(self, other, code, result, flags)
+-- gm.pre_code_execute(function(self, other, code, result, flags)
 	-- log.info("GML Script: " .. code.name .. " (" .. code.index .. ")")
-end)
+-- end)
+-- gm.pre_code_execute(function(self, other, code, result, flags)
+--     if hooks[code.name] then
+--         hooks[code.name](self)
+--     end
+
+--     return true
+-- end)
+
+
+-- local my_file = io.open("thing.json", "a+")
+-- my_file:write("hi")
+-- log.info(_ENV["!plugins_data_mod_folder_path"])
+
+-- for n in pairs(_G) do
+-- 	log.info(n)
+-- end
+
+-- gui.add_always_draw_imgui(function()
+--     if ImGui.IsMouseClicked(ImGuiMouseButton.Left) then
+--         log.info("hi")
+--     end
+-- end)
+
+-- for n in pairs(mods["ReturnOfModding-DebugToolkit"]) do
+    -- log.info(n)
+-- end
+
+-- local callback_names = gm.variable_global_get("callback_names")
+-- for i = 1, #xd do
+--     print(i .. ": " .. xd[i])
+-- end
+
+-- gm.post_script_hook(gm.constants.callback_execute, function(self, other, result, args)
+--     local callback_type = xd[args[1].value + 1] -- gm arg is 0 index based, but lua arrays are not
+--     if callback_type ~= nil then
+--         if callback_type:match("onPlayerInit") then
+--             print(args[2].value)
+--         end
+--     end
+-- end)
