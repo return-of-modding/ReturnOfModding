@@ -71,20 +71,24 @@ end
 
 function root.helpers.get_skin_by_id(id)
 	if type(id) ~= "number" or id < 0 then return nil end
-	return hardcoded.class.class_actor_skin[id+1]
+	return hardcoded.class.class_actor_skin(id)
 end
 
 function root.helpers.get_skill_by_id(id)
 	if type(id) ~= "number" or id < 0 then return nil end
-	return hardcoded.class.class_skill[id+1]
+	return hardcoded.class.class_skill(id)
 end
 
 function root.helpers.get_achievement_by_id(id)
 	if type(id) ~= "number" or id < 0 then return nil end
-	return hardcoded.class.class_achievement[id+1]
+	return hardcoded.class.class_achievement(id)
 end
 
-local excludedFieldNames = util.build_lookup{ "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while" }
+local excludedFieldNames = util.build_lookup{ 
+	"and", "break", "do", "else", "elseif", "end",
+	"false", "for", "function", "if", "in", "local",
+	"nil", "not", "or", "repeat", "return", "then",
+	"true", "until", "while", "goto", "repeat", "until" }
 
 local function tostring_literal(value)
 	if type(value) == "string" then
@@ -700,50 +704,53 @@ local tooltip_flags = --ImGuiWindowFlags.Tooltip |
 			ImGuiWindowFlags.AlwaysUseWindowPadding
 
 local function imgui_off_render()
-	if ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) then
+	if root.instances then
 		local mouse_x = math.floor(gm.variable_global_get("mouse_x"))
 		local mouse_y = math.floor(gm.variable_global_get("mouse_y"))
 		local instance = gm.instance_nearest(mouse_x, mouse_y, EVariableType.ALL)
 		if instance ~= nil then
-			local vars = proxy.variables(instance.id)
-			
-			local text1 = instance.object_name:sub(2)
-			local name = vars.name
-			if name then text1 = text1 .. ':' .. name end
-			local name = vars.user_name
-			if name then text1 = text1 .. '\n' .. name end
-			local text2 = instance.object_index .. ' @ ' .. instance.id
-			local text3 = 'x = ' .. mouse_x .. ', y = ' .. mouse_y
-			local text = text1 .. '\n' .. text2 .. '\n' .. text3
-			
-			local x,y,w,h
-			for _,v in pairs(ImGuiCol) do
-				ImGui.PushStyleColor(v,0)
-			end
-			ImGui.SetNextWindowSize(0,0)
-			if ImGui.Begin("##Tooltip Position Hack", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
-				x,y = ImGui.GetWindowPos()
-			end
-			if ImGui.Begin("##Tooltip Size Hack", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
-				ImGui.Text(text)
-				w,h = ImGui.GetWindowSize()
-			end
-			for _ in pairs(ImGuiCol) do
-				ImGui.PopStyleColor()
-			end
-			
-			ImGui.SetNextWindowPos(x-w/2-10,y+15)
-			if ImGui.Begin("##Instance Selector", tooltip_flags ) then
-				ImGui.Text(text)
-			end
-			ImGui.End()
-			if root.instances then root.instances.recent = instance end
-			if ImGui.IsMouseClicked(ImGuiMouseButton.Left) and root.instances then root.instances.selected = instance end
-			if ImGui.IsMouseClicked(ImGuiMouseButton.Middle) then
-				create_browser(resolve_chain("instances","stable",instance.id))
-			end
-			if ImGui.IsMouseClicked(ImGuiMouseButton.Right) then
-				create_details(resolve_chain("instances","stable",instance.id))
+			root.instances.recent = instance
+			if ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) then
+				local vars = proxy.variables(instance.id)
+				
+				local text1 = instance.object_name:sub(2)
+				local name = vars.name
+				if name then text1 = text1 .. ':' .. name end
+				local name = vars.user_name
+				if name then text1 = text1 .. '\n' .. name end
+				local text2 = instance.object_index .. ' @ ' .. instance.id
+				local text3 = 'x = ' .. mouse_x .. ', y = ' .. mouse_y
+				local text = text1 .. '\n' .. text2 .. '\n' .. text3
+				
+				local x,y,w,h
+				for _,v in pairs(ImGuiCol) do
+					ImGui.PushStyleColor(v,0)
+				end
+				ImGui.SetNextWindowSize(0,0)
+				if ImGui.Begin("##Tooltip Position Hack", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
+					x,y = ImGui.GetWindowPos()
+				end
+				if ImGui.Begin("##Tooltip Size Hack", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
+					ImGui.Text(text)
+					w,h = ImGui.GetWindowSize()
+				end
+				for _ in pairs(ImGuiCol) do
+					ImGui.PopStyleColor()
+				end
+				
+				ImGui.SetNextWindowPos(x-w/2-10,y+15)
+				if ImGui.Begin("##Instance Selector", tooltip_flags ) then
+					ImGui.Text(text)
+				end
+				ImGui.End()
+				
+				if ImGui.IsMouseClicked(ImGuiMouseButton.Left) and root.instances then root.instances.selected = instance end
+				if ImGui.IsMouseClicked(ImGuiMouseButton.Middle) then
+					create_browser(resolve_chain("instances","stable",instance.id))
+				end
+				if ImGui.IsMouseClicked(ImGuiMouseButton.Right) then
+					create_details(resolve_chain("instances","stable",instance.id))
+				end
 			end
 		end
 	end

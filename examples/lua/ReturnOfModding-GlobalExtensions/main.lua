@@ -29,20 +29,11 @@ function _G.rawpairs( t )
 	return rawnext, t, nil
 end
 
---[[
-
--- quasi-raw pairs, invokes __next but ignores __pairs
-function qrawpairs( t )
-	return next, t, nil
-end
-
---]]
-
 -- doesn't invoke __index just like rawnext
 function _G.rawinext( t, i )
 
 	if type( t ) ~= "table" then
-		error( "bad argument #1 to '" .. getname( ) .. "'(table expected got " .. type( i ) ..")", 2 )
+		error( "bad argument #1 to '" .. getname( ) .. "'(table expected got " .. type( t ) ..")", 2 )
 	end
 
 	if i == nil then
@@ -74,100 +65,14 @@ function _G.rawipairs( t )
 	end, t, nil
 end
 
---[[
+local _ipairs = ipairs
 
--- quasi-raw ipairs, invokes __inext but ignores __ipairs
-function _G.qrawipairs( t )
-	return function( self, key )
-		return inext( self, key )
-	end, t, nil
+-- fix 5.4's ipairs to still respect __ipairs
+function _G.ipairs( t )
+	local m = debug.getmetatable( t )
+	local f = m and rawget(m,'__ipairs') or _ipairs
+	return pusherror( f, t, i )
 end
-
---]]
-
---[[
-
-table.rawinsert = table.insert
-local rawinsert = table.rawinsert
--- table.insert that respects metamethods
-function table.insert( list, pos, value )
-	local last = #list
-	if value == nil then
-		value = pos
-		pos = last + 1
-	end
-	if pos < 1 or pos > last + 1 then
-		error( "bad argument #2 to '" .. getname( ) .. "' (position out of bounds)", 2 )
-	end
-	if pos <= last then
-		local i = last
-		repeat
-			list[ i + 1 ] = list[ i ]
-			i = i - 1
-		until i < pos
-	end
-	list[ pos ] = value
-end
-
-table.rawremove = table.remove
--- table.remove that respects metamethods
-function table.remove( list, pos )
-	local last = #list
-	if pos == nil then
-		pos = last
-	end
-	if pos < 1 or pos > last then
-		error( "bad argument #2 to '" .. getname( ) .. "' (position out of bounds)", 2 )
-	end
-	local value = list[ pos ]
-	if pos <= last then
-		local i = pos
-		repeat
-			list[ i ] = list[ i + 1 ]
-			i = i + 1
-		until i > last
-	end
-	return value
-end
-
-table.rawunpack = table.unpack
--- table.unpack that respects metamethods
-do
-	local function unpack( t, m, i, ... )
-		if i < m then return ... end
-		return unpack( t, m, i - 1, t[ i ], ... )
-	end
-
-	function table.unpack( list, i, j )
-		return unpack( list, i or 1, j or list.n or #list or 1 )
-	end
-end
-
-local rawconcat = table.concat
-table.rawconcat = rawconcat
--- table.concat that respects metamethods and includes more values
-do
-	local wt = setmetatable( { }, { __mode = 'v' } )
-	function table.concat( tbl, sep, i, j )
-		i = i or 1
-		j = j or tbl.n or #tbl
-		if i > j then return "" end
-		sep = sep or ""
-		local t = rawnext( wt ) or { }
-		rawset( wt, 1, t )
-		for k = i, j, 1 do
-			rawset( t, k, tostring( tbl[ k ] ) )
-		end
-		return rawconcat( t, sep, i, j )
-	end
-end
-
---[[
-	NOTE: Other table functions that need to get updated to respect metamethods
-	- table.sort
---]]
-
---]]
 
 function _G.setfenv( fn, env )
 	if type( fn ) ~= "function" then
@@ -181,6 +86,20 @@ function _G.setfenv( fn, env )
 			debug.upvaluejoin( fn, i, ( function( )
 				return env
 			end ), 1 )
+			return env
+		end
+	until not name
+end
+
+function _G.getfenv( fn )
+	if type( fn ) ~= "function" then
+		fn = debug.getinfo( ( fn or 1 ) + 1, "f" ).func
+	end
+	local i = 0
+	repeat
+		i = i + 1
+		local name, env = debug.getupvalue( fn, i )
+		if name == "_ENV" then
 			return env
 		end
 	until not name
@@ -280,6 +199,8 @@ end
 -- GLOBAL PROXY EXTENSIONS
 
 _G.proxy = {}
+
+local function null() return nil end
 
 local function define_proxy_meta(name,get_names,exists,get,set,id_register)
 	local _get_names = function(s)
@@ -738,7 +659,28 @@ local function gm_next_delayed_load(ccode)
 	endow_with_pairs_and_next(getmetatable(gm_object))
 	endow_with_pairs_and_next(getmetatable(ccode))
 
-	getmetatable(gm_instance_variables).__next = function(...) return inext(...) end
+	local function array_inext(t,k)
+		local n = #t
+		if n == 0 then return nil end
+		if k ~= nil and (type(k) ~= "number" or k < 0) then return nil end
+		k = (k or 0) + 1
+		if n < k then return nil end
+		return k,t[k]
+	end
+	local function array_ipairs(t,k)
+		local n = #t
+		if n == 0 then return nil end
+		if k ~= nil and (type(k) ~= "number" or k < 0) then return nil end
+		return function(_,k)
+			k = (k or 0) + 1
+			if n < k then return nil end
+			return k,t[k]
+		end,t,k
+	end
+	getmetatable(gm_instance_variables).__next = array_inext
+	getmetatable(gm_instance_variables).__inext = array_inext
+	getmetatable(gm_instance_variables).__pairs = array_ipairs
+	getmetatable(gm_instance_variables).__ipairs = array_ipairs
 	
 	local script_prefix = "gml_Script_"
 	local script_prefix_index = #script_prefix+1
@@ -774,9 +716,7 @@ local function gm_next_delayed_load(ccode)
 			local array = proxy.globals[gm_class_name_register[t]]
 			local id = gm_instance_id_register[t]
 			array = array[id]
-			local value = array[field]
-			if value == nil then return nil end
-			return value
+			return array[field]
 		end,
 		__newindex = function(t,k,v)
 			local fields = gm_instance_fields_register[t]
@@ -790,8 +730,7 @@ local function gm_next_delayed_load(ccode)
 		__len = function(t)
 			local array = proxy.globals[gm_class_name_register[t]]
 			local id = gm_instance_id_register[t]
-			array = array[id]
-			return #array
+			return #array[id]
 		end,
 		__next = function(t,k)
 			local field
@@ -801,22 +740,18 @@ local function gm_next_delayed_load(ccode)
 			local array = proxy.globals[gm_class_name_register[t]]
 			local id = gm_instance_id_register[t]
 			array = array[id]
-			local value = array[field]
-			if value == nil then return k,nil end
-			return k,value
+			return k,array[field]
 		end,
 		__pairs = function(t,k)
 			local fields = gm_instance_fields_register[t]
 			local array = proxy.globals[gm_class_name_register[t]]
 			local id = gm_instance_id_register[t]
 			array = array[id]
-			return function(t,k)
+			return function(_,k)
 				local field
 				k, field = next(fields,k)
 				if k == nil then return nil end
-				local value = array[field]
-				if value == nil then return k,nil end
-				return k,value
+				return k,array[field]
 			end,t,k
 		end,
 		__inext = function(t,k)
@@ -825,24 +760,22 @@ local function gm_next_delayed_load(ccode)
 			array = array[id]
 			local n = #array
 			if n == 0 then return nil end
+			if k ~= nil and (type(k) ~= "number" or k < 0 or n <= k) then return nil end
 			k = (k or 0) + 1
 			if n < k then return nil end
-			local value = array[k]
-			if value == nil then return k,nil end
-			return k,value
+			return k,array[k]
 		end,
 		__ipairs = function(t,k)
 			local array = proxy.globals[gm_class_name_register[t]]
 			local id = gm_instance_id_register[t]
 			array = array[id]
-			return function(t,k)
-				local n = #array
-				if n == 0 then return nil end
+			local n = #array
+			if n == 0 then return null end
+			if k ~= nil and (type(k) ~= "number" or k < 0 or n <= k) then return nil end
+			return function(_,k)
 				k = (k or 0) + 1
 				if n < k then return nil end
-				local value = array[k]
-				if value == nil then return k,nil end
-				return k,value
+				return k,array[k]
 			end,t,k
 		end
 	}
@@ -852,21 +785,30 @@ local function gm_next_delayed_load(ccode)
 	local function gm_array_class(name, array, fields)
 		local instances = setmetatable({},{__mode='kv'})
 		
+		local function get_proxy(id)
+			local proxy = instances[id]
+			if proxy then return proxy end
+			proxy = setmetatable({}, util.merge({ __name = name }, gm_instance_meta))
+			instances[id] = proxy
+			gm_instance_id_register[proxy] = math.floor(id)
+			gm_class_name_register[proxy] = name
+			gm_instance_fields_register[proxy] = fields
+			return proxy
+		end
+		
 		return setmetatable({},{
 			__name = "ArrayClass",
 			__call = function(_,id)
-				if type(id) ~= "number" or id < 0 then return nil end
-				local proxy = instances[id]
-				if proxy then return proxy end
-				proxy = setmetatable({}, util.merge({ __name = name },gm_instance_meta))
-				instances[id] = proxy
-				gm_instance_id_register[proxy] = math.floor(id)
-				gm_class_name_register[proxy] = name
-				gm_instance_fields_register[proxy] = fields
-				return proxy
+				local n = #array
+				if n == 0 then return nil end
+				if id ~= nil and (type(id) ~= "number" or id < 0 or n <= id) then return nil end
+				return get_proxy(id+1)
 			end,
-			__index = function(s,k)
-				return s(k)
+			__index = function(_,id)
+				local n = #array
+				if n == 0 then return nil end
+				if id ~= nil and (type(id) ~= "number" or id < 1 or n < id) then return nil end
+				return get_proxy(id)
 			end,
 			__newindex = function(_,k,v)
 				array[k] = v
@@ -877,18 +819,26 @@ local function gm_next_delayed_load(ccode)
 			__next = function(s,k)
 				local n = #array
 				if n == 0 then return nil end
+				if k ~= nil and (type(k) ~= "number" or k < 0 or n <= k) then return nil end
 				k = (k or 0) + 1
 				if n < k then return nil end
 				return k,s[k]
 			end,
 			__pairs = function(s,k)
-				return getmetatable(s).__next,s,k
+				local n = #array
+				if n == 0 then return null end
+				if k ~= nil and (type(k) ~= "number" or k < 0 or n <= k) then return nil end
+				return function(_,k)
+					k = (k or 0) + 1
+					if n < k then return nil end
+					return k,s[k]
+				end,s,k
 			end,
 			__inext = function(s,k)
 				return getmetatable(s).__next(s,k)
 			end,
 			__ipairs = function(s,k)
-				return getmetatable(s).__next,s,k
+				return getmetatable(s).__pairs(s,k)
 			end
 		})
 	end
