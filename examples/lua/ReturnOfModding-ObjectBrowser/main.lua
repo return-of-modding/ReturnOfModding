@@ -35,7 +35,7 @@ local detail_filters = {
 
 local function create_browser(entry)
 	local id = #browsers + 1
-	unfolded[tostring(id)] = true
+	unfolded[id..'|root'] = true
 	browsers[id] = util.merge({
 		index = id,
 		filter_text = '',
@@ -66,7 +66,8 @@ root = {
 }
 
 local function root_entries()
-	return { path = 'root', name = 'root', show = 'root', text = 'root', data = root, iter = pairs}
+	return { data = root, iter = pairs, chain = {}, funcs = {},
+		path = 'root', name = 'root', show = 'root', text = 'root'}
 end
 
 function root.helpers.get_skin_by_id(id)
@@ -306,8 +307,12 @@ local function refresh(ed)
 	--	refresh(ed)
 	--end
 	ed.entries = nil
-	return resolve(ed)
+	return ed
 end
+
+--[[
+local path_cache = setmetatable({},{__mode='v'})
+--]]
 
 local unfold
 do
@@ -352,6 +357,7 @@ do
 	function unfold(ed)
 		if ed.entries then return ed.entries end
 		ed.path = ed.path or path_part(ed)
+		--path_cache[ed.path] = ed
 		local data = ed.data
 		if ed.data == nil then data = resolve(ed).data end
 		local iter = ed.iter
@@ -368,6 +374,12 @@ do
 		for i,sd in ipairs(entries) do
 			sd.index = i
 			sd.path = path_part(sd,ed.path)
+			--sd.chain = util.merge({},ed.chain)
+			--table.insert(sd.chain,sd.name)
+			--sd.funcs = util.merge({},ed.funcs)
+			--if sd.func then
+			--	sd.funcs[#sd.chain] = sd.func
+			--end
 			local data = sd.data
 			if data == nil then data = resolve(sd).data end
 			local ta,tb = type(data)
@@ -391,11 +403,25 @@ do
 	end
 end
 
-local function resolve_chain(...)
+function resolve_vararg_simple(...)
 	local ed = browsers[1]
 	for _,k in util.vararg(...) do
 		for j, sd in ipairs(unfold(ed)) do
-			log.warning(j,sd.name)
+			if sd.name == k or sd.func == k then
+				ed = sd
+				break
+			end
+		end
+	end
+	return ed
+end
+
+--[[
+
+function resolve_vararg(...)
+	local ed = browsers[1]
+	for _,k in util.vararg(...) do
+		for j, sd in ipairs(unfold(ed)) do
 			if sd.name == k then
 				ed = sd
 				break
@@ -404,6 +430,45 @@ local function resolve_chain(...)
 	end
 	return ed
 end
+
+function resolve_chain_funcs(chain, funcs)
+	local ed = browsers[1]
+	for i,k in ipairs(chain) do
+		local func
+		if funcs then func = funcs[i] end
+		for j, sd in ipairs(unfold(ed)) do
+			if sd.name == k and sd.func == func then
+				ed = sd
+				break
+			end
+		end
+	end
+	return ed
+end
+
+function resolve_path(path)
+	local ed = path_cache[path]
+	if ed ~= nil then return ed end
+	-- TODO: resolve the path using grammar:
+	-- PATH = FUNC(PATH) | PATH[KEY] | PATH.FIELD | root
+	-- FUNC = FUNC[KEY] | FUNC.FIELD | root
+	-- KEY = .*
+	-- FIELD = %w+
+	-- only works for valid paths that don't use table, userdata, function or thread as keys
+	-- as such, disqualify a path if it contains PATH<.+?: [A-F0-9]+>
+	local ed = browsers[1]
+	for _,k in path:gmatch('%.(.+?)') do
+		for j, sd in ipairs(unfold(ed)) do
+			if sd.name == k then
+				ed = sd
+				break
+			end
+		end
+	end
+	return ed
+end
+
+--]]
 
 local render_details
 do
@@ -463,7 +528,7 @@ do
 				if #filter ~= 0 and not sd.text:match(filter) then
 					skipped = true
 				else
-					local id = did .. sd.path
+					local id = did .. '|' .. sd.path
 					if sd.iter then
 						if dd.mode ~= 1 then 
 							-- iterable
@@ -625,8 +690,8 @@ do
 	end
 end
 
-local function render_tree(ed,filter,ids)
-	ids = (ids and (ids .. '.') or '') .. ed.index
+local function render_tree(ed,filter,bid)
+	ids = bid .. '|' .. ed.path
 	local show = ed.path ~= "root"
 	local _unfolded = unfolded[ids] == true
 	if show then
@@ -673,10 +738,10 @@ local function render_tree(ed,filter,ids)
 			local skipped = false
 			for _,sd in ipairs(entries) do
 				if sd.iter then 
-					if not unfolded[ids .. '.' .. sd.index] and #filter ~= 0 and not sd.text:match(filter) then
+					if not unfolded[bid .. '|' .. sd.path] and #filter ~= 0 and not sd.text:match(filter) then
 						skipped = true
 					else
-						render_tree(sd,filter,ids)
+						render_tree(sd,filter,bid)
 					end
 				end
 			end
@@ -748,10 +813,10 @@ local function imgui_off_render()
 					root.instances.selected = instance
 				end
 				if ImGui.IsMouseClicked(ImGuiMouseButton.Middle) then
-					create_browser(resolve_chain("instances","stable",instance.id))
+					create_browser(resolve_vararg_simple("instances","stable",instance.id))
 				end
 				if ImGui.IsMouseClicked(ImGuiMouseButton.Right) then
-					create_details(resolve_chain("instances","stable",instance.id))
+					create_details(resolve_vararg_simple("instances","stable",instance.id,proxy.variables))
 				end
 			end
 		end
@@ -815,7 +880,7 @@ local function imgui_on_render()
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, 0)
 			if ImGui.BeginListBox("##Box" .. bid,x_box,y_box) then
 				ImGui.PopStyleColor()
-				render_tree(bd,bd.filter)
+				render_tree(bd,bd.filter,bid)
 				ImGui.EndListBox()
 			else
 				ImGui.PopStyleColor()
