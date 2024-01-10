@@ -254,6 +254,27 @@ console.command_help = {
 	{"ibind","[0..2]","binds a key combination to run commands on the mod gui"}
 }
 
+local _KeyMod = {}
+for k in pairs(ImGuiKeyMod) do
+	_KeyMod[k:upper()] = k
+end
+local _Key = {}
+for k in pairs(ImGuiKey) do
+	_Key[k:upper()] = k
+end
+
+local function check_bind(md,k)
+	local bind = ''
+	for key in k:upper():gmatch("(%w+)") do
+		key = _KeyMod[key] or _Key[key]
+		if not key then 
+			return console.log.error(md, true, 'invalid key combo: "' .. k .. '"')
+		end
+		bind = bind .. '+' .. key
+	end
+	return bind:sub(2)
+end
+
 console.commands = {
 	help = function(md,stub)
 		if stub then
@@ -351,6 +372,8 @@ console.commands = {
 			end
 			return
 		end
+		name = check_bind(md,name)
+		if name == nil then return end
 		local text = ""
 		for _, arg in util.vararg(...) do
 			text = text .. ' ' .. arg
@@ -359,7 +382,7 @@ console.commands = {
 		if #text == 0 then
 			local msg = console.binds[name]
 			if not msg then 
-				return console.log.error(md, true, 'no bind by the name of "' .. name .. '" exists')
+				return console.log.error(md, true, 'no bind for the key combo "' .. name .. '" exists')
 			end
 			return console.log.echo(md, true, msg)
 		end
@@ -372,6 +395,8 @@ console.commands = {
 			end
 			return
 		end
+		name = check_bind(md,name)
+		if name == nil then return end
 		local text = ""
 		for _, arg in util.vararg(...) do
 			text = text .. ' ' .. arg
@@ -380,7 +405,7 @@ console.commands = {
 		if #text == 0 then
 			local msg = console.ibinds[name]
 			if not msg then 
-				return console.log.error(md, true, 'no UI bind by the name of "' .. name .. '" exists')
+				return console.log.error(md, true, 'no UI bind for the key combo "' .. name .. '" exists')
 			end
 			return console.log.echo(md, true, msg)
 		end
@@ -520,7 +545,7 @@ do
 	end
 end
 
-local function check_bind(m,k,v)
+local function run_bind(m,k,v)
 	local pass = true
 	for key in k:gmatch("(%w+)") do
 		if ImGuiKeyMod[key] then
@@ -542,14 +567,14 @@ local tab_selected = false
 local function imgui_off_render()
 	local m = console.mode
 	for k,v in pairs(console.binds) do
-		pcall(check_bind,m,k,v)
+		pcall(run_bind,m,k,v)
 	end
 end
 
 local function imgui_on_render()
 	local m = console.mode
 	for k,v in pairs(console.ibinds) do
-		pcall(check_bind,m,k,v)
+		pcall(run_bind,m,k,v)
 	end
 	if ImGui.Begin("Script Console", true, ImGuiWindowFlags.NoTitleBar) then
 		if ImGui.BeginTabBar("Mode") then
