@@ -917,6 +917,28 @@ local tooltip_flags = --ImGuiWindowFlags.Tooltip |
             ImGuiWindowFlags.AlwaysAutoResize |
 			ImGuiWindowFlags.AlwaysUseWindowPadding
 
+local function nop() end
+
+local function selector_tooltip(pushc,popc,mouse_x,mouse_y,instance)
+	local vars = proxy.variables(instance.id)
+	if vars.user_name then 
+		pushc(ImGuiCol.Text, colors.fake)
+		ImGui.Text(vars.user_name)
+		popc()
+	end
+	pushc(ImGuiCol.Text, colors.tree)
+	ImGui.Text(instance.object_name:sub(2))
+	ImGui.SameLine()
+	popc()
+	pushc(ImGuiCol.Text, colors.info)
+	ImGui.Text(vars.name or '')
+	popc()
+	ImGui.Separator()
+	ImGui.Text(tostring(instance.object_index))
+	ImGui.SameLine()
+	ImGui.Text(tostring(instance.id))
+end
+
 local function imgui_off_render()
 	if root.instances then
 		local mouse_x = math.floor(gm.variable_global_get("mouse_x"))
@@ -924,40 +946,39 @@ local function imgui_off_render()
 		local instance = gm.instance_nearest(mouse_x, mouse_y, EVariableType.ALL)
 		if instance ~= nil then
 			root.instances.nearest = instance
-			if ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) then
-				local vars = proxy.variables(instance.id)
-				
-				local text1 = instance.object_name:sub(2)
-				local name = vars.name
-				if name then text1 = text1 .. ':' .. name end
-				local name = vars.user_name
-				if name then text1 = text1 .. '\n' .. name end
-				local text2 = instance.object_index .. ' @ ' .. instance.id
-				local text3 = 'x = ' .. mouse_x .. ', y = ' .. mouse_y
-				local text = text1 .. '\n' .. text2 .. '\n' .. text3
-				
-				local x,y,w,h
-				for _,v in pairs(ImGuiCol) do
-					ImGui.PushStyleColor(v,0)
-				end
-				ImGui.SetNextWindowSize(0,0)
-				if ImGui.Begin("##Tooltip Position Hack", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
-					x,y = ImGui.GetWindowPos()
-				end
-				if ImGui.Begin("##Tooltip Size Hack", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
-					ImGui.Text(text)
-					w,h = ImGui.GetWindowSize()
-				end
-				for _ in pairs(ImGuiCol) do
-					ImGui.PopStyleColor()
-				end
-				
-				ImGui.SetNextWindowPos(x-w/2-10,y+15)
+		end
+		if ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) then
+			local w,h,x,y = 0,0
+			for _,v in pairs(ImGuiCol) do
+				ImGui.PushStyleColor(v,0)
+			end
+			ImGui.SetNextWindowSize(0,0)
+			if ImGui.Begin("##Tooltip Position Hack", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
+				x,y = ImGui.GetWindowPos()
+			end
+			if instance ~= nil and ImGui.Begin("##Tooltip Size Hack", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
+				selector_tooltip(nop,nop,mouse_x,mouse_y,instance)
+				w,h = ImGui.GetWindowSize()
+			end
+			for _ in pairs(ImGuiCol) do
+				ImGui.PopStyleColor()
+			end
+			
+			ImGui.SetNextWindowPos(x,y-20)
+			if ImGui.Begin("##Instance Selector Position", tooltip_flags ) then
+				ImGui.PushStyleColor(ImGuiCol.Text, colors.leaf)
+				ImGui.Text(mouse_x .. ', ' .. mouse_y)
+				ImGui.PopStyleColor()
+			end
+			ImGui.End()
+			
+			if instance ~= nil then
+				ImGui.SetNextWindowPos(x-w/2-12.5,y+20)
 				if ImGui.Begin("##Instance Selector", tooltip_flags ) then
-					ImGui.Text(text)
+					selector_tooltip(ImGui.PushStyleColor,ImGui.PopStyleColor,mouse_x,mouse_y,instance)
 				end
 				ImGui.End()
-				
+			
 				if ImGui.IsMouseClicked(ImGuiMouseButton.Left) then
 					root.instances.selected = instance
 				end
