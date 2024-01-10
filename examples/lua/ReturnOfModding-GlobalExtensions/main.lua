@@ -869,7 +869,7 @@ endow_with_pairs_and_next(getmetatable(EVariableType))
 endow_with_pairs_and_next(getmetatable(RValueType))
 endow_with_pairs_and_next(getmetatable(YYObjectBaseType))
 
-gui.add_imgui( function()
+gui.add_always_draw_imgui( function()
 	if imgui_next_delayed_load and imgui_next_delayed_load() ~= true then
 		imgui_next_delayed_load = nil
 	end

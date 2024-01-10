@@ -930,13 +930,21 @@ local function selector_tooltip(pushc,popc,mouse_x,mouse_y,instance)
 	ImGui.Text(instance.object_name:sub(2))
 	ImGui.SameLine()
 	popc()
-	pushc(ImGuiCol.Text, colors.info)
+	pushc(ImGuiCol.Text, colors.leaf)
 	ImGui.Text(vars.name or '')
 	popc()
 	ImGui.Separator()
-	ImGui.Text(tostring(instance.object_index))
+	ImGui.Text('obj:')
+	pushc(ImGuiCol.Text, colors.info)
 	ImGui.SameLine()
+	ImGui.Text(tostring(instance.object_index))
+	popc()
+	ImGui.SameLine()
+	ImGui.Text('id:')
+	ImGui.SameLine()
+	pushc(ImGuiCol.Text, colors.info)
 	ImGui.Text(tostring(instance.id))
+	popc()
 end
 
 local function imgui_off_render()
@@ -947,7 +955,7 @@ local function imgui_off_render()
 		if instance ~= nil then
 			root.instances.nearest = instance
 		end
-		if ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) then
+		if ImGui.GetStyleVar and ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) then
 			local w,h,x,y = 0,0
 			for _,v in pairs(ImGuiCol) do
 				ImGui.PushStyleColor(v,0)
@@ -964,10 +972,20 @@ local function imgui_off_render()
 				ImGui.PopStyleColor()
 			end
 			
-			ImGui.SetNextWindowPos(x,y-20)
+			local _,_y_text = ImGui.CalcTextSize('|')
+			local _,_y_frame = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
+			local _,_y_win = ImGui.GetStyleVar(ImGuiStyleVar.WindowPadding)
+			ImGui.SetNextWindowPos(x+5,y+20-2*(_y_text+_y_frame + _y_win))
 			if ImGui.Begin("##Instance Selector Position", tooltip_flags ) then
+				ImGui.Text('x:')
 				ImGui.PushStyleColor(ImGuiCol.Text, colors.leaf)
-				ImGui.Text(mouse_x .. ', ' .. mouse_y)
+				ImGui.SameLine()
+				ImGui.Text(tostring(mouse_x))
+				ImGui.PopStyleColor()
+				ImGui.Text('y:')
+				ImGui.PushStyleColor(ImGuiCol.Text, colors.leaf)
+				ImGui.SameLine()
+				ImGui.Text(tostring(mouse_y))
 				ImGui.PopStyleColor()
 			end
 			ImGui.End()
