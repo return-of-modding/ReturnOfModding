@@ -2,6 +2,7 @@
 
 #include "common.hpp"
 #include "gui/renderer.hpp"
+#include "lua/bindings/imgui_window.hpp"
 
 #include <input/is_key_pressed.hpp>
 #include <lua/lua_manager.hpp>
@@ -131,13 +132,54 @@ namespace big
 
 		if (m_is_open)
 		{
+			if (ImGui::BeginMainMenuBar())
+			{
+				if (ImGui::BeginMenu("Windows"))
+				{
+					for (auto& [mod_guid, windows] : lua::window::is_open)
+					{
+						if (ImGui::BeginMenu(mod_guid.c_str()))
+						{
+							for (auto& [window_name, is_window_open] : windows)
+							{
+								if (ImGui::BeginMenu(window_name.c_str()))
+								{
+									if (is_window_open)
+									{
+										if (ImGui::MenuItem("Close"))
+										{
+											is_window_open = false;
+										}
+									}
+									else
+									{
+										if (ImGui::MenuItem("Open"))
+										{
+											is_window_open = true;
+										}
+									}
+
+									ImGui::EndMenu();
+								}
+							}
+
+							ImGui::EndMenu();
+						}
+					}
+
+					ImGui::EndMenu();
+				}
+
+				ImGui::EndMainMenuBar();
+			}
+
 			ImGui::SetMouseCursor(g_gui->m_mouse_cursor);
 
-			ImGui::ShowDemoWindow();
+			//ImGui::ShowDemoWindow();
 
 			g_lua_manager->draw_independent_gui();
 
-			//if (0)
+			if (0)
 			{
 				if (ImGui::Begin("Return Of Modding"))
 				{

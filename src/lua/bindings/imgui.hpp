@@ -1,29 +1,67 @@
 #pragma once
+#include "imgui_window.hpp"
+#include <lua/lua_module.hpp>
 
 namespace lua::imgui
 {
 	// Windows
-	inline bool Begin(const std::string& name)
+	inline bool Begin(const std::string& name, sol::this_environment env)
 	{
-		return ImGui::Begin(name.c_str());
+		big::lua_module* mdl = big::lua_module::this_from(env);
+		if (mdl)
+		{
+			if (lua::window::is_open[mdl->guid()][name])
+			{
+				return ImGui::Begin(name.c_str());
+			}
+		}
+
+		return false;
 	}
-	inline bool Begin(const std::string& name, int flags)
+	inline bool Begin(const std::string& name, int flags, sol::this_environment env)
 	{
-		return ImGui::Begin(name.c_str(), nullptr, flags);
+		big::lua_module* mdl = big::lua_module::this_from(env);
+		if (mdl)
+		{
+			if (lua::window::is_open[mdl->guid()][name])
+			{
+				return ImGui::Begin(name.c_str(), nullptr, flags);
+			}
+		}
+
+		return false;
 	}
-	inline std::tuple<bool, bool> Begin(const std::string& name, bool open)
+	inline std::tuple<bool, bool> Begin(const std::string& name, bool open, sol::this_environment env)
 	{
-		if (!open)
-			return std::make_tuple(false, false);
-		const bool shouldDraw = ImGui::Begin(name.c_str(), &open);
-		return std::make_tuple(open, open && shouldDraw);
+		big::lua_module* mdl = big::lua_module::this_from(env);
+		if (mdl)
+		{
+			if (lua::window::is_open[mdl->guid()][name])
+			{
+				if (!open)
+					return std::make_tuple(false, false);
+				const bool shouldDraw = ImGui::Begin(name.c_str(), &open);
+				return std::make_tuple(open, open && shouldDraw);
+			}
+		}
+
+		return std::make_tuple(false, false);
 	}
-	inline std::tuple<bool, bool> Begin(const std::string& name, bool open, int flags)
+	inline std::tuple<bool, bool> Begin(const std::string& name, bool open, int flags, sol::this_environment env)
 	{
-		if (!open)
-			return std::make_tuple(false, false);
-		const bool shouldDraw = ImGui::Begin(name.c_str(), &open, flags);
-		return std::make_tuple(open, open && shouldDraw);
+		big::lua_module* mdl = big::lua_module::this_from(env);
+		if (mdl)
+		{
+			if (lua::window::is_open[mdl->guid()][name])
+			{
+				if (!open)
+					return std::make_tuple(false, false);
+				const bool shouldDraw = ImGui::Begin(name.c_str(), &open, flags);
+				return std::make_tuple(open, open && shouldDraw);
+			}
+		}
+
+		return std::make_tuple(false, false);
 	}
 	inline void End()
 	{
@@ -3266,7 +3304,7 @@ namespace lua::imgui
 		sol::table ImGui(lua, sol::create);
 
 #pragma region Windows
-		ImGui.set_function("Begin", sol::overload(sol::resolve<bool(const std::string&)>(Begin), sol::resolve<bool(const std::string&, int)>(Begin), sol::resolve<std::tuple<bool, bool>(const std::string&, bool)>(Begin), sol::resolve<std::tuple<bool, bool>(const std::string&, bool, int)>(Begin)));
+		ImGui.set_function("Begin", sol::overload(sol::resolve<bool(const std::string&, sol::this_environment)>(Begin), sol::resolve<bool(const std::string&, int, sol::this_environment)>(Begin), sol::resolve<std::tuple<bool, bool>(const std::string&, bool, sol::this_environment)>(Begin), sol::resolve<std::tuple<bool, bool>(const std::string&, bool, int, sol::this_environment)>(Begin)));
 		ImGui.set_function("End", End);
 #pragma endregion Windows
 
