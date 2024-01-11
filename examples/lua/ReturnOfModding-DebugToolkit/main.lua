@@ -237,11 +237,103 @@ end)
 --     print(i .. ": " .. xd[i])
 -- end
 
--- gm.post_script_hook(gm.constants.callback_execute, function(self, other, result, args)
---     local callback_type = xd[args[1].value + 1] -- gm arg is 0 index based, but lua arrays are not
---     if callback_type ~= nil then
---         if callback_type:match("onPlayerInit") then
---             print(args[2].value)
---         end
---     end
--- end)
+local self_names = nil
+local self_values = {}
+
+local selected_elem = nil
+local selected_elem_names = nil
+local selected_elem_values = {}
+
+local ui_shared_state = nil
+
+-- gm.post_script_hook(gm.constants._ui_check_selected, function(self, other, result, args)
+gm.post_script_hook(gm.constants.anon_gml_Object_oLogMenu_Other_14_55112219_gml_Object_oLogMenu_Other_14, function(self, other, result, args)
+    self_names = gm.variable_instance_get_names(args[1].value)
+    if self_names then
+        for i = 1, #self_names do
+            self_values[i] = args[1].value[self_names[i]]
+        end    
+    end
+
+    ui_shared_state = gm.variable_global_get("_ui_shared_state")
+
+    if ui_shared_state ~= nil then
+        selected_elem = ui_shared_state.selected_element
+    end
+
+    if selected_elem then
+        selected_elem_names = gm.variable_instance_get_names(selected_elem)
+        for i = 1, #selected_elem_names do
+            selected_elem_values[i] = selected_elem[selected_elem_names[i]]
+        end
+    end
+end)
+
+local currently_holding = false
+local currently_holding_achiev_id = -1
+
+local element_key_to_achiev_id = function (elem_key)
+    return tonumber(selected_elem.key:sub(3))
+end
+
+gui.add_always_draw_imgui(function()
+    if ImGui.Begin("Debug Unlocker") then
+        if selected_elem ~= nil and selected_elem.key then
+            ImGui.Text("selected: " .. selected_elem.key)
+
+            for i = 1, #selected_elem_names do
+                ImGui.Text("selected: " .. selected_elem_names[i] .. ": " .. tostring(selected_elem_values[i]))
+            end
+
+            
+
+            local achiev_id = element_key_to_achiev_id(selected_elem.key)
+            if achiev_id ~= nil then
+                ImGui.Text("selected key: " .. achiev_id)
+            end
+        end
+
+        if self_names and self_values then
+            for i = 1, #self_names do
+                ImGui.Text("ui: " .. self_names[i] .. ": " .. tostring(self_values[i]))
+            end
+        end
+    end
+    ImGui.End()
+end)
+
+gui.add_always_draw_imgui(function()
+    if selected_elem ~= nil and selected_elem.key then
+
+        local achiev_id = element_key_to_achiev_id(selected_elem.key)
+        if achiev_id ~= nil then
+            if selected_elem.held then
+                currently_holding = true
+                currently_holding_achiev_id = achiev_id
+            end
+    
+            if selected_elem and currently_holding and selected_elem.held == false and currently_holding_achiev_id == achiev_id and achiev_id ~= nil then
+                if gm.achievement_is_unlocked(achiev_id) then
+    
+                    gm.save_flag_set(gm.achievement_get_save_key_completed(achiev_id), 0.0)
+                    gm.save_flag_set(gm.achievement_get_save_key_viewed(achiev_id), 0.0)
+                    print("locked again " .. achiev_id)
+                    gm.save_save()
+                else
+                    gm.achievement_add_progress(achiev_id, 1.0)
+                    gm.save_flag_set(gm.achievement_get_save_key_completed(achiev_id), 1.0)
+                    print("unlocked " .. achiev_id)
+                    gm.save_save()
+                end
+    
+                achiev_id = nil
+                currently_holding_achiev_id = -1
+            end
+    
+            if selected_elem.held == false then
+                currently_holding = false
+                selected_elem = nil
+            end
+        end
+    end
+end)
