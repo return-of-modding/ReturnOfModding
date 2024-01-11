@@ -149,25 +149,7 @@ namespace big
 						{
 							for (auto& [window_name, is_window_open] : windows)
 							{
-								if (ImGui::BeginMenu(window_name.c_str()))
-								{
-									if (is_window_open)
-									{
-										if (ImGui::MenuItem("Close"))
-										{
-											is_window_open = false;
-										}
-									}
-									else
-									{
-										if (ImGui::MenuItem("Open"))
-										{
-											is_window_open = true;
-										}
-									}
-
-									ImGui::EndMenu();
-								}
+								ImGui::Checkbox(window_name.c_str(), &is_window_open);
 							}
 
 							ImGui::EndMenu();
