@@ -39,6 +39,12 @@ The root folder used by Return Of Modding (which will then be used to load mods 
 
 - If the process environment variable is not defined, the command line arguments are checked. If neither is defined, the ReturnOfModding folder is placed in the game folder, next to the game executable.
 
+Interesting folders under the root folder:
+
+- `plugins`: Location of .lua, README, manifest.json files.
+- `plugins_data`: Used for data that must persist between sessions but not be manipulated by the user.
+- `config`: Used for data that must persist between sessions and that can be manipulated by the user.
+
 ## Credits
 
 This project wouldn't have been possible without
