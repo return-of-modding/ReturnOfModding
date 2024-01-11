@@ -100,6 +100,10 @@ namespace lua::game_maker
 	static RValue* central_script_hook(CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args)
 	{
 #pragma region Figure out which original function to call
+		CONTEXT context;
+		RtlCaptureContext(&context);
+		auto r10 = context.R10;
+
 		constexpr size_t e8_instruction_length = 5;
 		uintptr_t original_func_ptr            = (uintptr_t)_ReturnAddress() - e8_instruction_length;
 
@@ -132,7 +136,8 @@ namespace lua::game_maker
 		//}
 		else
 		{
-			LOG(FATAL) << "Fucked.";
+			// Can be Call_Method call r10 instruction
+			original_func_ptr = r10;
 		}
 #pragma endregion Figure out which original function to call
 
