@@ -6,6 +6,13 @@
 
 namespace lua::gui
 {
+	static void add_menu_bar_callback(sol::this_environment& env, std::unique_ptr<lua::gui::gui_element> element)
+	{
+		big::lua_module* module = big::lua_module::this_from(env);
+		if (module)
+			module->m_menu_bar_callbacks.push_back(std::move(element));
+	}
+
 	static void add_always_draw_independent_element(sol::this_environment& env, std::unique_ptr<lua::gui::gui_element> element)
 	{
 		big::lua_module* module = big::lua_module::this_from(env);
@@ -27,6 +34,30 @@ namespace lua::gui
 	static bool is_open()
 	{
 		return big::g_gui->is_open();
+	}
+
+	// Lua API: Function
+	// Table: gui
+	// Name: add_to_menu_bar
+	// Param: imgui_rendering: function: Function that will be called under your dedicated space in the imgui main menu bar.
+	// Registers a function that will be called under your dedicated space in the imgui main menu bar.
+	// **Example Usage:**
+	// ```lua
+	// gui.add_to_menu_bar(function()
+	//   if ImGui.BeginMenu("Ayo") then
+	//       if ImGui.Button("Label") then
+	//         log.info("hi")
+	//       end
+	//       ImGui.EndMenu()
+	//   end
+	// end)
+	// ```
+	static lua::gui::raw_imgui_callback* add_to_menu_bar(sol::protected_function imgui_rendering, sol::this_environment state)
+	{
+		auto element = std::make_unique<lua::gui::raw_imgui_callback>(imgui_rendering);
+		auto el_ptr  = element.get();
+		add_menu_bar_callback(state, std::move(element));
+		return el_ptr;
 	}
 
 	// Lua API: Function
@@ -85,5 +116,6 @@ namespace lua::gui
 		ns["is_open"]               = is_open;
 		ns["add_imgui"]             = add_imgui;
 		ns["add_always_draw_imgui"] = add_always_draw_imgui;
+		ns["add_to_menu_bar"]       = add_to_menu_bar;
 	}
 }

@@ -134,6 +134,13 @@ namespace big
 		{
 			if (ImGui::BeginMainMenuBar())
 			{
+				if (ImGui::BeginMenu("Mods"))
+				{
+					g_lua_manager->draw_menu_bar_callbacks();
+
+					ImGui::EndMenu();
+				}
+
 				if (ImGui::BeginMenu("Windows"))
 				{
 					for (auto& [mod_guid, windows] : lua::window::is_open)

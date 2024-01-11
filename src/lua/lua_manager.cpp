@@ -443,6 +443,50 @@ namespace big
 		}
 	}
 
+	static void imgui_text(const char* fmt, const std::string& str)
+	{
+		if (str.size())
+		{
+			ImGui::Text(fmt, str.c_str());
+		}
+	}
+
+	void lua_manager::draw_menu_bar_callbacks()
+	{
+		std::lock_guard guard(m_module_lock);
+
+		for (const auto& module : m_modules)
+		{
+			if (ImGui::BeginMenu(module->guid().c_str()))
+			{
+				if (ImGui::BeginMenu("Mod Info"))
+				{
+					const auto& manifest = module->manifest();
+					imgui_text("Version: %s", manifest.version_number);
+					imgui_text("Website URL: %s", manifest.website_url);
+					imgui_text("Description: %s", manifest.description);
+					if (manifest.dependencies.size())
+					{
+						int i = 0;
+						for (const auto& dependency : manifest.dependencies)
+						{
+							imgui_text(std::format("Dependency[{}]: %s", i++).c_str(), dependency);
+						}
+					}
+
+					ImGui::EndMenu();
+				}
+
+				for (const auto& element : module->m_menu_bar_callbacks)
+				{
+					element->draw();
+				}
+
+				ImGui::EndMenu();
+			}
+		}
+	}
+
 	void lua_manager::always_draw_independent_gui()
 	{
 		std::lock_guard guard(m_module_lock);

@@ -66,6 +66,7 @@ namespace big
 		bool pre_script_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args);
 		void post_script_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args);
 
+		void draw_menu_bar_callbacks();
 		void always_draw_independent_gui();
 		void draw_independent_gui();
 
