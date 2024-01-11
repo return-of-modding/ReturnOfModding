@@ -23,8 +23,8 @@ gui.add_always_draw_imgui(function()
          log.info("hi")
        end
 
+       ImGui.End()
    end
-   ImGui.End()
 end)
 ```
 
@@ -47,8 +47,8 @@ gui.add_imgui(function()
          log.info("hi")
        end
 
+       ImGui.End()
    end
-   ImGui.End()
 end)
 ```
 
