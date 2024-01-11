@@ -26,6 +26,8 @@ namespace big
 		folder m_plugins_data_folder;
 		folder m_plugins_folder;
 
+		bool m_is_all_mods_loaded{};
+
 	public:
 		lua_manager(folder config_folder, folder plugins_data_folder, folder plugins_folder);
 		~lua_manager();

@@ -367,7 +367,17 @@ namespace big
 
 	void lua_manager::init_lua_api()
 	{
-		m_state.create_named_table("mods");
+		auto mods = m_state.create_named_table("mods");
+		// Lua API: Function
+		// Table: mods
+		// Name: on_all_mods_loaded
+		// Param: callback: function: callback that will be called once all mods are loaded. The callback function should match signature func()
+		// Registers a callback that will be called once all mods are loaded. Will be called instantly if mods are already loaded and that you are just hot-reloading your mod.
+		mods["on_all_mods_loaded"] = [](sol::protected_function cb, sol::this_environment env) {
+			big::lua_module* mdl = big::lua_module::this_from(env);
+			if (mdl)
+				mdl->m_on_all_mods_loaded_callbacks.push_back(cb);
+		};
 
 		lua::toml_lua::bind(m_state);
 		lua::log::bind(m_state);
@@ -548,6 +558,14 @@ namespace big
 		if (load_result == load_module_result::SUCCESS || (load_result == load_module_result::FAILED_TO_LOAD && ignore_failed_to_load))
 		{
 			m_modules.push_back(module);
+
+			if (m_is_all_mods_loaded)
+			{
+				for (const auto& cb : module->m_on_all_mods_loaded_callbacks)
+				{
+					cb();
+				}
+			}
 		}
 
 		return load_result;
@@ -720,6 +738,17 @@ namespace big
 				}
 			}
 		}
+
+		std::lock_guard guard(m_module_lock);
+		for (const auto& module : m_modules)
+		{
+			for (const auto& cb : module->m_on_all_mods_loaded_callbacks)
+			{
+				cb();
+			}
+		}
+
+		m_is_all_mods_loaded = true;
 	}
 	void lua_manager::unload_all_modules()
 	{
