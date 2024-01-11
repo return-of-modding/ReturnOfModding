@@ -131,13 +131,13 @@ local function init()
 
         achievement_id         = {idx=25},
 
-        on_init         = {idx=26},
-        on_step         = {idx=27},
-        on_remove         = {idx=28},
+        on_init         = {idx=29},
+        on_step         = {idx=30},
+        on_remove         = {idx=31},
 
-        is_secret         = {idx=29},
+        is_secret         = {idx=32},
 
-        cape_offset         = {idx=30},
+        cape_offset         = {idx=33},
     })
 
     -- for registering language strings
@@ -153,7 +153,7 @@ local function init()
         for k, v in pairs(d) do
             local key = root
             if type(k) == "number" then
-                key = key .. "["..tostring(k).."]"
+                key = key .. "[" .. tostring(k) .. "]"
             else
                 if key ~= "" then
                     key = key .. "."
@@ -171,43 +171,44 @@ local function init()
 
     survivor_setup.coolguy_id = gm.survivor_create("coolguymod", "coolguy")
     local coolguy = Survivor(survivor_setup.coolguy_id)
+    local commando_survivor_id = 1
+    local vanilla_survivor = Survivor(commando_survivor_id)
     survivor_setup.coolguy = coolguy
 
     -- configure properties
-    local sprite_test = gm.constants.sSelectCommando_PAL4
-    coolguy.sprite_loadout = gm.constants.sSelectCommando_PAL4
-    coolguy.sprite_title = sprite_test
-    coolguy.sprite_idle = sprite_test
-    coolguy.sprite_portrait = gm.constants.sCommandoPortrait_PAL4
-    coolguy.sprite_portrait_small = gm.constants.sCommandoPortraitSmall_PAL5
-    coolguy.sprite_palette = 713
-    coolguy.sprite_portrait_palette = 713
-    coolguy.sprite_loadout_palette = 713
-    coolguy.sprite_credits = sprite_test
+    coolguy.sprite_loadout = vanilla_survivor.sprite_loadout
+    coolguy.sprite_title = vanilla_survivor.sprite_title
+    coolguy.sprite_idle = vanilla_survivor.sprite_idle
+    coolguy.sprite_portrait = vanilla_survivor.sprite_portrait
+    coolguy.sprite_portrait_small = vanilla_survivor.sprite_portrait_small
+    coolguy.sprite_palette = vanilla_survivor.sprite_palette
+    coolguy.sprite_portrait_palette = vanilla_survivor.sprite_portrait_palette
+    coolguy.sprite_loadout_palette = vanilla_survivor.sprite_loadout_palette
+    coolguy.sprite_credits = vanilla_survivor.sprite_credits
+    -- coolguy.primary_color = vanilla_survivor.primary_color
     coolguy.primary_color = 0x70D19D -- gamemaker uses BBGGRR colour
 
+    coolguy.skin_family = vanilla_survivor.skin_family
+
     -- configure skills
-    coolguy.skill_family_z[0].sprite = gm.constants.sMobSkills
+    local skill_primary = coolguy.skill_family_z[0]
+    skill_primary.sprite = gm.constants.sMobSkills
+
+    skill_primary.cooldown = 0
+    skill_primary.required_stock = 0
+    skill_primary.require_key_press = true
+    skill_primary.use_delay = 0
+
+    skill_primary.on_can_activate = vanilla_survivor.skill_family_z[0].on_can_activate
+    skill_primary.on_activate = vanilla_survivor.skill_family_z[0].on_activate
+
     coolguy.skill_family_x[0].sprite = gm.constants.sMobSkills
     coolguy.skill_family_c[0].sprite = gm.constants.sMobSkills
     coolguy.skill_family_v[0].sprite = gm.constants.sMobSkills
 
-    local function add_skin_to_family(surv_skin_family, actor_skin_id)
-        local skin_structs = surv_skin_family.elements
-
-        -- local new_struct = gm.struct_create()
-
-        skin_structs[1].index = 57
-
-        -- new_struct.index = actor_skin_id
-        -- new_struct.skin_id = #skin_structs + 1
-        -- new_struct.achievement_id = -1
-
-        -- gm.array_push(skin_structs, new_struct)
-    end
-
-    local new_actor_skin_id = gm.actor_skin_create("coolguymod", "coolguy_first_skin")
-    add_skin_to_family(coolguy.skin_family, new_actor_skin_id)
+    coolguy.on_init = vanilla_survivor.on_init
+    coolguy.on_step = vanilla_survivor.on_step
+    coolguy.on_remove = vanilla_survivor.on_remove
 
     -- set up strings
     language_register{
@@ -222,8 +223,8 @@ local function init()
 
         skill = {
             coolguyZ = {
-                name = "Cool Attack",
-                description = "blah blah blah"
+                name = "Rotation Switch",
+                description = "Switch around the Rotation of the BALLS"
             },
             coolguyX = {
                 name = "Secondary move",

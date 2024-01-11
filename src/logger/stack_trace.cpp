@@ -4,6 +4,7 @@
 
 #include <DbgHelp.h>
 #include <winternl.h>
+#include <rorr/gm/Code_Execute_trace.hpp>
 
 namespace big
 {
@@ -31,6 +32,11 @@ namespace big
 		m_exception_info = exception_info;
 
 		m_dump << exception_code_to_string(exception_info->ExceptionRecord->ExceptionCode) << '\n';
+
+		if (gm::is_inside_code_execute && gm::last_executed_code)
+		{
+			m_dump << "GM Code Execute: " << gm::last_executed_code << '\n';
+		}
 
 		dump_module_info();
 		dump_registers();

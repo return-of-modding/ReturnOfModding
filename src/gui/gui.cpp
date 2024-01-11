@@ -125,11 +125,13 @@ namespace big
 
 	void gui::dx_on_tick()
 	{
+		push_theme_colors();
+
+		g_lua_manager->always_draw_independent_gui();
+
 		if (m_is_open)
 		{
 			ImGui::SetMouseCursor(g_gui->m_mouse_cursor);
-
-			push_theme_colors();
 
 			ImGui::ShowDemoWindow();
 
@@ -198,9 +200,9 @@ namespace big
 				}
 				ImGui::End();
 			}
-
-			pop_theme_colors();
 		}
+
+		pop_theme_colors();
 	}
 
 	void gui::save_default_style()

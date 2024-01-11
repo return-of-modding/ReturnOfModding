@@ -5,35 +5,7 @@ print("Initializing", nil, 5, "", 5.00000)
 
 demo.hello()
 
-local myArray = gm.array_create(1, 1)
-
--- local my_file = io.open("thing.json", "a+")
--- my_file:write("hi")
--- log.info(_ENV["!plugins_data_mod_folder_path"])
-
--- for n in pairs(_G) do
--- 	log.info(n)
--- end
-
--- for n in pairs(mods["ReturnOfModding-DebugToolkit"]) do
-    -- log.info(n)
--- end
-
--- local xd = gm.variable_instance_get_names(gm.variable_global_get("callback_name_to_id"))
-local xd = gm.variable_global_get("callback_names")
-for i = 1, #xd do
-    print(i .. ": " .. xd[i])
-end
-
-gm.post_script_hook(gm.constants.callback_execute, function(self, other, result, args)
-    -- local callback_type = xd[args[1].value]
-    -- if callback_type ~= nil then
-    --     print(callback_type.tostring)
-    --     for i = 2, #args do
-    --         print(args[i].tostring)
-    --     end
-    -- end
-end)
+-- local myArray = gm.array_create(1, 1)
 
 local new_room = 0
 local show_debug_overlay = true
@@ -47,7 +19,7 @@ function imgui_dump(cinstance)
 
     local sprite_index = cinstance.sprite_index
     local sprite_name = gm.sprite_get_name(sprite_index)
-    ImGui.Text("Sprite Name: " .. sprite_name ~= nil and sprite_name.tostring or "undefined" .. " (Index: " .. cinstance.sprite_index .. ")")
+    ImGui.Text("Sprite Name: " .. sprite_name ~= nil and sprite_name or "undefined" .. " (Index: " .. cinstance.sprite_index .. ")")
 
     local layer_id = cinstance.layer
     local layer_name = gm.layer_get_name(layer_id)
@@ -160,22 +132,22 @@ gui.add_imgui(function()
 		
 		if ImGui.Button("Test Array") then
             local localArray = gm.array_create(2, 4)
-            log.info(localArray.tostring)
+            log.info(localArray)
 
             gm.gc_collect()
 
-            log.info(localArray.tostring)
+            log.info(localArray)
 
-			-- log.info(myArray.tostring)
+			-- log.info(myArray)
             -- print(collectgarbage("count"))
             -- print(collectgarbage("collect"))
             -- print(collectgarbage("count"))
             -- print(tostring(myArray))
 			gm.array_push(myArray, 8)
-			log.info(myArray.tostring)
+			log.info(myArray)
 
             -- local bla = gm.array_create(2, 2)
-            -- log.info(bla.tostring)
+            -- log.info(bla)
         end
 
         if ImGui.Button("Dump Constants") then
@@ -195,12 +167,11 @@ gui.add_imgui(function()
         if ImGui.Button("Dump Game Global Variables") then
             local game_globals = gm.variable_instance_get_names(EVariableType.GLOBAL)
             for i = 1, #game_globals do
-                log.info(game_globals[i].tostring)
+                log.info(game_globals[i])
             end
             
             local game_instance_create = gm.variable_global_get("instance_create")
-            log.info(game_instance_create.tostring)
-            log.info(game_instance_create.type)
+            log.info(game_instance_create)
         end
     end
     ImGui.End()
@@ -231,6 +202,138 @@ gui.add_imgui(function()
     ImGui.End()
 end)
 
-gm.pre_code_execute(function(self, other, code, result, flags)
+-- gm.pre_code_execute(function(self, other, code, result, flags)
 	-- log.info("GML Script: " .. code.name .. " (" .. code.index .. ")")
+-- end)
+-- gm.pre_code_execute(function(self, other, code, result, flags)
+--     if hooks[code.name] then
+--         hooks[code.name](self)
+--     end
+
+--     return true
+-- end)
+
+
+-- local my_file = io.open("thing.json", "a+")
+-- my_file:write("hi")
+-- log.info(_ENV["!plugins_data_mod_folder_path"])
+
+-- for n in pairs(_G) do
+-- 	log.info(n)
+-- end
+
+-- gui.add_always_draw_imgui(function()
+--     if ImGui.IsMouseClicked(ImGuiMouseButton.Left) then
+--         log.info("hi")
+--     end
+-- end)
+
+-- for n in pairs(mods["ReturnOfModding-DebugToolkit"]) do
+    -- log.info(n)
+-- end
+
+-- local callback_names = gm.variable_global_get("callback_names")
+-- for i = 1, #xd do
+--     print(i .. ": " .. xd[i])
+-- end
+
+local self_names = nil
+local self_values = {}
+
+local selected_elem = nil
+local selected_elem_names = nil
+local selected_elem_values = {}
+
+local ui_shared_state = nil
+
+-- gm.post_script_hook(gm.constants._ui_check_selected, function(self, other, result, args)
+gm.post_script_hook(gm.constants.anon_gml_Object_oLogMenu_Other_14_55112219_gml_Object_oLogMenu_Other_14, function(self, other, result, args)
+    self_names = gm.variable_instance_get_names(args[1].value)
+    if self_names then
+        for i = 1, #self_names do
+            self_values[i] = args[1].value[self_names[i]]
+        end    
+    end
+
+    ui_shared_state = gm.variable_global_get("_ui_shared_state")
+
+    if ui_shared_state ~= nil then
+        selected_elem = ui_shared_state.selected_element
+    end
+
+    if selected_elem then
+        selected_elem_names = gm.variable_instance_get_names(selected_elem)
+        for i = 1, #selected_elem_names do
+            selected_elem_values[i] = selected_elem[selected_elem_names[i]]
+        end
+    end
+end)
+
+local currently_holding = false
+local currently_holding_achiev_id = -1
+
+local element_key_to_achiev_id = function (elem_key)
+    return tonumber(selected_elem.key:sub(3))
+end
+
+gui.add_always_draw_imgui(function()
+    if ImGui.Begin("Debug Unlocker") then
+        if selected_elem ~= nil and selected_elem.key then
+            ImGui.Text("selected: " .. selected_elem.key)
+
+            for i = 1, #selected_elem_names do
+                ImGui.Text("selected: " .. selected_elem_names[i] .. ": " .. tostring(selected_elem_values[i]))
+            end
+
+            
+
+            local achiev_id = element_key_to_achiev_id(selected_elem.key)
+            if achiev_id ~= nil then
+                ImGui.Text("selected key: " .. achiev_id)
+            end
+        end
+
+        if self_names and self_values then
+            for i = 1, #self_names do
+                ImGui.Text("ui: " .. self_names[i] .. ": " .. tostring(self_values[i]))
+            end
+        end
+    end
+    ImGui.End()
+end)
+
+gui.add_always_draw_imgui(function()
+    if selected_elem ~= nil and selected_elem.key then
+
+        local achiev_id = element_key_to_achiev_id(selected_elem.key)
+        if achiev_id ~= nil then
+            if selected_elem.held then
+                currently_holding = true
+                currently_holding_achiev_id = achiev_id
+            end
+    
+            if selected_elem and currently_holding and selected_elem.held == false and currently_holding_achiev_id == achiev_id and achiev_id ~= nil then
+                if gm.achievement_is_unlocked(achiev_id) then
+    
+                    gm.save_flag_set(gm.achievement_get_save_key_completed(achiev_id), 0.0)
+                    gm.save_flag_set(gm.achievement_get_save_key_viewed(achiev_id), 0.0)
+                    print("locked again " .. achiev_id)
+                    gm.save_save()
+                else
+                    gm.achievement_add_progress(achiev_id, 1.0)
+                    gm.save_flag_set(gm.achievement_get_save_key_completed(achiev_id), 1.0)
+                    print("unlocked " .. achiev_id)
+                    gm.save_save()
+                end
+    
+                achiev_id = nil
+                currently_holding_achiev_id = -1
+            end
+    
+            if selected_elem.held == false then
+                currently_holding = false
+                selected_elem = nil
+            end
+        end
+    end
 end)

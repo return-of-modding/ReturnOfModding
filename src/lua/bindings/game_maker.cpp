@@ -4,6 +4,7 @@
 #include "rorr/gm/EVariableType.hpp"
 #include "rorr/gm/Variable_BuiltIn.hpp"
 #include "rorr/gm/YYGMLFuncs.hpp"
+#include "rorr/gm/pin_map.hpp"
 
 #include <hde64.h>
 #include <lua/lua_manager.hpp>
@@ -21,7 +22,9 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 	case REAL:
 	case _INT32:
 	case _INT64: return sol::make_object<double>(this_state_, res.asReal());
-	case ARRAY: return sol::make_object<RefDynamicArrayOfRValue*>(this_state_, res.ref_array);
+	case ARRAY:
+		YYObjectPinMap::pin(res.ref_array);
+		return sol::make_object<RefDynamicArrayOfRValue*>(this_state_, res.ref_array);
 	case REF: return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
 	case PTR: return sol::make_object<void*>(this_state_, res.ptr);
 	case OBJECT:
@@ -97,6 +100,10 @@ namespace lua::game_maker
 	static RValue* central_script_hook(CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args)
 	{
 #pragma region Figure out which original function to call
+		CONTEXT context;
+		RtlCaptureContext(&context);
+		auto r10 = context.R10;
+
 		constexpr size_t e8_instruction_length = 5;
 		uintptr_t original_func_ptr            = (uintptr_t)_ReturnAddress() - e8_instruction_length;
 
@@ -129,7 +136,8 @@ namespace lua::game_maker
 		//}
 		else
 		{
-			LOG(FATAL) << "Fucked.";
+			// Can be Call_Method call r10 instruction
+			original_func_ptr = r10;
 		}
 #pragma endregion Figure out which original function to call
 
@@ -861,7 +869,7 @@ namespace lua::game_maker
 					return sol::lua_nil;
 				}
 
-				int pos = position_.as<int>();
+				int pos = (int)position_.as<double>();
 				// lua index adjustment
 				pos -= 1;
 				if (pos < 0 || pos >= self.length)
@@ -872,7 +880,11 @@ namespace lua::game_maker
 				RValue& val = self.m_Array[pos];
 
 				return RValue_to_lua(val, this_state_);
-			});
+			},
+			    sol::meta_function::garbage_collect,
+			    sol::destructor([](RefDynamicArrayOfRValue& inst) {
+				    YYObjectPinMap::unpin(&inst);
+			    }));
 
 			sol::protected_function ipairs_func = type[sol::meta_function::ipairs];
 			type[sol::meta_function::pairs]     = ipairs_func;

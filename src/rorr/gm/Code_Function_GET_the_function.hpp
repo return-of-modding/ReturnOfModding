@@ -7,7 +7,7 @@
 namespace gm
 {
 	inline bool ignore_gml_exceptions = true;
-	static void gml_exception_handler(const RValue& e)
+	inline void gml_exception_handler(const RValue& e)
 	{
 		std::stringstream exception_log;
 
@@ -62,7 +62,7 @@ namespace gm
 		{
 			return it->second;
 		}
-
+		
 		// Builtin GML Functions
 		const auto size = *big::g_pointers->m_rorr.m_code_function_GET_the_function_function_count;
 		for (int i = 0; i < size; i++)
@@ -83,6 +83,49 @@ namespace gm
 		}
 
 		return dummy;
+	}
+
+	inline RValue script_execute(size_t arg_count, RValue* args, const auto& it, CInstance* self, CInstance* other)
+	{
+		RValue* arranged_args;
+		if (arg_count > 0)
+		{
+			arranged_args = (RValue*)alloca(sizeof(RValue) * (arg_count + 1));
+			for (size_t i = 0; i < arg_count; i++)
+			{
+				arranged_args[i + 1] = args[i];
+			}
+		}
+		else
+		{
+			arranged_args = (RValue*)alloca(sizeof(RValue) * 1);
+		}
+		arranged_args[0]           = (*it).second;
+		const auto& script_execute = gm::get_code_function("script_execute");
+		RValue res{};
+		try
+		{
+			if (arg_count > 0)
+			{
+				script_execute.function_ptr(&res, self, other, arg_count + 1, arranged_args);
+			}
+			else
+			{
+				script_execute.function_ptr(&res, self, other, 1, arranged_args);
+			}
+		}
+		catch (const YYGMLException& e)
+		{
+			if (ignore_gml_exceptions)
+			{
+				gml_exception_handler(e.GetExceptionObject());
+			}
+			else
+			{
+				throw;
+			}
+		}
+		return res;
 	}
 
 	inline RValue call(std::string_view name, CInstance* self, CInstance* other, RValue* args = nullptr, size_t arg_count = 0)
@@ -110,34 +153,11 @@ namespace gm
 			return res;
 		}
 		// Script Execute
-		else if (arg_count > 0)
+		else
 		{
 			if (const auto it = gm::script_asset_cache.find(name.data()); it != gm::script_asset_cache.end())
 			{
-				RValue* arranged_args = (RValue*)alloca(sizeof(RValue) * (arg_count + 1));
-				arranged_args[0]      = (*it).second;
-				for (size_t i = 0; i < arg_count; i++)
-				{
-					arranged_args[i + 1] = args[i];
-				}
-				const auto& script_execute = gm::get_code_function("script_execute");
-				RValue res{};
-				try
-				{
-					script_execute.function_ptr(&res, self, other, arg_count + 1, arranged_args);
-				}
-				catch (const YYGMLException& e)
-				{
-					if (ignore_gml_exceptions)
-					{
-						gml_exception_handler(e.GetExceptionObject());
-					}
-					else
-					{
-						throw;
-					}
-				}
-				return res;
+				return script_execute(arg_count, args, it, self, other);
 			}
 			else
 			{
@@ -148,6 +168,8 @@ namespace gm
 				if (script_function_index.type == RValueType::REAL)
 				{
 					gm::script_asset_cache[name.data()] = script_function_index.asInt32();
+
+					return script_execute(arg_count, args, gm::script_asset_cache.find(name.data()), self, other);
 				}
 			}
 		}

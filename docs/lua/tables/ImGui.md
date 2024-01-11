@@ -1416,6 +1416,17 @@ selected, activated = ImGui.MenuItem("Label", "ALT+F4", selected, true)
 
 ## Inputs Utilities: Mouse
 ```lua
+  -- ImGui.IsMouseClicked(...)
+  -- Parameters: ImGuiMouseButton (button), bool (repeat)
+  -- Returns: bool (clicked)
+  clicked = ImGui.IsMouseClicked(ImGuiMouseButton.Middle)
+  clicked = ImGui.IsMouseClicked(ImGuiMouseButton.Middle, true)
+
+  -- ImGui.IsMouseDoubleClicked(...)
+  -- Parameters: ImGuiMouseButton (button)
+  -- Returns: bool (clicked)
+  clicked = ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Middle)
+
   -- ImGui.IsMouseHoveringRect(...)
   -- Parameters: float (min_x), float (min_y), float(max_x), float(max_y), bool (clip) [O]
   -- Returns: bool (hovered)

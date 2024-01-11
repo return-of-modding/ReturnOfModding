@@ -2692,6 +2692,18 @@ namespace lua::imgui
 	{
 		return ImGui::IsMouseHoveringRect({min_x, min_y}, {max_x, max_y}, clip);
 	}
+	inline bool IsMouseClickedRepeat(ImGuiMouseButton button, bool repeat)
+	{
+		return ImGui::IsMouseClicked(button, repeat);
+	}
+	inline bool IsMouseClicked(ImGuiMouseButton button)
+	{
+		return ImGui::IsMouseClicked(button);
+	}
+	inline bool IsMouseDoubleClicked(ImGuiMouseButton button)
+	{
+		return ImGui::IsMouseDoubleClicked(button);
+	}
 	inline std::tuple<float, float> GetMousePos()
 	{
 		const auto vec2{ImGui::GetMousePos()};
@@ -3604,6 +3616,8 @@ namespace lua::imgui
 		ImGui.set_function("IsMouseDragging", sol::overload(sol::resolve<bool(int)>(IsMouseDragging), sol::resolve<bool(int, float)>(IsMouseDragging)));
 		ImGui.set_function("GetMouseDragDelta", sol::overload(sol::resolve<std::tuple<float, float>()>(GetMouseDragDelta), sol::resolve<std::tuple<float, float>(int)>(GetMouseDragDelta), sol::resolve<std::tuple<float, float>(int, float)>(GetMouseDragDelta)));
 		ImGui.set_function("ResetMouseDragDelta", sol::overload(sol::resolve<void()>(ResetMouseDragDelta), sol::resolve<void(int)>(ResetMouseDragDelta)));
+		ImGui.set_function("IsMouseClicked", sol::overload(IsMouseClicked, IsMouseClickedRepeat));
+		ImGui.set_function("IsMouseDoubleClicked", IsMouseDoubleClicked);
 #pragma endregion Inputs Utilities : Mouse
 
 		luaGlobals.new_enum<ImGuiKey>("ImGuiKey",
