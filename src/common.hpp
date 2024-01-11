@@ -53,7 +53,7 @@
 #include <nlohmann/json.hpp>
 
 #define SOL_ALL_SAFETIES_ON 1
-#include "lua/sol.hpp"
+#define SOL_NO_CHECK_NUMBER_PRECISION 1
 #include "sol/sol.hpp"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -79,7 +79,5 @@ namespace big
 	inline constexpr auto g_project_name             = "ReturnOfModding";
 	inline constexpr auto g_target_window_class_name = "YYGameMakerYY";
 }
-
-#include "config/config.hpp"
 
 #endif
