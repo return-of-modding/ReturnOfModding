@@ -15,7 +15,6 @@ include(cmake_scripts/json.cmake)
 include(cmake_scripts/lua.cmake)
 include(cmake_scripts/minhook.cmake)
 include(cmake_scripts/pugixml.cmake)
-include(cmake_scripts/tomlplusplus.cmake)
 
 message(STATUS "ReturnOfModding")
 file(GLOB_RECURSE SRC_MAIN
@@ -41,7 +40,7 @@ add_library(ReturnOfModding MODULE "${SRC_MAIN}")
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(TARGET ReturnOfModding PROPERTY CXX_STANDARD 23)
 
-source_group(TREE ${SRC_DIR} PREFIX "src" FILES ${SRC_MAIN} )
+source_group(TREE ${SRC_DIR} PREFIX "src" FILES ${SRC_MAIN})
 
 target_include_directories(ReturnOfModding PRIVATE
     "${SRC_DIR}"
@@ -49,13 +48,16 @@ target_include_directories(ReturnOfModding PRIVATE
     "${json_SOURCE_DIR}/single_include"
     "${imgui_SOURCE_DIR}"
     "${minhook_SOURCE_DIR}/src/hde"
-    "${tomlplusplus_BINARY_DIR}/include"
     "${cpp-semver_SOURCE_DIR}/include"
+    "${toml++_SOURCE_DIR}"
+    "${sol2_SOURCE_DIR}/include"
+    ${LUA_INCLUDE_DIR}
+    "${magic_enum_SOURCE_DIR}/include"
 )
 
 target_precompile_headers(ReturnOfModding PRIVATE "${SRC_DIR}/common.hpp")
 
-target_link_libraries(ReturnOfModding PRIVATE pugixml minhook AsyncLogger dbghelp imgui lua_static tomlplusplus::tomlplusplus)
+target_link_libraries(ReturnOfModding PRIVATE pugixml minhook AsyncLogger dbghelp imgui lua_static sol2 tomlplusplus::tomlplusplus magic_enum)
 
 # Warnings as errors
 set_property(TARGET ReturnOfModding PROPERTY COMPILE_WARNING_AS_ERROR ON)

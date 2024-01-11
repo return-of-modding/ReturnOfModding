@@ -6,6 +6,7 @@
 #include "bindings/log.hpp"
 #include "bindings/memory.hpp"
 #include "bindings/paths.hpp"
+#include "bindings/toml/toml_lua.hpp"
 #include "file_manager/file_manager.hpp"
 #include "string/string.hpp"
 
@@ -364,7 +365,7 @@ namespace big
 	{
 		m_state.create_named_table("mods");
 
-		lua::paths::bind(m_state);
+		lua::toml_lua::bind(m_state);
 		lua::log::bind(m_state);
 		lua::memory::bind(m_state);
 		lua::gui::bind(m_state);

@@ -54,6 +54,7 @@
 
 #define SOL_ALL_SAFETIES_ON 1
 #include "lua/sol.hpp"
+#include "sol/sol.hpp"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
