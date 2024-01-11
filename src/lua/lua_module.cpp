@@ -114,6 +114,10 @@ namespace big
 		{
 			LOG(INFO) << "Loaded " << m_info.m_guid;
 
+			// Lua API: Field
+			// Table: mods
+			// Field: [Mod GUID]: string
+			// Each mod once loaded will have a key in this table, the key will be their guid string and the value their `_ENV`.
 			state.traverse_set("mods", m_info.m_guid, m_env);
 		}
 
