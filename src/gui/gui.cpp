@@ -149,7 +149,11 @@ namespace big
 						{
 							for (auto& [window_name, is_window_open] : windows)
 							{
-								ImGui::Checkbox(window_name.c_str(), &is_window_open);
+								if (ImGui::Checkbox(window_name.c_str(), &is_window_open))
+								{
+									lua::window::serialize(lua::window::is_open,
+									    g_file_manager.get_project_folder("config").get_path() / "ReturnOfModding-ReturnOfModding-Windows.cfg");
+								}
 							}
 
 							ImGui::EndMenu();
