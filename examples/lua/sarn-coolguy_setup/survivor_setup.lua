@@ -174,6 +174,9 @@ local function init()
     local commando_survivor_id = 1
     local vanilla_survivor = Survivor(commando_survivor_id)
     survivor_setup.coolguy = coolguy
+    survivor_setup.helpers = {}
+    survivor_setup.helpers.Survivor = Survivor
+    survivor_setup.helpers.Skill = Skill
 
     -- configure properties
     coolguy.sprite_loadout = vanilla_survivor.sprite_loadout
@@ -210,8 +213,7 @@ local function init()
     coolguy.on_step = vanilla_survivor.on_step
     coolguy.on_remove = vanilla_survivor.on_remove
 
-    -- set up strings
-    language_register{
+    local coolguy_language = {
         survivor = {
             coolguy = {
                 name = "Cool Guy",
@@ -240,6 +242,13 @@ local function init()
             }
         }
     }
+
+    -- set up language strings
+    language_register(coolguy_language)
+
+    gm.post_script_hook(gm.constants.translate_load_file, function(self, other, result, args)
+        language_register(coolguy_language)
+    end)
 end
 
 local hooks = {}

@@ -15,13 +15,13 @@ namespace big
 	exception_handler::exception_handler()
 	{
 		m_old_error_mode    = SetErrorMode(0);
-		m_exception_handler = AddVectoredExceptionHandler(1, vectored_exception_handler);
+		m_exception_handler = SetUnhandledExceptionFilter(vectored_exception_handler);
 	}
 
 	exception_handler::~exception_handler()
 	{
 		SetErrorMode(m_old_error_mode);
-		RemoveVectoredExceptionHandler(m_exception_handler);
+		SetUnhandledExceptionFilter(reinterpret_cast<decltype(&vectored_exception_handler)>(m_exception_handler));
 	}
 
 	LONG vectored_exception_handler(EXCEPTION_POINTERS* exception_info)

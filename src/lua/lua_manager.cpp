@@ -6,6 +6,7 @@
 #include "bindings/log.hpp"
 #include "bindings/memory.hpp"
 #include "bindings/paths.hpp"
+#include "bindings/toml/toml_lua.hpp"
 #include "file_manager/file_manager.hpp"
 #include "string/string.hpp"
 
@@ -28,6 +29,8 @@ namespace big
 
 		load_all_modules();
 
+		lua::window::deserialize(lua::window::is_open, g_file_manager.get_project_folder("config").get_path() / "ReturnOfModding-ReturnOfModding-Windows.cfg");
+
 		m_reload_watcher_thread = std::thread([&]() {
 			reload_changed_plugins();
 		});
@@ -36,6 +39,8 @@ namespace big
 	lua_manager::~lua_manager()
 	{
 		m_reload_watcher_thread.join();
+
+		lua::window::serialize(lua::window::is_open, g_file_manager.get_project_folder("config").get_path() / "ReturnOfModding-ReturnOfModding-Windows.cfg");
 
 		unload_all_modules();
 
@@ -362,9 +367,19 @@ namespace big
 
 	void lua_manager::init_lua_api()
 	{
-		m_state.create_named_table("mods");
+		auto mods = m_state.create_named_table("mods");
+		// Lua API: Function
+		// Table: mods
+		// Name: on_all_mods_loaded
+		// Param: callback: function: callback that will be called once all mods are loaded. The callback function should match signature func()
+		// Registers a callback that will be called once all mods are loaded. Will be called instantly if mods are already loaded and that you are just hot-reloading your mod.
+		mods["on_all_mods_loaded"] = [](sol::protected_function cb, sol::this_environment env) {
+			big::lua_module* mdl = big::lua_module::this_from(env);
+			if (mdl)
+				mdl->m_on_all_mods_loaded_callbacks.push_back(cb);
+		};
 
-		lua::paths::bind(m_state);
+		lua::toml_lua::bind(m_state);
 		lua::log::bind(m_state);
 		lua::memory::bind(m_state);
 		lua::gui::bind(m_state);
@@ -442,6 +457,50 @@ namespace big
 		}
 	}
 
+	static void imgui_text(const char* fmt, const std::string& str)
+	{
+		if (str.size())
+		{
+			ImGui::Text(fmt, str.c_str());
+		}
+	}
+
+	void lua_manager::draw_menu_bar_callbacks()
+	{
+		std::lock_guard guard(m_module_lock);
+
+		for (const auto& module : m_modules)
+		{
+			if (ImGui::BeginMenu(module->guid().c_str()))
+			{
+				if (ImGui::BeginMenu("Mod Info"))
+				{
+					const auto& manifest = module->manifest();
+					imgui_text("Version: %s", manifest.version_number);
+					imgui_text("Website URL: %s", manifest.website_url);
+					imgui_text("Description: %s", manifest.description);
+					if (manifest.dependencies.size())
+					{
+						int i = 0;
+						for (const auto& dependency : manifest.dependencies)
+						{
+							imgui_text(std::format("Dependency[{}]: %s", i++).c_str(), dependency);
+						}
+					}
+
+					ImGui::EndMenu();
+				}
+
+				for (const auto& element : module->m_menu_bar_callbacks)
+				{
+					element->draw();
+				}
+
+				ImGui::EndMenu();
+			}
+		}
+	}
+
 	void lua_manager::always_draw_independent_gui()
 	{
 		std::lock_guard guard(m_module_lock);
@@ -499,6 +558,14 @@ namespace big
 		if (load_result == load_module_result::SUCCESS || (load_result == load_module_result::FAILED_TO_LOAD && ignore_failed_to_load))
 		{
 			m_modules.push_back(module);
+
+			if (m_is_all_mods_loaded)
+			{
+				for (const auto& cb : module->m_on_all_mods_loaded_callbacks)
+				{
+					cb();
+				}
+			}
 		}
 
 		return load_result;
@@ -671,6 +738,17 @@ namespace big
 				}
 			}
 		}
+
+		std::lock_guard guard(m_module_lock);
+		for (const auto& module : m_modules)
+		{
+			for (const auto& cb : module->m_on_all_mods_loaded_callbacks)
+			{
+				cb();
+			}
+		}
+
+		m_is_all_mods_loaded = true;
 	}
 	void lua_manager::unload_all_modules()
 	{

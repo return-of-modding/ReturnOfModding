@@ -1,6 +1,6 @@
 # Table: gui
 
-## Functions (3)
+## Functions (4)
 
 ### `is_open()`
 
@@ -10,6 +10,29 @@
 **Example Usage:**
 ```lua
 bool = gui.is_open()
+```
+
+### `add_to_menu_bar(imgui_rendering)`
+
+Registers a function that will be called under your dedicated space in the imgui main menu bar.
+**Example Usage:**
+```lua
+gui.add_to_menu_bar(function()
+   if ImGui.BeginMenu("Ayo") then
+       if ImGui.Button("Label") then
+         log.info("hi")
+       end
+       ImGui.EndMenu()
+   end
+end)
+```
+
+- **Parameters:**
+  - `imgui_rendering` (function): Function that will be called under your dedicated space in the imgui main menu bar.
+
+**Example Usage:**
+```lua
+gui.add_to_menu_bar(imgui_rendering)
 ```
 
 ### `add_always_draw_imgui(imgui_rendering)`

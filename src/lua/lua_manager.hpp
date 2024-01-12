@@ -26,6 +26,8 @@ namespace big
 		folder m_plugins_data_folder;
 		folder m_plugins_folder;
 
+		bool m_is_all_mods_loaded{};
+
 	public:
 		lua_manager(folder config_folder, folder plugins_data_folder, folder plugins_folder);
 		~lua_manager();
@@ -66,6 +68,7 @@ namespace big
 		bool pre_script_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args);
 		void post_script_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args);
 
+		void draw_menu_bar_callbacks();
 		void always_draw_independent_gui();
 		void draw_independent_gui();
 

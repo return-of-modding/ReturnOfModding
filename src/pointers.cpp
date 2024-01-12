@@ -70,10 +70,10 @@ namespace big
 		// CInstance deconstructor
         {
             "CID",
-            "E8 ? ? ? ? FF C7 48 8B CE",
+            "33 ED 48 85 FF 74 1A",
             [](memory::handle ptr)
             {
-				g_pointers->m_rorr.m_cinstance_dctor = ptr.add(1).rip().as<gm::CInstance_dctor>();
+				g_pointers->m_rorr.m_cinstance_dctor = ptr.sub(0x2F).as<gm::CInstance_dctor>();
             }
         },
 		// CObjectGM Add Instance

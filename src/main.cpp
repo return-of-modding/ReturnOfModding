@@ -48,9 +48,6 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    auto thread_pool_instance = std::make_unique<thread_pool>();
 			    LOG(INFO) << "Thread pool initialized.";
 
-			    g_config.init(g_file_manager.get_project_file("./config.toml"));
-			    LOG(INFO) << "Config Loaded.";
-
 			    auto pointers_instance = std::make_unique<pointers>();
 			    LOG(INFO) << "Pointers initialized.";
 
