@@ -3296,6 +3296,11 @@ namespace lua::imgui
 #pragma endregion ImDrawCorner Flags
 	}
 
+	inline void ShowDemoWindow()
+	{
+		ImGui::ShowDemoWindow();
+	}
+
 	inline void bind(sol::state& lua, sol::table luaGlobals)
 	{
 		InitUserType(luaGlobals);
@@ -3304,6 +3309,7 @@ namespace lua::imgui
 		sol::table ImGui(lua, sol::create);
 
 #pragma region Windows
+		ImGui.set_function("ShowDemoWindow", ShowDemoWindow);
 		ImGui.set_function("Begin", sol::overload(sol::resolve<bool(const std::string&, sol::this_environment)>(Begin), sol::resolve<bool(const std::string&, int, sol::this_environment)>(Begin), sol::resolve<std::tuple<bool, bool>(const std::string&, bool, sol::this_environment)>(Begin), sol::resolve<std::tuple<bool, bool>(const std::string&, bool, int, sol::this_environment)>(Begin)));
 		ImGui.set_function("End", End);
 #pragma endregion Windows

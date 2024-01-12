@@ -5,6 +5,8 @@ You can find all the supported functions and overloads below.
 
 ## Windows
 ```lua
+  -- ImGui.ShowDemoWindow()
+
   -- ImGui.Begin(...)
   -- Parameters: text (name), bool (open) [O], ImGuiWindowFlags (flags) [O]
   -- Returns A: bool (shouldDraw)

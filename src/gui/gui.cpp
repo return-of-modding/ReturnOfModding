@@ -168,8 +168,6 @@ namespace big
 
 			ImGui::SetMouseCursor(g_gui->m_mouse_cursor);
 
-			//ImGui::ShowDemoWindow();
-
 			g_lua_manager->draw_independent_gui();
 
 			if (0)
