@@ -29,7 +29,7 @@ namespace big
 
 		load_all_modules();
 
-		lua::window::deserialize(lua::window::is_open, g_file_manager.get_project_folder("config").get_path() / "ReturnOfModding-ReturnOfModding-Windows.cfg");
+		lua::window::deserialize();
 
 		m_reload_watcher_thread = std::thread([&]() {
 			reload_changed_plugins();
@@ -40,7 +40,7 @@ namespace big
 	{
 		m_reload_watcher_thread.join();
 
-		lua::window::serialize(lua::window::is_open, g_file_manager.get_project_folder("config").get_path() / "ReturnOfModding-ReturnOfModding-Windows.cfg");
+		lua::window::serialize();
 
 		unload_all_modules();
 
@@ -601,6 +601,17 @@ namespace big
 				m_wake_time_changed_plugins_check = std::chrono::high_resolution_clock::now() + m_delay_between_changed_plugins_check;
 			}
 		}
+	}
+
+	bool lua_manager::module_exists(const std::string& module_guid)
+	{
+		std::lock_guard guard(m_module_lock);
+
+		for (const auto& module : m_modules)
+			if (module->guid() == module_guid)
+				return true;
+
+		return false;
 	}
 
 	std::weak_ptr<lua_module> lua_manager::get_module(const std::string& module_guid)

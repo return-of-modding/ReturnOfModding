@@ -145,14 +145,18 @@ namespace big
 				{
 					for (auto& [mod_guid, windows] : lua::window::is_open)
 					{
+						if (!g_lua_manager->module_exists(mod_guid))
+						{
+							continue;
+						}
+
 						if (ImGui::BeginMenu(mod_guid.c_str()))
 						{
 							for (auto& [window_name, is_window_open] : windows)
 							{
 								if (ImGui::Checkbox(window_name.c_str(), &is_window_open))
 								{
-									lua::window::serialize(lua::window::is_open,
-									    g_file_manager.get_project_folder("config").get_path() / "ReturnOfModding-ReturnOfModding-Windows.cfg");
+									lua::window::serialize();
 								}
 							}
 
@@ -167,8 +171,6 @@ namespace big
 			}
 
 			ImGui::SetMouseCursor(g_gui->m_mouse_cursor);
-
-			//ImGui::ShowDemoWindow();
 
 			g_lua_manager->draw_independent_gui();
 

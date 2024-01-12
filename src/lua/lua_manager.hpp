@@ -72,6 +72,7 @@ namespace big
 		void always_draw_independent_gui();
 		void draw_independent_gui();
 
+		bool module_exists(const std::string& module_guid);
 		std::weak_ptr<lua_module> get_module(const std::string& module_guid);
 
 		void unload_module(const std::string& module_guid);

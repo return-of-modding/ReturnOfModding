@@ -10,9 +10,39 @@ namespace lua::imgui
 		big::lua_module* mdl = big::lua_module::this_from(env);
 		if (mdl)
 		{
-			if (lua::window::is_open[mdl->guid()][name])
+			auto& windows = lua::window::is_open[mdl->guid()];
+			auto it       = windows.find(name);
+			
+			if (it != windows.end())
 			{
-				return ImGui::Begin(name.c_str());
+				if (it->second)
+				{
+					const auto is_not_collapsed = ImGui::Begin(name.c_str(), &it->second);
+					const auto is_collapsed     = !is_not_collapsed;
+					if (is_collapsed)
+					{
+						ImGui::End();
+					}
+					return is_not_collapsed;
+				}
+				return it->second;
+			}
+			// Open the window by default
+			else
+			{
+				it = windows.insert({name, true}).first;
+
+				if (it->second)
+				{
+					const auto is_not_collapsed = ImGui::Begin(name.c_str(), &it->second);
+					const auto is_collapsed     = !is_not_collapsed;
+					if (is_collapsed)
+					{
+						ImGui::End();
+					}
+					return is_not_collapsed;
+				}
+				return it->second;
 			}
 		}
 
@@ -20,12 +50,47 @@ namespace lua::imgui
 	}
 	inline bool Begin(const std::string& name, int flags, sol::this_environment env)
 	{
+		if (flags & ImGuiWindowFlags_NoSavedSettings)
+		{
+			return ImGui::Begin(name.c_str(), nullptr, flags);
+		}
+
 		big::lua_module* mdl = big::lua_module::this_from(env);
 		if (mdl)
 		{
-			if (lua::window::is_open[mdl->guid()][name])
+			auto& windows = lua::window::is_open[mdl->guid()];
+			auto it       = windows.find(name);
+
+			if (it != windows.end())
 			{
-				return ImGui::Begin(name.c_str(), nullptr, flags);
+				if (it->second)
+				{
+					const auto is_not_collapsed = ImGui::Begin(name.c_str(), &it->second, flags);
+					const auto is_collapsed     = !is_not_collapsed;
+					if (is_collapsed)
+					{
+						ImGui::End();
+					}
+					return is_not_collapsed;
+				}
+				return it->second;
+			}
+			// Open the window by default
+			else
+			{
+				it = windows.insert({name, true}).first;
+
+				if (it->second)
+				{
+					const auto is_not_collapsed = ImGui::Begin(name.c_str(), &it->second, flags);
+					const auto is_collapsed     = !is_not_collapsed;
+					if (is_collapsed)
+					{
+						ImGui::End();
+					}
+					return is_not_collapsed;
+				}
+				return it->second;
 			}
 		}
 
@@ -33,35 +98,17 @@ namespace lua::imgui
 	}
 	inline std::tuple<bool, bool> Begin(const std::string& name, bool open, sol::this_environment env)
 	{
-		big::lua_module* mdl = big::lua_module::this_from(env);
-		if (mdl)
-		{
-			if (lua::window::is_open[mdl->guid()][name])
-			{
-				if (!open)
-					return std::make_tuple(false, false);
-				const bool shouldDraw = ImGui::Begin(name.c_str(), &open);
-				return std::make_tuple(open, open && shouldDraw);
-			}
-		}
-
-		return std::make_tuple(false, false);
+		if (!open)
+			return std::make_tuple(false, false);
+		const bool shouldDraw = ImGui::Begin(name.c_str(), &open);
+		return std::make_tuple(open, open && shouldDraw);
 	}
 	inline std::tuple<bool, bool> Begin(const std::string& name, bool open, int flags, sol::this_environment env)
 	{
-		big::lua_module* mdl = big::lua_module::this_from(env);
-		if (mdl)
-		{
-			if (lua::window::is_open[mdl->guid()][name])
-			{
-				if (!open)
-					return std::make_tuple(false, false);
-				const bool shouldDraw = ImGui::Begin(name.c_str(), &open, flags);
-				return std::make_tuple(open, open && shouldDraw);
-			}
-		}
-
-		return std::make_tuple(false, false);
+		if (!open)
+			return std::make_tuple(false, false);
+		const bool shouldDraw = ImGui::Begin(name.c_str(), &open, flags);
+		return std::make_tuple(open, open && shouldDraw);
 	}
 	inline void End()
 	{
@@ -3296,6 +3343,11 @@ namespace lua::imgui
 #pragma endregion ImDrawCorner Flags
 	}
 
+	inline void ShowDemoWindow()
+	{
+		ImGui::ShowDemoWindow();
+	}
+
 	inline void bind(sol::state& lua, sol::table luaGlobals)
 	{
 		InitUserType(luaGlobals);
@@ -3304,6 +3356,7 @@ namespace lua::imgui
 		sol::table ImGui(lua, sol::create);
 
 #pragma region Windows
+		ImGui.set_function("ShowDemoWindow", ShowDemoWindow);
 		ImGui.set_function("Begin", sol::overload(sol::resolve<bool(const std::string&, sol::this_environment)>(Begin), sol::resolve<bool(const std::string&, int, sol::this_environment)>(Begin), sol::resolve<std::tuple<bool, bool>(const std::string&, bool, sol::this_environment)>(Begin), sol::resolve<std::tuple<bool, bool>(const std::string&, bool, int, sol::this_environment)>(Begin)));
 		ImGui.set_function("End", End);
 #pragma endregion Windows
