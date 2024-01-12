@@ -29,7 +29,7 @@ namespace big
 
 		load_all_modules();
 
-		lua::window::deserialize(lua::window::is_open, g_file_manager.get_project_folder("config").get_path() / "ReturnOfModding-ReturnOfModding-Windows.cfg");
+		lua::window::deserialize();
 
 		m_reload_watcher_thread = std::thread([&]() {
 			reload_changed_plugins();
@@ -40,7 +40,7 @@ namespace big
 	{
 		m_reload_watcher_thread.join();
 
-		lua::window::serialize(lua::window::is_open, g_file_manager.get_project_folder("config").get_path() / "ReturnOfModding-ReturnOfModding-Windows.cfg");
+		lua::window::serialize();
 
 		unload_all_modules();
 

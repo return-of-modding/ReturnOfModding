@@ -7,10 +7,13 @@ namespace lua::window
 	// mod guid -> window name -> is the window open
 	inline std::unordered_map<std::string, std::unordered_map<std::string, bool>> is_open;
 
-	inline void serialize(const std::unordered_map<std::string, std::unordered_map<std::string, bool>>& data, const std::filesystem::path& filename)
+	inline void serialize()
 	{
 		try
 		{
+			const auto& data = is_open;
+			const auto filename = big::g_file_manager.get_project_folder("config").get_path() / "ReturnOfModding-ReturnOfModding-Windows.cfg";
+
 			std::ofstream ofs(filename);
 			if (ofs.is_open())
 			{
@@ -43,10 +46,13 @@ namespace lua::window
 		}
 	}
 
-	inline void deserialize(std::unordered_map<std::string, std::unordered_map<std::string, bool>>& data, const std::filesystem::path& filename)
+	inline void deserialize()
 	{
 		try
 		{
+			auto& data = is_open;
+			const auto filename = big::g_file_manager.get_project_folder("config").get_path() / "ReturnOfModding-ReturnOfModding-Windows.cfg";
+
 			const auto config = toml::parse_file(filename.c_str());
 
 			for (const auto& [mod_guid, window_states] : config)
