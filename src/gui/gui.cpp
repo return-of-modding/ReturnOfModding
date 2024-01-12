@@ -152,6 +152,24 @@ namespace big
 
 						if (ImGui::BeginMenu(mod_guid.c_str()))
 						{
+							if (ImGui::Button("Open All"))
+							{
+								for (auto& [window_name, is_window_open] : windows)
+								{
+									is_window_open = true;
+								}
+								lua::window::serialize();
+							}
+							ImGui::SameLine();
+							if (ImGui::Button("Close All"))
+							{
+								for (auto& [window_name, is_window_open] : windows)
+								{
+									is_window_open = false;
+								}
+								lua::window::serialize();
+							}
+
 							for (auto& [window_name, is_window_open] : windows)
 							{
 								if (ImGui::Checkbox(window_name.c_str(), &is_window_open))

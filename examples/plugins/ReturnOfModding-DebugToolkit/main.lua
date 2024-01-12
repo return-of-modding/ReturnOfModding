@@ -113,14 +113,27 @@ gui.add_imgui(function()
             gm.instance_create_depth(mouse_x, mouse_y, depth, gm.constants.oWisp)
         end
 
-        if ImGui.Button("Dump Wisp Sprite") then
+        if ImGui.Button("Dump Sprite") then
             -- https://forum.gamemaker.io/index.php?threads/solved-sprite_save-is-not-saving-sprites.69622/
             -- https://manual.yoyogames.com/GameMaker_Language/GML_Reference/Asset_Management/Sprites/Sprite_Manipulation/sprite_duplicate.htm
             -- https://manual.yoyogames.com/GameMaker_Language/GML_Reference/Asset_Management/Sprites/Sprite_Manipulation/sprite_save.htm
 
-            local sprite_var = gm.sprite_duplicate(gm.constants.sWispIdle)
-            gm.sprite_save(sprite_var, 0, "wisp.png")
-            -- This will save into %appdata%/Risk_of_Rain_Returns/wisp.png
+            local sprite_var = gm.sprite_duplicate(gm.constants.sSniperWalk)
+            local x_offset = gm.sprite_get_xoffset(gm.constants.sSniperWalk)
+            local y_offset = gm.sprite_get_yoffset(gm.constants.sSniperWalk)
+            local subimage_count = gm.sprite_get_number(sprite_var)
+            for i = 0, subimage_count - 1 do
+                gm.sprite_save(sprite_var, i, "sSniperWalk_" .. tostring(i) .. "_" .. string.format("%.0f", x_offset) .. "_" .. string.format("%.0f", y_offset) .. ".png")
+            end
+            -- This will save into %appdata%/Risk_of_Rain_Returns/ folder
+        end
+
+        if ImGui.Button("Add New Sprite") then
+            local walk_spritesheet_file_path = _ENV["!plugins_data_mod_folder_path"] .. "/spritesheet_sniper_walk_blue.png"
+            local new_sprite_index = gm.sprite_add(walk_spritesheet_file_path, 8, false, false, 11, 14)
+            if new_sprite_index then
+                print(new_sprite_index)
+            end
         end
 
         if ImGui.Button("Create Survivor Entry") then
