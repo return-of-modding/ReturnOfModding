@@ -52,7 +52,6 @@ local function skill_primary_on_activation(self, actor_skill, skill_index)
         -- do coolguy stuff
         if self.local_client_is_authority then -- don't call if this isn't our player
             rotation_direction = -rotation_direction
-            print("switched dir!")
             explosion_sprite = explosion_sprite + 1
         end
     end
@@ -95,6 +94,39 @@ post_hooks[on_player_step_callback_id] = function(self_, other, result, args)
     rotating_balls_step_logic(self)
 end
 
+local function get_random_sprite(sprite_str)
+    local matches = {}
+    local i = 1
+    for k, v in pairs(gm.constants) do
+        if k:match(sprite_str) then
+            matches[i] = v
+            i = i + 1
+        end
+    end
+
+    if #matches > 0 then
+        local randomed = math.random(1, #matches)
+        -- print(randomed, matches[randomed])
+        return matches[randomed]
+    end
+
+    return gm.constants.sCommandoWalk
+end
+
+local function setup_sprites(self)
+    local survivors = gm.variable_global_get("class_survivor")
+    if survivors ~= nil then
+        self.sprite_idle        = get_random_sprite("Idle")
+        self.sprite_walk        = get_random_sprite("Walk")
+        self.sprite_jump        = get_random_sprite("Jump")
+        self.sprite_jump_peak   = get_random_sprite("JumpPeak")
+        self.sprite_fall        = get_random_sprite("Fall")
+        self.sprite_climb       = get_random_sprite("Climb")
+        self.sprite_death       = get_random_sprite("Death")
+        self.sprite_decoy       = get_random_sprite("Decoy")
+    end
+end
+
 local function setup_skills_callbacks()
     local primary = survivor_setup.coolguy.skill_family_z[0]
     if not pre_hooks[primary.on_activate] then
@@ -108,16 +140,26 @@ local function setup_skills_callbacks()
 end
 
 post_hooks[on_player_init_callback_id] = function(self, other, result, args)
+    setup_sprites(self)
+
     setup_skills_callbacks()
 end
 
--- local function print_name_of_object(object_id)
---     for k, v in pairs(gm.constants) do
---         if v == object_id then
---             print(k .. ": " .. v)
---         end
---     end
--- end
+local function print_name_of_object(object_id)
+    for k, v in pairs(gm.constants) do
+        if v == object_id then
+            print(k .. ": " .. v)
+        end
+    end
+end
 
 -- print_name_of_object(survivor_setup.coolguy.sprite_title)
 -- print_name_of_object(survivor_setup.coolguy.sprite_idle)
+
+gui.add_to_menu_bar(function()
+    if ImGui.BeginMenu("Debug Info") then
+        ImGui.Text("explosion_sprite: " .. explosion_sprite)
+
+        ImGui.EndMenu()
+    end
+end)

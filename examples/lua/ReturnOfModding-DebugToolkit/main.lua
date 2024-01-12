@@ -71,8 +71,9 @@ gui.add_imgui(function()
                 end
             end
         end
+
+        ImGui.End()
     end
-    ImGui.End()
 
     if ImGui.Begin("Room") then
         local current_room = gm.variable_global_get("room")
@@ -83,8 +84,8 @@ gui.add_imgui(function()
         if ImGui.Button("Goto Room (Can Crash You)") then
             gm.room_goto(new_room)
         end
+        ImGui.End()
     end
-    ImGui.End()
 
     if ImGui.Begin("Misc") then
         if ImGui.Button("Print mod info") then
@@ -173,8 +174,8 @@ gui.add_imgui(function()
             local game_instance_create = gm.variable_global_get("instance_create")
             log.info(game_instance_create)
         end
+        ImGui.End()
     end
-    ImGui.End()
 
     if ImGui.Begin("Player Object") then
         for i = 1, #gm.CInstance.instances_active do
@@ -190,16 +191,16 @@ gui.add_imgui(function()
                 break
             end
         end
+        ImGui.End()
     end
-    ImGui.End()
 
     if ImGui.Begin("Active Instances") then
         for i = 1, #gm.CInstance.instances_active do
             imgui_dump(gm.CInstance.instances_active[i])
             ImGui.Separator()
         end
+        ImGui.End()
     end
-    ImGui.End()
 end)
 
 -- gm.pre_code_execute(function(self, other, code, result, flags)
@@ -247,7 +248,7 @@ local selected_elem_values = {}
 local ui_shared_state = nil
 
 -- gm.post_script_hook(gm.constants._ui_check_selected, function(self, other, result, args)
-gm.post_script_hook(gm.constants.anon_gml_Object_oLogMenu_Other_14_55112219_gml_Object_oLogMenu_Other_14, function(self, other, result, args)
+gm.post_script_hook(gm.constants.anon_gml_Object_oLogMenu_Other_14_55112214_gml_Object_oLogMenu_Other_14, function(self, other, result, args)
     self_names = gm.variable_instance_get_names(args[1].value)
     if self_names then
         for i = 1, #self_names do
@@ -276,6 +277,14 @@ local element_key_to_achiev_id = function (elem_key)
     return tonumber(selected_elem.key:sub(3))
 end
 
+gui.add_to_menu_bar(function()
+    if ImGui.BeginMenu("Ayo") then
+        ImGui.Text("My stuff")
+
+        ImGui.EndMenu()
+    end
+end)
+
 gui.add_always_draw_imgui(function()
     if ImGui.Begin("Debug Unlocker") then
         if selected_elem ~= nil and selected_elem.key then
@@ -298,8 +307,9 @@ gui.add_always_draw_imgui(function()
                 ImGui.Text("ui: " .. self_names[i] .. ": " .. tostring(self_values[i]))
             end
         end
+
+        ImGui.End()
     end
-    ImGui.End()
 end)
 
 gui.add_always_draw_imgui(function()
@@ -336,4 +346,44 @@ gui.add_always_draw_imgui(function()
             end
         end
     end
+end)
+
+-- Inline tables: https://toml.io/en/v1.0.0#inline-table
+local inlineTable = {
+	a = 1275892,
+	b = "Hello, World!",
+	c = true,
+	d = 124.2548,
+}
+
+-- Make the table inline.
+setmetatable(inlineTable, { inline = true })
+
+local table = {
+	e = {
+		f = { 1, 2, 3, "4", 5.142 },
+		g = toml.Date.new(1979,   05,     27),
+		--                year   month   day
+
+		h = toml.Time.new( 7,     32,      0,        0),
+		--                hour   minute  second   nanoSecond
+
+		i = toml.DateTime.new(
+			toml.Date.new(1979, 05, 27),
+			toml.Time.new(7, 32, 0, 0),
+
+			toml.TimeOffset.new(  -7,     0)
+			--                   hour   minute
+		)
+	},
+	inlineTable = inlineTable
+}
+
+-- Encode to string
+local succeeded, documentOrErrorMessage = pcall(toml.encode, table)
+
+print(documentOrErrorMessage)
+
+mods.on_all_mods_loaded(function ()
+    print("all mod loaded.")
 end)
