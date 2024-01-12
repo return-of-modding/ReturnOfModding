@@ -30,7 +30,7 @@ namespace lua::window
 				ofs << output_table;
 
 				ofs.close();
-				LOG(INFO) << "Serialization successful.";
+				LOG(INFO) << "Window States Serialization successful.";
 			}
 			else
 			{
@@ -39,7 +39,7 @@ namespace lua::window
 		}
 		catch (const std::exception& e)
 		{
-			LOG(INFO) << "Failed serialize window states.";
+			LOG(INFO) << "Failed serialize window states: " << e.what();
 		}
 	}
 
@@ -47,7 +47,7 @@ namespace lua::window
 	{
 		try
 		{
-			auto config = toml::parse_file(filename.c_str());
+			const auto config = toml::parse_file(filename.c_str());
 
 			for (const auto& [mod_guid, window_states] : config)
 			{
@@ -73,7 +73,7 @@ namespace lua::window
 		}
 		catch (const std::exception& e)
 		{
-			LOG(INFO) << "Failed deserialize window states.";
+			LOG(INFO) << "Failed deserialize window states: " << e.what();
 		}
 	}
 }
