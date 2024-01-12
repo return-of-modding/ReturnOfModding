@@ -863,24 +863,29 @@ namespace lua::game_maker
 		// Name: RefDynamicArrayOfRValue
 		// Class representing a game maker RValue array
 		{
-			sol::usertype<RefDynamicArrayOfRValue> type = state.new_usertype<RefDynamicArrayOfRValue>("RefDynamicArrayOfRValue", sol::base_classes, sol::bases<YYObjectBase>(), sol::meta_function::index, [](sol::this_state this_state_, RefDynamicArrayOfRValue& self, sol::stack_object position_) -> sol::reference {
-				if (position_.get_type() != sol::type::number)
-				{
-					return sol::lua_nil;
-				}
+			sol::usertype<RefDynamicArrayOfRValue> type = state.new_usertype<RefDynamicArrayOfRValue>(
+			    "RefDynamicArrayOfRValue",
+			    sol::base_classes,
+			    sol::bases<YYObjectBase>(),
+			    sol::meta_function::index,
+			    [](sol::this_state this_state_, RefDynamicArrayOfRValue& self, sol::stack_object position_) -> sol::reference {
+				    if (position_.get_type() != sol::type::number)
+				    {
+					    return sol::lua_nil;
+				    }
 
-				int pos = (int)position_.as<double>();
-				// lua index adjustment
-				pos -= 1;
-				if (pos < 0 || pos >= self.length)
-				{
-					return sol::lua_nil;
-				}
+				    int pos = (int)position_.as<double>();
+				    // lua index adjustment
+				    pos -= 1;
+				    if (pos < 0 || pos >= self.length)
+				    {
+					    return sol::lua_nil;
+				    }
 
-				RValue& val = self.m_Array[pos];
+				    RValue& val = self.m_Array[pos];
 
-				return RValue_to_lua(val, this_state_);
-			},
+				    return RValue_to_lua(val, this_state_);
+			    },
 			    sol::meta_function::garbage_collect,
 			    sol::destructor([](RefDynamicArrayOfRValue& inst) {
 				    YYObjectPinMap::unpin(&inst);
