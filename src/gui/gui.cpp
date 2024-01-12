@@ -145,6 +145,11 @@ namespace big
 				{
 					for (auto& [mod_guid, windows] : lua::window::is_open)
 					{
+						if (!g_lua_manager->module_exists(mod_guid))
+						{
+							continue;
+						}
+
 						if (ImGui::BeginMenu(mod_guid.c_str()))
 						{
 							for (auto& [window_name, is_window_open] : windows)

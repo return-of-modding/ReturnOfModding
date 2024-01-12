@@ -603,6 +603,17 @@ namespace big
 		}
 	}
 
+	bool lua_manager::module_exists(const std::string& module_guid)
+	{
+		std::lock_guard guard(m_module_lock);
+
+		for (const auto& module : m_modules)
+			if (module->guid() == module_guid)
+				return true;
+
+		return false;
+	}
+
 	std::weak_ptr<lua_module> lua_manager::get_module(const std::string& module_guid)
 	{
 		std::lock_guard guard(m_module_lock);
