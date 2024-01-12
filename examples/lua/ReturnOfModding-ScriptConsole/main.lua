@@ -576,7 +576,7 @@ local function imgui_on_render()
 	for k,v in pairs(console.ibinds) do
 		pcall(run_bind,m,k,v)
 	end
-	if ImGui.Begin("Script Console", true, ImGuiWindowFlags.NoTitleBar) then
+	if ImGui.Begin("Script Console", ImGuiWindowFlags.NoTitleBar) then
 		if ImGui.BeginTabBar("Mode") then
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
@@ -715,8 +715,8 @@ local function imgui_on_render()
 			end
 			ImGui.EndTabBar()
 		end
+		ImGui.End()
 	end
-	ImGui.End()
 	-- handling entering input separate from constructing the UI
 	-- so actions that use ImGui will be separate from the console's UI
 	for mi,md in ipairs(console.modes) do

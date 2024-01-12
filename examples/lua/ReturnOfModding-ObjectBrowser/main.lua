@@ -7,9 +7,10 @@ colors = {
 }
 
 root = {
-	lua = _G,
 	gm = gm,
+	lua = _G,
 	mods = mods,
+	style = ImGui.GetStyle(),
 	colors = colors,
 	helpers = {},
 	globals = proxy.globals,
@@ -30,8 +31,10 @@ local filter_modes_details = {
 browsers = {}
 details = {}
 local unfolded = {}
+local last_pos = {0,0}
+local last_size = {0,0}
 
-local function create_browser(entry)
+local function create_browser(entry,x,y,w,h)
 	local id = #browsers + 1
 	unfolded[id..'|root'] = true
 	browsers[id] = util.merge({
@@ -40,11 +43,13 @@ local function create_browser(entry)
 		filter = '',
 		texts = {},
 		tooltips = {},
+		init_pos = table.pack(x,y),
+		init_size = table.pack(w,h),
 		mode = 1
 	},entry)
 end
 
-local function create_details(entry)
+local function create_details(entry,x,y,w,h)
 	local id = #details + 1
 	details[id] = util.merge({
 		index = id,
@@ -52,6 +57,8 @@ local function create_details(entry)
 		filter = '',
 		texts = {},
 		tooltips = {},
+		init_pos = table.pack(x,y),
+		init_size = table.pack(w,h),
 		mode = 1
 	},entry)
 end
@@ -277,7 +284,9 @@ do
 		elseif data_type == "table" then
 			iter = pairs
 		elseif sol_type then
-			if sol_type:match("Object") then
+			if sol_type:match("Im") then
+				iter = pairs
+			elseif sol_type:match("Object") then
 				iter = pairs
 				if data.type == YYObjectBaseType.YYOBJECTBASE then
 					func = proxy.struct
@@ -510,9 +519,10 @@ do
 		local func = load("return " .. text)
 		if not func then return nil end
 		setfenv(func,_G)
-		local status, value = pcall(func)
-		if not status then return nil end
-		return value
+		local ret = table.pack(pcall(func))
+		if ret.n <= 1 then return end
+		if not ret[1] then return end
+		return table.unpack(ret,2,ret.n)
 	end
 
 	local function try_tooltip(dd,sd,value_part) 
@@ -571,10 +581,14 @@ do
 							ImGui.PopStyleColor()
 							if ImGui.IsItemHovered() then
 								if ImGui.IsItemClicked(ImGuiMouseButton.Middle) then
-									create_browser(sd)
+									local x,y = ImGui.GetWindowPos()
+									local w,h = ImGui.GetWindowSize()
+									create_browser(sd,x+w,y,w,h)
 								end
 								if ImGui.IsItemClicked(ImGuiMouseButton.Right) then
-									create_details(sd)
+									local x,y = ImGui.GetWindowPos()
+									local w,h = ImGui.GetWindowSize()
+									create_details(sd,x+w,y,w,h)
 								end
 							end
 							if sd.fake then
@@ -736,10 +750,14 @@ do
 						_unfolded = not _unfolded
 					end
 					if ImGui.IsItemClicked(ImGuiMouseButton.Middle) then
-						create_browser(ed)
+						local x,y = ImGui.GetWindowPos()
+						local w,h = ImGui.GetWindowSize()
+						create_browser(ed,x+w,y,w,h)
 					end
 					if ImGui.IsItemClicked(ImGuiMouseButton.Right) then
-						create_details(ed)
+						local x,y = ImGui.GetWindowPos()
+						local w,h = ImGui.GetWindowSize()
+						create_details(ed,x+w,y,w,h)
 					end
 				end
 				unfolded[ids] = _unfolded
@@ -907,13 +925,13 @@ do
 end
 
 local frame_period = 60
-local frame_counter = 0
+local frame_counter = 60
 
 local tooltip_flags = --ImGuiWindowFlags.Tooltip |
             ImGuiWindowFlags.NoTitleBar |
             ImGuiWindowFlags.NoMove |
             ImGuiWindowFlags.NoResize |
-            ImGuiWindowFlags.NoSavedSettings |
+            --ImGuiWindowFlags.NoSavedSettings |
             ImGuiWindowFlags.AlwaysAutoResize |
 			ImGuiWindowFlags.AlwaysUseWindowPadding
 
@@ -956,17 +974,17 @@ local function imgui_off_render()
 			root.instances.nearest = instance
 		end
 		if ImGui.GetStyleVar and ImGui.IsKeyDown(ImGuiKeyMod.Ctrl) then
-			local w,h,x,y = 0,0
+			local _w,_h,_x,_y = 0,0
 			for _,v in pairs(ImGuiCol) do
 				ImGui.PushStyleColor(v,0)
 			end
 			ImGui.SetNextWindowSize(0,0)
-			if ImGui.Begin("##Tooltip Position Hack", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
-				x,y = ImGui.GetWindowPos()
+			if ImGui.Begin("##Tooltip Position Hack", ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.Tooltip | tooltip_flags ) then
+				_x,_y = ImGui.GetWindowPos()
 			end
-			if instance ~= nil and ImGui.Begin("##Tooltip Size Hack", ImGuiWindowFlags.Tooltip | tooltip_flags ) then
+			if instance ~= nil and ImGui.Begin("##Tooltip Size Hack", ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.Tooltip | tooltip_flags ) then
 				selector_tooltip(nop,nop,mouse_x,mouse_y,instance)
-				w,h = ImGui.GetWindowSize()
+				_w,_h = ImGui.GetWindowSize()
 			end
 			for _ in pairs(ImGuiCol) do
 				ImGui.PopStyleColor()
@@ -975,8 +993,8 @@ local function imgui_off_render()
 			local _,_y_text = ImGui.CalcTextSize('|')
 			local _,_y_frame = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
 			local _,_y_win = ImGui.GetStyleVar(ImGuiStyleVar.WindowPadding)
-			ImGui.SetNextWindowPos(x+5,y+20-2*(_y_text+_y_frame + _y_win))
-			if ImGui.Begin("##Instance Selector Position", tooltip_flags ) then
+			ImGui.SetNextWindowPos(_x+5,_y+20-2*(_y_text+_y_frame + _y_win))
+			if ImGui.Begin("Selector Tooltip: Position", tooltip_flags ) then
 				ImGui.Text('x:')
 				ImGui.PushStyleColor(ImGuiCol.Text, colors.leaf)
 				ImGui.SameLine()
@@ -991,8 +1009,8 @@ local function imgui_off_render()
 			ImGui.End()
 			
 			if instance ~= nil then
-				ImGui.SetNextWindowPos(x-w/2-12.5,y+20)
-				if ImGui.Begin("##Instance Selector", tooltip_flags ) then
+				ImGui.SetNextWindowPos(_x-_w/2-12.5,_y+20)
+				if ImGui.Begin("Selector Tooltip: Instance", tooltip_flags ) then
 					selector_tooltip(ImGui.PushStyleColor,ImGui.PopStyleColor,mouse_x,mouse_y,instance)
 				end
 				ImGui.End()
@@ -1001,17 +1019,21 @@ local function imgui_off_render()
 					root.instances.selected = instance
 				end
 				if ImGui.IsMouseClicked(ImGuiMouseButton.Middle) then
-					create_browser(resolve_vararg_simple("instances","stable",instance.id))
+					local x,y = table.unpack(last_pos)
+					local w,h = table.unpack(last_size)
+					create_browser(resolve_vararg_simple("instances","stable",instance.id),x+w,y,w,h)
 				end
 				if ImGui.IsMouseClicked(ImGuiMouseButton.Right) then
-					create_details(resolve_vararg_simple("instances","stable",instance.id,proxy.variables))
+					local x,y = table.unpack(last_pos)
+					local w,h = table.unpack(last_size)
+					create_details(resolve_vararg_simple("instances","stable",instance.id,proxy.variables),x+w,y,w,h)
 				end
 			end
 		end
 	end
 end
 
-local closable_true = {true}
+local closable_true = {true,ImGuiWindowFlags.NoSavedSettings}
 local closable_false = {}
 
 local function imgui_on_render()
@@ -1021,10 +1043,20 @@ local function imgui_on_render()
 		should_refresh = true
 	end
 	frame_counter = frame_counter + 1
+	local rid = 1
 	for bid,bd in pairs(browsers) do
 		local closable = closable_false
-		if bid ~= 1 then closable = closable_true end
-		if ImGui.Begin("Object Browser##" .. bid, table.unpack(closable)) then
+		if bid ~= rid then 
+			closable = closable_true
+			local x,y = table.unpack(bd.init_pos)
+			local w,h = table.unpack(bd.init_size)
+			ImGui.SetNextWindowPos(x,y,ImGuiCond.Once)
+			ImGui.SetNextWindowSize(w,h,ImGuiCond.Once)
+		else
+			last_pos[1], last_pos[2] = ImGui.GetWindowPos()
+			last_size[1], last_size[2] = ImGui.GetWindowSize()
+		end
+		if ImGui.Begin(bid == rid and "Object Browser" or "Object Browser##" .. bid, table.unpack(closable)) then
 			bd.index = bid
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
@@ -1058,7 +1090,7 @@ local function imgui_on_render()
 			if should_refresh then
 				refresh(bd)
 			end
-			if bid ~= 1 then
+			if bid ~= rid then
 				local path = bd.path or "???"
 				y_box = y_box - y_max - item_spacing_y
 				ImGui.Text("Path: ")
@@ -1079,13 +1111,18 @@ local function imgui_on_render()
 			else
 				ImGui.PopStyleColor()
 			end
-		elseif closable == closable_true then
+			ImGui.End()
+		elseif bid ~= rid then
 			browsers[bid] = nil
+			ImGui.End()
 		end
-		ImGui.End()
 	end
-	for did,dd in pairs(details) do
-		if ImGui.Begin("Object Details##" .. did, true) then
+	for did,dd in ipairs(details) do
+		local x,y = table.unpack(dd.init_pos)
+		local w,h = table.unpack(dd.init_size)
+		ImGui.SetNextWindowPos(x,y,ImGuiCond.Once)
+		ImGui.SetNextWindowSize(w,h,ImGuiCond.Once)
+		if ImGui.Begin("Object Details##" .. did, table.unpack(closable_true)) then
 			dd.index = did
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
@@ -1141,10 +1178,11 @@ local function imgui_on_render()
 			else
 				ImGui.PopStyleColor()
 			end
+			ImGui.End()
 		else
 			details[did] = nil
+			ImGui.End()
 		end
-		ImGui.End()
 	end
 end
 
