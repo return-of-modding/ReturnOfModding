@@ -105,19 +105,41 @@ local function get_random_sprite(sprite_str)
     end
 
     if #matches > 0 then
-        local randomed = math.random(1, #matches)
-        -- print(randomed, matches[randomed])
-        return matches[randomed]
+        local random_sprite = matches[math.random(1, #matches)]
+        
+        local subimage_count = gm.sprite_get_number(random_sprite)
+        local random_sprite_name = gm.sprite_get_name(random_sprite)
+        if random_sprite_name and random_sprite and subimage_count then
+            print(random_sprite_name, "", "", random_sprite, "subimage_count", subimage_count)
+        end
+
+        return random_sprite
     end
 
     return gm.constants.sCommandoWalk
 end
 
+local sprite_walk = -1
+local function load_sprite_from_disk(file_name)
+    local file_path = _ENV["!plugins_data_mod_folder_path"] .. "/" .. file_name
+    local new_sprite = gm.sprite_add(file_path, 8, false, false, 11, 14)
+    if new_sprite == -1 then
+        log.warning("Failed loading sprite", file_name, file_path)
+        return gm.constants.sCommandoWalk
+    end
+
+    return new_sprite
+end
+local function load_sprites_from_disk()
+    sprite_walk = load_sprite_from_disk("spritesheet_sniper_walk_blue.png")
+end
+load_sprites_from_disk()
+
 local function setup_sprites(self)
     local survivors = gm.variable_global_get("class_survivor")
     if survivors ~= nil then
         self.sprite_idle        = get_random_sprite("Idle")
-        self.sprite_walk        = get_random_sprite("Walk")
+        self.sprite_walk        = sprite_walk
         self.sprite_jump        = get_random_sprite("Jump")
         self.sprite_jump_peak   = get_random_sprite("JumpPeak")
         self.sprite_fall        = get_random_sprite("Fall")
