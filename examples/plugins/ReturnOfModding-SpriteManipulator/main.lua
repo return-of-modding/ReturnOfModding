@@ -11,14 +11,31 @@ local sprite_text = ""
 overrides = {}
 originals = {}
 
-function copy_sprite(gm_sprite)
+if browser then
+	browser.root.sprites = {
+		overrides = overrides,
+		originals = originals,
+		constants = proxy.constants.sprite
+	}
+end
+
+function get_sprite_copy(gm_sprite)
+	gm_sprite = math.floor(gm_sprite)
 	if originals[gm_sprite] then return gm_sprite end
 	local sprite_copy = overrides[gm_sprite]
 	if sprite_copy then return sprite_copy end
-	sprite_copy =  gm.sprite_duplicate(gm_sprite)
+	sprite_copy = gm.sprite_duplicate(gm_sprite)
+	if not sprite_copy then return nil end
+	sprite_copy = math.floor(sprite_copy)
 	overrides[gm_sprite] = sprite_copy
 	originals[sprite_copy] = gm_sprite
 	return sprite_copy
+end
+
+function get_sprite_asset(gm_sprite)
+	gm_sprite = math.floor(gm_sprite)
+	if overrides[gm_sprite] then return gm_sprite end
+	return originals[gm_sprite]
 end
 
 local function copy_file(from,into)
@@ -57,12 +74,12 @@ do
 end
 
 function save_by_gm_sprite(gm_sprite,path)
-    local sprite_copy = copy_sprite(gm_sprite)
+    local sprite_copy = get_sprite_copy(gm_sprite)
     return gm.sprite_save_strip(sprite_copy, path or sprites_path_save .. tostring(gm_sprite) .. '.png')
 end
 
 function load_by_gm_sprite(gm_sprite,path)
-    local sprite_copy = copy_sprite(gm_sprite)
+    local sprite_copy = get_sprite_copy(gm_sprite)
     local x_offset = gm.sprite_get_xoffset(sprite_copy)
     local y_offset = gm.sprite_get_yoffset(sprite_copy)
     local subimage_count = gm.sprite_get_number(sprite_copy)
@@ -71,13 +88,13 @@ end
 
 function save_by_gm_sprite_name(gm_sprite_name,path)
     local gm_sprite = gm.constants[gm_sprite_name]
-    local sprite_copy = copy_sprite(gm_sprite)
+    local sprite_copy = get_sprite_copy(gm_sprite)
     return gm.sprite_save_strip(sprite_copy, path or sprites_path_save .. gm_sprite_name .. '.png')
 end
 
 function load_by_gm_sprite_name(gm_sprite_name,path)
     local gm_sprite = gm.constants[gm_sprite_name]
-    local sprite_copy = copy_sprite(gm_sprite)
+    local sprite_copy = get_sprite_copy(gm_sprite)
     local x_offset = gm.sprite_get_xoffset(sprite_copy)
     local y_offset = gm.sprite_get_yoffset(sprite_copy)
     local subimage_count = gm.sprite_get_number(sprite_copy)
@@ -99,7 +116,8 @@ local function add_sprite(sprite,id)
 	local full_path = sprites_path .. path
 	local sprite = {}
 	sprite.index = id
-	sprite.asset = gm_sprite
+	sprite.copy = get_sprite_copy(gm_sprite)
+	sprite.asset = get_sprite_asset(gm_sprite)
 	sprite.name = gm_sprite_name
 	sprite.path = path
 	sprite.save = gm_sprite_name and function() return save_by_gm_sprite_name(gm_sprite_name,full_path) end or function() return save_by_gm_sprite(gm_sprite,full_path) end
