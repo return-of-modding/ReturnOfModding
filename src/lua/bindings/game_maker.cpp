@@ -97,47 +97,76 @@ namespace lua::game_maker
 			mdl->m_post_code_execute_callbacks.push_back(cb);
 	}
 
+	static bool is_Call_Method(uintptr_t return_address)
+	{
+		byte* ptr      = (byte*)return_address;
+		const auto E9  = *ptr;
+		const auto D2  = *(ptr - 1);
+		const auto FF  = *(ptr - 2);
+		const auto _41 = *(ptr - 3);
+		return E9 == 0xE9 && D2 == 0xD2 && FF == 0xFF && _41 == 0x41;
+	}
+
+	static bool is_Script_Perform(uintptr_t return_address)
+	{
+		byte* ptr      = (byte*)return_address;
+		const auto E9  = *ptr;
+		const auto _08 = *(ptr - 1);
+		const auto _50 = *(ptr - 2);
+		const auto _FF = *(ptr - 3);
+		return E9 == 0xE9 && _08 == 0x08 && _50 == 0x50 && _FF == 0xFF;
+	}
+
+	static uintptr_t original_func_ptr;
 	static RValue* central_script_hook(CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args)
 	{
 #pragma region Figure out which original function to call
 		CONTEXT context;
 		RtlCaptureContext(&context);
-		auto r10 = context.R10;
+		const auto r10 = context.R10;
 
-		constexpr size_t e8_instruction_length = 5;
-		uintptr_t original_func_ptr            = (uintptr_t)_ReturnAddress() - e8_instruction_length;
+		const auto return_address = (uintptr_t)_ReturnAddress();
 
-		hde64s instruction;
-		hde64_disasm((void*)original_func_ptr, &instruction);
-		if (instruction.flags & F_ERROR)
+		if (is_Call_Method(return_address))
 		{
-			LOG(FATAL) << "Fucked.";
+			original_func_ptr = r10;
 		}
-
-		if (instruction.flags & F_RELATIVE)
+		else if (is_Script_Perform(return_address))
 		{
-			intptr_t imm = 0;
-			if (instruction.flags & F_IMM8)
-				imm = (int8_t)instruction.imm.imm8;
-			else if (instruction.flags & F_IMM16)
-				imm = (int16_t)instruction.imm.imm16;
-			else if (instruction.flags & F_IMM32)
-				imm = (int32_t)instruction.imm.imm32;
-			else
-				imm = (int64_t)instruction.imm.imm64;
-
-			original_func_ptr += imm + instruction.len;
+			// Empty.
 		}
-		// Access to static memory address
-		//else if (instruction.flags & F_MODRM && instruction.modrm_mod == 0 && instruction.modrm_rm == 0b101)
-		//{
-		//	original_func_ptr += (int32_t)instruction.disp.disp32;
-		//	original_func_ptr += instruction.len;
-		//}
 		else
 		{
-			// Can be Call_Method call r10 instruction
-			original_func_ptr = r10;
+			constexpr size_t e8_instruction_length = 5;
+			original_func_ptr                      = return_address - e8_instruction_length;
+
+			hde64s instruction;
+			hde64_disasm((void*)original_func_ptr, &instruction);
+			if (instruction.flags & F_ERROR)
+			{
+				LOG(FATAL) << "Fucked.";
+			}
+
+			if (instruction.flags & F_RELATIVE)
+			{
+				intptr_t imm = 0;
+				if (instruction.flags & F_IMM8)
+					imm = (int8_t)instruction.imm.imm8;
+				else if (instruction.flags & F_IMM16)
+					imm = (int16_t)instruction.imm.imm16;
+				else if (instruction.flags & F_IMM32)
+					imm = (int32_t)instruction.imm.imm32;
+				else
+					imm = (int64_t)instruction.imm.imm64;
+
+				original_func_ptr += imm + instruction.len;
+			}
+			// Access to static memory address
+			//else if (instruction.flags & F_MODRM && instruction.modrm_mod == 0 && instruction.modrm_rm == 0b101)
+			//{
+			//	original_func_ptr += (int32_t)instruction.disp.disp32;
+			//	original_func_ptr += instruction.len;
+			//}
 		}
 #pragma endregion Figure out which original function to call
 
