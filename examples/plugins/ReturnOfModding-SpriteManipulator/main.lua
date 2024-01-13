@@ -5,14 +5,19 @@ local sprite_text = ""
 
 local duplicates = {}
 
-local function copy_file(from,into)
-	local lf = io.open(from)
-	if not lf then return end
+local function file_copy(from,into)
+	local lf = io.open(from,"r")
+	if lf == nil then return end
 	local fc = lf:read()
 	lf:close()
 	local sf = io.open(into,"w")
 	sf:write(fc)
 	sf:close()
+end
+
+local function file_exists(name)
+   local f = io.open(name,"r")
+   return f ~= nil and io.close(f)
 end
 
 local calculate_text_sizes
@@ -82,22 +87,25 @@ function sprite_load(sprite,path)
     return gm.sprite_replace(gm_sprite,path or sprites_path_load .. gm_sprite_name .. '.png', subimage_count, false, false, x_offset, y_offset)
 end
 
+local function sprite_path(gm_sprite, gm_sprite_name)
+	if gm_sprite_name == nil then
+		gm_sprite, gm_sprite_name = sprite_info(gm_sprite)
+	end
+	if not gm_sprite then return end
+	sprite = gm_sprite_name or ''
+	sprite = sprite .. '.' .. tostring(math.floor(gm_sprite))
+	local path = sprite .. '.png'
+	return sprites_path .. path, path
+end
+
 local function add_sprite(sprite,id)
 	local gm_sprite, gm_sprite_name = sprite_info(sprite)
 	if not gm_sprite then return end
 	local id = id or (#sprites+1)
-	sprite = gm_sprite_name
-	if sprite == nil then
-		sprite = tostring(gm_sprite)
-	end
-	local path = sprite .. '.png'
-	local full_path = sprites_path .. path
 	local sprite = {}
-	sprite.id = gm_sprite
+	sprite.index = gm_sprite
 	sprite.name = gm_sprite_name
-	sprite.path = path
-	sprite.save = function() return sprite_save(gm_sprite,full_path) end
-	sprite.load = function() return sprite_load(gm_sprite,full_path) end
+	sprite.path = sprite_path(gm_sprite, gm_sprite_name)
 	sprites[id] = sprite
 	return sprite
 end
@@ -116,6 +124,45 @@ local function imgui_on_render()
 		-- such that InputText's height == max y
 		local y_input = bot_y_max - ImGui.GetFontSize() - frame_padding_y 
 		local box_y = y - bot_y_max - item_spacing_y*2
+		if ImGui.Button("Save Sprites") then
+			for _,sd in ipairs(sprites) do
+				local gm_sprite, gm_sprite_name = sd.index, sd.name
+				local full_path = sprite_path(gm_sprite, gm_sprite_name)
+				if full_path then
+					sprite_save(gm_sprite,full_path)
+				end
+			end
+		end
+		ImGui.SameLine()
+		if ImGui.Button("Load Sprites") then
+			for _,sd in ipairs(sprites) do
+				local gm_sprite, gm_sprite_name = sd.index, sd.name
+				local full_path = sprite_path(gm_sprite, gm_sprite_name)
+				if full_path and file_exists(full_path) then
+					sprite_load(gm_sprite,full_path)
+				end
+			end
+		end
+		ImGui.SameLine()
+		if ImGui.Button("Save All Sprites") then
+			for _,s in ipairs(proxy.constants.sprite) do
+				local gm_sprite, gm_sprite_name = s.index, s.name
+				local full_path = sprite_path(gm_sprite, gm_sprite_name)
+				if full_path then
+					sprite_save(gm_sprite,full_path)
+				end
+			end
+		end
+		ImGui.SameLine()
+		if ImGui.Button("Load All Sprites") then
+			for _,s in ipairs(proxy.constants.sprite) do
+				local gm_sprite, gm_sprite_name = s.index, s.name
+				local full_path = sprite_path(gm_sprite, gm_sprite_name)
+				if full_path and file_exists(full_path) then
+					sprite_load(gm_sprite,full_path)
+				end
+			end
+		end
 		ImGui.PushItemWidth(x_input)
 		ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, frame_padding_x, y_input)
 		local enter_pressed
@@ -125,10 +172,11 @@ local function imgui_on_render()
 		if enter_pressed then
 			add_sprite(sprite_text)
 		end
+		ImGui.Separator()
 		for sid,sd in ipairs(sprites) do
 			ImGui.Text(sd.name)
 			ImGui.SameLine()
-			ImGui.Text(tostring(sd.id))
+			ImGui.Text(tostring(sd.index))
 			ImGui.SameLine()
 			if ImGui.Button("Save##" .. sid) then
 				sd.save()
