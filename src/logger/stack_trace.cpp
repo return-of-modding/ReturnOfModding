@@ -250,6 +250,8 @@ namespace big
 			return "SetThreadName Exception";
 		}
 
-		return "UNKNOWN_EXCEPTION: CODE: " + std::to_string(code);
+		std::stringstream exception_code_str;
+		exception_code_str << HEX_TO_UPPER(code);
+		return "UNKNOWN_EXCEPTION: CODE: " + exception_code_str.str();
 	}
 }
