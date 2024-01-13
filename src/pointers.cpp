@@ -157,6 +157,15 @@ namespace big
             {
 				g_pointers->m_rorr.m_struct_create = ptr.sub(0x6).as<gm::StructCreate_t>();
             }
+        },
+        // GetSaveFileName
+        {
+            "GSFN",
+            "44 8B E8 8D 50",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_get_save_file_name = ptr.sub(0x18A).as<gm::GetSaveFileName_t>();
+            }
         }
         >(); // don't leave a trailing comma at the end
 		// clang-format on
