@@ -251,6 +251,8 @@ end)
 --     print(i .. ": " .. xd[i])
 -- end
 
+local achievement_unlocker_enabled = false
+
 local self_names = nil
 local self_values = {}
 
@@ -291,15 +293,14 @@ local element_key_to_achiev_id = function (elem_key)
 end
 
 gui.add_to_menu_bar(function()
-    if ImGui.BeginMenu("Ayo") then
-        ImGui.Text("My stuff")
-
-        ImGui.EndMenu()
+    local new_value, clicked = ImGui.Checkbox("Achievement Unlocker", achievement_unlocker_enabled)
+    if clicked then
+        achievement_unlocker_enabled = new_value
     end
 end)
 
 gui.add_always_draw_imgui(function()
-    if ImGui.Begin("Debug Unlocker") then
+    if achievement_unlocker_enabled and ImGui.Begin("Achievement Unlocker (Challenges Tab)") then
         if selected_elem ~= nil and selected_elem.key then
             ImGui.Text("selected: " .. selected_elem.key)
 
@@ -326,7 +327,7 @@ gui.add_always_draw_imgui(function()
 end)
 
 gui.add_always_draw_imgui(function()
-    if selected_elem ~= nil and selected_elem.key then
+    if achievement_unlocker_enabled and selected_elem ~= nil and selected_elem.key then
 
         local achiev_id = element_key_to_achiev_id(selected_elem.key)
         if achiev_id ~= nil then
