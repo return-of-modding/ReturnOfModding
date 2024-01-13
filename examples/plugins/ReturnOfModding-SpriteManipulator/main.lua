@@ -1,42 +1,9 @@
-
--- assume we load later than ObjectBrowser due to alphabetical order
--- (optional dependency)
-local browser = mods['ReturnOfModding-ObjectBrowser']
-
 local sprites_path = _ENV["!plugins_data_mod_folder_path"] .. '/'
 
 local sprites = {}
 local sprite_text = ""
 
-overrides = {}
-originals = {}
-
-if browser then
-	browser.root.sprites = {
-		overrides = overrides,
-		originals = originals,
-		constants = proxy.constants.sprite
-	}
-end
-
-function get_sprite_copy(gm_sprite)
-	gm_sprite = math.floor(gm_sprite)
-	if originals[gm_sprite] then return gm_sprite end
-	local sprite_copy = overrides[gm_sprite]
-	if sprite_copy then return sprite_copy end
-	sprite_copy = gm.sprite_duplicate(gm_sprite)
-	if not sprite_copy then return nil end
-	sprite_copy = math.floor(sprite_copy)
-	overrides[gm_sprite] = sprite_copy
-	originals[sprite_copy] = gm_sprite
-	return sprite_copy
-end
-
-function get_sprite_asset(gm_sprite)
-	gm_sprite = math.floor(gm_sprite)
-	if overrides[gm_sprite] then return gm_sprite end
-	return originals[gm_sprite]
-end
+local duplicates = {}
 
 local function copy_file(from,into)
 	local lf = io.open(from)
@@ -73,55 +40,64 @@ do
 	end
 end
 
-function save_by_gm_sprite(gm_sprite,path)
-    local sprite_copy = get_sprite_copy(gm_sprite)
-    return gm.sprite_save_strip(sprite_copy, path or sprites_path_save .. tostring(gm_sprite) .. '.png')
+local function sprite_duplicate(gm_sprite)
+	local duplicate = duplicates[gm_sprite]
+	if duplicate then return duplicate end
+	duplicate = gm.sprite_duplicate(gm_sprite)
+	duplicates[gm_sprite] = duplicate
+	return duplicate
 end
 
-function load_by_gm_sprite(gm_sprite,path)
-    local sprite_copy = get_sprite_copy(gm_sprite)
-    local x_offset = gm.sprite_get_xoffset(sprite_copy)
-    local y_offset = gm.sprite_get_yoffset(sprite_copy)
-    local subimage_count = gm.sprite_get_number(sprite_copy)
-    return gm.sprite_replace(sprite_copy,path or sprites_path_load .. tostring(gm_sprite) .. '.png', subimage_count, false, false, x_offset, y_offset)
+function sprite_info(sprite)
+	local gm_sprite, gm_sprite_name
+	local status, number = pcall(tonumber,sprite)
+	if status and type(number) == "number" then
+		gm_sprite = math.floor(number)
+		gm_sprite_name = gm.sprite_get_name(sprite)
+	else
+		gm_sprite_name = sprite
+		gm_sprite = math.floor(gm.constants[gm_sprite_name])
+	end
+	return gm_sprite, gm_sprite_name
 end
 
-function save_by_gm_sprite_name(gm_sprite_name,path)
-    local gm_sprite = gm.constants[gm_sprite_name]
-    local sprite_copy = get_sprite_copy(gm_sprite)
-    return gm.sprite_save_strip(sprite_copy, path or sprites_path_save .. gm_sprite_name .. '.png')
+function sprite_save(sprite,path)
+	local gm_sprite, gm_sprite_name = sprite_info(sprite)
+	if gm_sprite_name == nil then
+		gm_sprite_name = tostring(gm_sprite)
+	end
+	local duplicate = sprite_duplicate(gm_sprite)
+    return gm.sprite_save_strip(duplicate, path or sprites_path_save .. gm_sprite_name .. '.png')
 end
 
-function load_by_gm_sprite_name(gm_sprite_name,path)
-    local gm_sprite = gm.constants[gm_sprite_name]
-    local sprite_copy = get_sprite_copy(gm_sprite)
-    local x_offset = gm.sprite_get_xoffset(sprite_copy)
-    local y_offset = gm.sprite_get_yoffset(sprite_copy)
-    local subimage_count = gm.sprite_get_number(sprite_copy)
-    return gm.sprite_replace(sprite_copy,path or sprites_path_load .. gm_sprite_name .. '.png', subimage_count, false, false, x_offset, y_offset)
+function sprite_load(sprite,path)
+	local gm_sprite, gm_sprite_name = sprite_info(sprite)
+	if gm_sprite_name == nil then
+		gm_sprite_name = tostring(gm_sprite)
+	end
+    local x_offset = gm.sprite_get_xoffset(gm_sprite)
+    local y_offset = gm.sprite_get_yoffset(gm_sprite)
+	local duplicate = sprite_duplicate(gm_sprite)
+    local subimage_count = gm.sprite_get_number(duplicate)
+    return gm.sprite_replace(gm_sprite,path or sprites_path_load .. gm_sprite_name .. '.png', subimage_count, false, false, x_offset, y_offset)
 end
 
 local function add_sprite(sprite,id)
-	local id = id or (#sprites+1)
-	local gm_sprite, gm_sprite_name
-	if type(sprite) == "string" then
-		gm_sprite_name = sprite
-		gm_sprite = gm.constants[gm_sprite_name]
-	else
-		gm_sprite = sprite
-		gm_sprite_name = proxy.constants.sprite[sprite].name
-	end
+	local gm_sprite, gm_sprite_name = sprite_info(sprite)
 	if not gm_sprite then return end
+	local id = id or (#sprites+1)
+	sprite = gm_sprite_name
+	if sprite == nil then
+		sprite = tostring(gm_sprite)
+	end
 	local path = sprite .. '.png'
 	local full_path = sprites_path .. path
 	local sprite = {}
-	sprite.index = id
-	sprite.copy = get_sprite_copy(gm_sprite)
-	sprite.asset = get_sprite_asset(gm_sprite)
+	sprite.id = gm_sprite
 	sprite.name = gm_sprite_name
 	sprite.path = path
-	sprite.save = gm_sprite_name and function() return save_by_gm_sprite_name(gm_sprite_name,full_path) end or function() return save_by_gm_sprite(gm_sprite,full_path) end
-	sprite.load = gm_sprite_name and function() return load_by_gm_sprite_name(gm_sprite_name,full_path) end or function() return load_by_gm_sprite(gm_sprite,full_path) end
+	sprite.save = function() return sprite_save(gm_sprite,full_path) end
+	sprite.load = function() return sprite_load(gm_sprite,full_path) end
 	sprites[id] = sprite
 	return sprite
 end
@@ -147,13 +123,12 @@ local function imgui_on_render()
 		ImGui.PopStyleVar()
 		ImGui.PopItemWidth()
 		if enter_pressed then
-			local status, number = pcall(tonumber,sprite_text)
-			local sprite = add_sprite(status and number or sprite_text)
+			add_sprite(sprite_text)
 		end
 		for sid,sd in ipairs(sprites) do
 			ImGui.Text(sd.name)
 			ImGui.SameLine()
-			ImGui.Text(tostring(math.floor(sd.asset)))
+			ImGui.Text(tostring(sd.id))
 			ImGui.SameLine()
 			if ImGui.Button("Save##" .. sid) then
 				sd.save()
