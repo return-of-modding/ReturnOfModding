@@ -1044,6 +1044,7 @@ local function imgui_on_render()
 	end
 	frame_counter = frame_counter + 1
 	local rid = 1
+	local first = false
 	for bid,bd in pairs(browsers) do
 		local closable = closable_false
 		if bid ~= rid then 
@@ -1052,11 +1053,13 @@ local function imgui_on_render()
 			local w,h = table.unpack(bd.init_size)
 			ImGui.SetNextWindowPos(x,y,ImGuiCond.Once)
 			ImGui.SetNextWindowSize(w,h,ImGuiCond.Once)
-		else
-			last_pos[1], last_pos[2] = ImGui.GetWindowPos()
-			last_size[1], last_size[2] = ImGui.GetWindowSize()
 		end
 		if ImGui.Begin(bid == rid and "Object Browser" or "Object Browser##" .. bid, table.unpack(closable)) then
+			if first or bid == rid then
+				last_pos[1], last_pos[2] = ImGui.GetWindowPos()
+				last_size[1], last_size[2] = ImGui.GetWindowSize()
+				first = false
+			end
 			bd.index = bid
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
@@ -1117,12 +1120,17 @@ local function imgui_on_render()
 			ImGui.End()
 		end
 	end
-	for did,dd in ipairs(details) do
+	for did,dd in pairs(details) do
 		local x,y = table.unpack(dd.init_pos)
 		local w,h = table.unpack(dd.init_size)
 		ImGui.SetNextWindowPos(x,y,ImGuiCond.Once)
 		ImGui.SetNextWindowSize(w,h,ImGuiCond.Once)
 		if ImGui.Begin("Object Details##" .. did, table.unpack(closable_true)) then
+			if first then
+				last_pos[1], last_pos[2] = ImGui.GetWindowPos()
+				last_size[1], last_size[2] = ImGui.GetWindowSize()
+				first = false
+			end
 			dd.index = did
 			local item_spacing_x, item_spacing_y = ImGui.GetStyleVar(ImGuiStyleVar.ItemSpacing)
 			local frame_padding_x, frame_padding_y = ImGui.GetStyleVar(ImGuiStyleVar.FramePadding)
