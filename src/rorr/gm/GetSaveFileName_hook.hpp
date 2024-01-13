@@ -7,8 +7,6 @@ namespace gm
 	{
 		const auto file_path = std::filesystem::path(input_path);
 
-		LOG(INFO) << input_path << " | " << strlen(input_path);
-
 		// Fix ReturnOfModding paths getting fucked by the game sandbox.
 		if (file_path.is_absolute() && file_path.native().contains(L"ReturnOfModding"))
 		{
