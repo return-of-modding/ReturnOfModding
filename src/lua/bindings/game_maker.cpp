@@ -26,7 +26,7 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 		YYObjectPinMap::pin(res.ref_array);
 		return sol::make_object<RefDynamicArrayOfRValue*>(this_state_, res.ref_array);
 	case REF: return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
-	case PTR: return sol::make_object<void*>(this_state_, res.ptr);
+	case PTR: return sol::make_object<uintptr_t>(this_state_, (uintptr_t)res.ptr);
 	case OBJECT:
 		return res.yy_object_base->type == YYObjectBaseType::CINSTANCE ?
 		    sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr) :
