@@ -3,6 +3,7 @@
 #include "gm/CRoom.hpp"
 #include "gm/Code_Execute.hpp"
 #include "gm/Code_Function_GET_the_function_t.hpp"
+#include "gm/GetSaveFileName_t.hpp"
 #include "gm/RVariableRoutine.hpp"
 #include "gm/Script_Data.hpp"
 #include "gm/StructCreate.hpp"
@@ -47,6 +48,8 @@ namespace big
 		gm::Script_Data_t m_script_data;
 
 		gm::StructCreate_t m_struct_create;
+
+		gm::GetSaveFileName_t m_get_save_file_name;
 	};
 #pragma pack(pop)
 	static_assert(sizeof(rorr_pointers) % 8 == 0, "Pointers are not properly aligned");

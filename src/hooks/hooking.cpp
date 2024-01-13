@@ -9,6 +9,7 @@
 #include "rorr/gm/Code_Execute_hook.hpp"
 #include "rorr/gm/debug_console.hpp"
 #include "rorr/gm/inputs.hpp"
+#include "rorr/gm/GetSaveFileName_hook.hpp"
 
 #include <MinHook.h>
 
@@ -34,6 +35,8 @@ namespace big
 		detour_hook_helper::add<gm::hook_CObjectGM_RemoveInstance>("COGMRI", g_pointers->m_rorr.m_cobjectgm_remove_instance);
 
 		detour_hook_helper::add<gm::hook_IO_UpdateM>("IOUM", g_pointers->m_rorr.m_io_update_m);
+
+		detour_hook_helper::add<gm::hook_GetSaveFileName>("GSFN", g_pointers->m_rorr.m_get_save_file_name);
 
 		g_hooking = this;
 	}
