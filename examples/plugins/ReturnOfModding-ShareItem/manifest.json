@@ -1,0 +1,9 @@
+﻿{
+	"name": "ShareItem",
+	"version_number": "1.0.0",
+	"website_url": "https://github.com/return-of-modding/ReturnOfModding",
+	"description": "Share Item for Risk of Rain Returns",
+	"dependencies": [
+		"ReturnOfModding-ReturnOfModding-1.0.0"
+	]
+}
