@@ -133,7 +133,7 @@ namespace lua::game_maker
 		}
 		else if (is_Script_Perform(return_address))
 		{
-			// Empty.
+			// Empty. Because it's only happening for recursive calls afaik.
 		}
 		else
 		{
