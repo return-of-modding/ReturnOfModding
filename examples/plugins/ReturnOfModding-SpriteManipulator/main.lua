@@ -179,11 +179,11 @@ local function imgui_on_render()
 			ImGui.Text(tostring(sd.index))
 			ImGui.SameLine()
 			if ImGui.Button("Save##" .. sid) then
-				sd.save()
+				sprite_save(sd.index,sd.path)
 			end
 			ImGui.SameLine()
 			if ImGui.Button("Load##" .. sid) then
-				sd.load()
+				sprite_load(sd.index,sd.path)
 			end
 			ImGui.SameLine()
 			if ImGui.Button("X##" .. sid) then
