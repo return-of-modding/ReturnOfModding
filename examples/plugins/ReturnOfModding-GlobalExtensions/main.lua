@@ -681,6 +681,9 @@ local function gm_next_delayed_load(ccode)
 	getmetatable(gm_instance_variables).__inext = array_inext
 	getmetatable(gm_instance_variables).__pairs = array_ipairs
 	getmetatable(gm_instance_variables).__ipairs = array_ipairs
+	getmetatable(gm_instance_variables).__newindex = function(s,k,v)
+		return gm.array_set(s,k-1,v)
+	end
 	
 	local script_prefix = "gml_Script_"
 	local script_prefix_index = #script_prefix+1
