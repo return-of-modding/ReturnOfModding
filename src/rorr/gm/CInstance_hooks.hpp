@@ -6,6 +6,7 @@
 
 namespace gm
 {
+	inline std::recursive_mutex CInstance_containers_mutex;
 	inline std::vector<CInstance*> CInstances_all;
 	inline std::vector<CInstance*> CInstances_active;
 	inline std::unordered_map<int, CInstance*> CInstance_id_to_CInstance;
@@ -13,6 +14,8 @@ namespace gm
 	using CInstance_ctor = CInstance* (*)(CInstance* this_, float a2, float a3, int a4, int a5, bool a6);
 	inline CInstance* hook_CInstance_ctor(CInstance* this_, float a2, float a3, int a4, int a5, bool a6)
 	{
+		std::lock_guard lock(CInstance_containers_mutex);
+
 		auto* res = big::g_hooking->get_original<hook_CInstance_ctor>()(this_, a2, a3, a4, a5, a6);
 
 		CInstances_all.push_back(res);
@@ -25,6 +28,8 @@ namespace gm
 	using CInstance_dctor = void* (*)(CInstance* this_);
 	inline void* hook_CInstance_dctor(CInstance* this_)
 	{
+		std::lock_guard lock(CInstance_containers_mutex);
+
 		std::erase_if(CInstances_all, [=](CInstance* other) {
 			return this_ == other;
 		});

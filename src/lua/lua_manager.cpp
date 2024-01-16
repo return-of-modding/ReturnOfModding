@@ -273,9 +273,12 @@ namespace big
 						if (!required_module_cache.contains(full_path))
 						{
 							auto fresh_result = m_loadfile(full_path);
-							if (!fresh_result.valid())
+							if (!fresh_result.valid() || fresh_result.get_type() == sol::type::nil /*LuaJIT*/)
 							{
-								LOG(FATAL) << "failed require: " << fresh_result.get<sol::error>().what();
+								const auto error_msg =
+								    !fresh_result.valid() ? fresh_result.get<sol::error>().what() : fresh_result.get<const char*>(1) /*LuaJIT*/;
+
+								LOG(FATAL) << "Failed require: " << error_msg;
 								Logger::FlushQueue();
 								break;
 							}
@@ -303,7 +306,13 @@ namespace big
 
 						env.set_on(result);
 
-						return result(args);
+						//LOG(INFO) << "Calling require on " << full_path;
+
+						const auto res = result(args);
+
+						//LOG(INFO) << "type: " << (int)res.get_type();
+
+						return res;
 					}
 				}
 			}
