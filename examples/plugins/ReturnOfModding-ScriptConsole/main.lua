@@ -254,13 +254,18 @@ console.command_help = {
 	{"ibind","[0..2]","binds a key combination to run commands on the mod gui"}
 }
 
+local _MouseButton
 local _KeyMod
 local _Key
 
 local function check_bind(md,k)
 	local bind = ''
 	for key in k:upper():gmatch("(%w+)") do
-		if _KeyMod == nil then
+		if _Key == nil then
+			_MouseButton = {}
+			for k in pairs(ImGuiMouseButton) do
+				_MouseButton[k:upper() .. "MOUSE"] = k .. "Mouse"
+			end
 			_KeyMod = {}
 			for k in pairs(ImGuiKeyMod) do
 				_KeyMod[k:upper()] = k
@@ -270,7 +275,7 @@ local function check_bind(md,k)
 				_Key[k:upper()] = k
 			end
 		end
-		key = _KeyMod[key] or _Key[key]
+		key = _MouseButton[key] or _KeyMod[key] or _Key[key]
 		if not key then 
 			return console.log.error(md, true, 'invalid key combo: "' .. k .. '"')
 		end
@@ -552,7 +557,9 @@ end
 local function run_bind(m,k,v)
 	local pass = true
 	for key in k:gmatch("(%w+)") do
-		if ImGuiKeyMod[key] then
+		if k:match("Mouse$") and ImGuiMouseButton[key:sub(1,#key-5)] then
+			pass = pass and ImGui.IsMouseClicked(ImGuiMouseButton[key:sub(1,#key-5)])
+		elseif ImGuiKeyMod[key] then
 			pass = pass and ImGui.IsKeyDown(ImGuiKeyMod[key])
 		elseif ImGuiKey[key] then
 			pass = pass and ImGui.IsKeyPressed(ImGuiKey[key])
