@@ -254,18 +254,22 @@ console.command_help = {
 	{"ibind","[0..2]","binds a key combination to run commands on the mod gui"}
 }
 
-local _KeyMod = {}
-for k in pairs(ImGuiKeyMod) do
-	_KeyMod[k:upper()] = k
-end
-local _Key = {}
-for k in pairs(ImGuiKey) do
-	_Key[k:upper()] = k
-end
+local _KeyMod
+local _Key
 
 local function check_bind(md,k)
 	local bind = ''
 	for key in k:upper():gmatch("(%w+)") do
+		if _KeyMod == nil then
+			_KeyMod = {}
+			for k in pairs(ImGuiKeyMod) do
+				_KeyMod[k:upper()] = k
+			end
+			_Key = {}
+			for k in pairs(ImGuiKey) do
+				_Key[k:upper()] = k
+			end
+		end
 		key = _KeyMod[key] or _Key[key]
 		if not key then 
 			return console.log.error(md, true, 'invalid key combo: "' .. k .. '"')
