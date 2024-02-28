@@ -494,9 +494,13 @@ namespace lua::game_maker
 			// Lua API: Field
 			// Class: RValue
 			// Field: value: The actual value behind the RValue, or RValue if the type is not handled yet.
-			type["value"] = sol::property([](RValue& inst, sol::this_state this_state_) {
-				return RValue_to_lua(inst, this_state_);
-			});
+			type["value"] = sol::property(
+			    [](RValue& inst, sol::this_state this_state_) {
+				    return RValue_to_lua(inst, this_state_);
+			    },
+			    [](RValue& inst, sol::object arg, sol::this_state this_state_) {
+				    inst = parse_sol_object(arg);
+			    });
 
 			// Lua API: Field
 			// Class: RValue
