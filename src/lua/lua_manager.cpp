@@ -392,7 +392,7 @@ namespace big
 		lua::log::bind(m_state);
 		lua::memory::bind(m_state);
 		lua::gui::bind(m_state);
-		lua::imgui::bind(m_state, m_state.globals());
+		lua::paths::bind(m_state);
 		lua::game_maker::bind(m_state);
 	}
 
