@@ -5,6 +5,7 @@
 #include "bindings/imgui.hpp"
 #include "bindings/log.hpp"
 #include "bindings/memory.hpp"
+#include "bindings/path.hpp"
 #include "bindings/paths.hpp"
 #include "bindings/toml/toml_lua.hpp"
 #include "file_manager/file_manager.hpp"
@@ -388,12 +389,15 @@ namespace big
 				mdl->m_on_all_mods_loaded_callbacks.push_back(cb);
 		};
 
+		// Let's keep that list sorted the same as the solution file explorer
 		lua::toml_lua::bind(m_state);
+		lua::game_maker::bind(m_state);
+		lua::gui::bind(m_state);
+		lua::imgui::bind(m_state, m_state.globals());
 		lua::log::bind(m_state);
 		lua::memory::bind(m_state);
 		lua::path::bind(m_state);
 		lua::paths::bind(m_state);
-		lua::game_maker::bind(m_state);
 	}
 
 	bool lua_manager::pre_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags)
