@@ -391,7 +391,7 @@ namespace big
 		lua::toml_lua::bind(m_state);
 		lua::log::bind(m_state);
 		lua::memory::bind(m_state);
-		lua::gui::bind(m_state);
+		lua::path::bind(m_state);
 		lua::paths::bind(m_state);
 		lua::game_maker::bind(m_state);
 	}
