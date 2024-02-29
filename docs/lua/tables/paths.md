@@ -6,6 +6,8 @@ Table containing helpers for retrieving ReturnOfModding related IO file/folder p
 
 ### `config()`
 
+Used for data that must persist between sessions and that can be manipulated by the user.
+
 - **Returns:**
   - `string`: Returns the ReturnOfModding/config folder path
 
@@ -15,6 +17,8 @@ string = paths.config()
 ```
 
 ### `plugins_data()`
+
+Used for data that must persist between sessions but not be manipulated by the user.
 
 - **Returns:**
   - `string`: Returns the ReturnOfModding/plugins_data folder path
