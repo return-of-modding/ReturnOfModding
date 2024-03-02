@@ -6,10 +6,10 @@
 #include "memory/byte_patch_manager.hpp"
 #include "paths/root_folder.hpp"
 #include "pointers.hpp"
+#include "rorr/gm/pin_map.hpp"
 #include "threads/thread_pool.hpp"
 #include "threads/util.hpp"
 #include "version.hpp"
-#include "rorr/gm/pin_map.hpp"
 //#include "debug/debug.hpp"
 
 BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
@@ -27,10 +27,13 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
 				    std::this_thread::sleep_for(10ms);
 
-				std::this_thread::sleep_for(2000ms);
+			    std::this_thread::sleep_for(2000ms);
 
 			    //threads::suspend_all_but_one();
 			    //debug::wait_until_debugger();
+
+			    // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/setlocale-wsetlocale?view=msvc-170#utf-8-support
+			    std::locale::global(std::locale(".utf8"));
 
 			    auto handler = exception_handler();
 
@@ -71,11 +74,11 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 				    g_hooking->enable();
 				    LOG(INFO) << "Hooking enabled.";
 
-					std::this_thread::sleep_for(3000ms);
-					while (!g_gml_safe)
+				    std::this_thread::sleep_for(3000ms);
+				    while (!g_gml_safe)
 					    std::this_thread::sleep_for(3000ms);
 
-					YYObjectPinMap::init_pin_map();
+				    YYObjectPinMap::init_pin_map();
 			    }
 
 			    g_running = true;
@@ -105,7 +108,7 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    thread_pool_instance->destroy();
 			    LOG(INFO) << "Destroyed thread pool.";
 
-				YYObjectPinMap::cleanup_pin_map();
+			    YYObjectPinMap::cleanup_pin_map();
 
 			    hooking_instance.reset();
 			    LOG(INFO) << "Hooking uninitialized.";
