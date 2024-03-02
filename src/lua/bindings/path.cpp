@@ -65,10 +65,66 @@ namespace lua::path
 		return "";
 	}
 
+	// Lua API: Function
+	// Table: path
+	// Name: get_directories
+	// Param: root_path: string: The path to the directory to search.
+	// Returns: string table: Returns the names of subdirectories under the given root_path
+	static std::vector<std::string> get_directories(const std::string& root_path)
+	{
+		std::vector<std::string> res;
+
+		try
+		{
+			for (const auto& entry : std::filesystem::recursive_directory_iterator(root_path, std::filesystem::directory_options::skip_permission_denied))
+			{
+				if (!entry.is_directory())
+					continue;
+
+				res.push_back((char*)entry.path().u8string().c_str());
+			}
+		}
+		catch (const std::exception& e)
+		{
+			LOG(WARNING) << e.what();
+		}
+
+		return res;
+	}
+
+	// Lua API: Function
+	// Table: path
+	// Name: get_files
+	// Param: root_path: string: The path to the directory to search.
+	// Returns: string table: Returns the names of all the files under the given root_path
+	static std::vector<std::string> get_files(const std::string& root_path)
+	{
+		std::vector<std::string> res;
+
+		try
+		{
+			for (const auto& entry : std::filesystem::recursive_directory_iterator(root_path, std::filesystem::directory_options::skip_permission_denied))
+			{
+				if (entry.is_directory())
+					continue;
+
+				res.push_back((char*)entry.path().u8string().c_str());
+			}
+		}
+		catch (const std::exception& e)
+		{
+			LOG(WARNING) << e.what();
+		}
+
+		return res;
+	}
+
 	void bind(sol::state& state)
 	{
-		auto ns          = state["path"].get_or_create<sol::table>();
-		ns["combine"]    = combine;
-		ns["get_parent"] = get_parent;
+		auto ns               = state["path"].get_or_create<sol::table>();
+		ns["combine"]         = combine;
+		ns["get_parent"]      = get_parent;
+		ns["get_directories"] = get_directories;
+		ns["get_files"]       = get_files;
 	}
 }
