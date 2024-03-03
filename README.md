@@ -1,6 +1,6 @@
 ﻿# Return Of Modding
 
-[Risk of Rain Returns Modding Discord](https://discord.gg/MpFEDAg)
+[Risk of Rain Returns Modding Discord](https://discord.gg/VjS57cszMq)
 
 ---
 
