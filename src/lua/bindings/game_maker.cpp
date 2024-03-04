@@ -193,13 +193,16 @@ namespace lua::game_maker
 		return result;
 	}
 
+	// Disable optimization so that r14 is left untouched
+	// This can still break if the body of this function ever change
+	// This is some horrible hack, but I can't be bothered to fix all of this mess right now
+#pragma optimize("", off)
 	static uintptr_t original_builtin_func_ptr;
 	static RValue* central_builtin_hook(RValue* result, CInstance* self, CInstance* other, int arg_count, RValue* args)
 	{
 #pragma region Figure out which original function to call
 		CONTEXT context;
 		RtlCaptureContext(&context);
-		const auto r10 = context.R10;
 		const auto r14 = context.R14;
 
 		const auto return_address = (uintptr_t)_ReturnAddress();
@@ -211,47 +214,6 @@ namespace lua::game_maker
 		else if (gm::is_inside_call)
 		{
 			original_builtin_func_ptr = (uintptr_t)gm::current_function;
-		}
-		else if (is_Call_Method(return_address))
-		{
-			original_builtin_func_ptr = r10;
-		}
-		else if (is_Script_Perform(return_address))
-		{
-			// Empty. Because it's only happening for recursive calls afaik.
-		}
-		else
-		{
-			constexpr size_t e8_instruction_length = 5;
-			original_builtin_func_ptr              = return_address - e8_instruction_length;
-
-			hde64s instruction;
-			hde64_disasm((void*)original_builtin_func_ptr, &instruction);
-			if (instruction.flags & F_ERROR)
-			{
-				LOG(FATAL) << "Fucked.";
-			}
-
-			if (instruction.flags & F_RELATIVE)
-			{
-				intptr_t imm = 0;
-				if (instruction.flags & F_IMM8)
-					imm = (int8_t)instruction.imm.imm8;
-				else if (instruction.flags & F_IMM16)
-					imm = (int16_t)instruction.imm.imm16;
-				else if (instruction.flags & F_IMM32)
-					imm = (int32_t)instruction.imm.imm32;
-				else
-					imm = (int64_t)instruction.imm.imm64;
-
-				original_builtin_func_ptr += imm + instruction.len;
-			}
-			// Access to static memory address
-			//else if (instruction.flags & F_MODRM && instruction.modrm_mod == 0 && instruction.modrm_rm == 0b101)
-			//{
-			//	original_func_ptr += (int32_t)instruction.disp.disp32;
-			//	original_func_ptr += instruction.len;
-			//}
 		}
 #pragma endregion Figure out which original function to call
 
@@ -266,6 +228,7 @@ namespace lua::game_maker
 
 		return result;
 	}
+#pragma optimize("", on)
 
 	struct make_central_script_result
 	{
