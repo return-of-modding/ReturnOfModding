@@ -33,7 +33,9 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    //debug::wait_until_debugger();
 
 			    // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/setlocale-wsetlocale?view=msvc-170#utf-8-support
-			    std::locale::global(std::locale(".utf8"));
+			    setlocale(LC_ALL, ".utf8");
+			    // This also change things like stringstream outputs and add comma to numbers and things like that, we don't want that, so just set locale on the C apis instead.
+			    //std::locale::global(std::locale(".utf8"));
 
 			    auto handler = exception_handler();
 
