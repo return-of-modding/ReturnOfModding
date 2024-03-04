@@ -54,15 +54,15 @@ namespace gm
 		TRoutine function_ptr     = nullptr;
 		int function_arg_count    = 0;
 	};
-	static code_function_info dummy{};
-	static std::unordered_map<std::string, code_function_info, big::string::transparent_string_hash, std::equal_to<>> code_function_cache;
+	inline code_function_info dummy{};
+	inline std::unordered_map<std::string, code_function_info, big::string::transparent_string_hash, std::equal_to<>> code_function_cache;
 	inline code_function_info& get_code_function(std::string_view name)
 	{
 		if (const auto it = code_function_cache.find(name.data()); it != code_function_cache.end())
 		{
 			return it->second;
 		}
-		
+
 		// Builtin GML Functions
 		const auto size = *big::g_pointers->m_rorr.m_code_function_GET_the_function_function_count;
 		for (int i = 0; i < size; i++)
@@ -85,6 +85,7 @@ namespace gm
 		return dummy;
 	}
 
+	inline void* current_function = nullptr;
 	inline RValue script_execute(size_t arg_count, RValue* args, const auto& it, CInstance* self, CInstance* other)
 	{
 		RValue* arranged_args;
@@ -105,6 +106,8 @@ namespace gm
 		RValue res{};
 		try
 		{
+			current_function = script_execute.function_ptr;
+
 			if (arg_count > 0)
 			{
 				script_execute.function_ptr(&res, self, other, arg_count + 1, arranged_args);
@@ -128,8 +131,11 @@ namespace gm
 		return res;
 	}
 
+	inline bool is_inside_call = false;
 	inline RValue call(std::string_view name, CInstance* self, CInstance* other, RValue* args = nullptr, size_t arg_count = 0)
 	{
+		is_inside_call = true;
+
 		const auto& func_info = get_code_function(name);
 
 		if (func_info.function_ptr)
@@ -137,6 +143,7 @@ namespace gm
 			RValue res{};
 			try
 			{
+				current_function = func_info.function_ptr;
 				func_info.function_ptr(&res, self, other, arg_count, args);
 			}
 			catch (const YYGMLException& e)
@@ -150,6 +157,8 @@ namespace gm
 					throw;
 				}
 			}
+
+			is_inside_call = false;
 			return res;
 		}
 		// Script Execute
@@ -157,7 +166,9 @@ namespace gm
 		{
 			if (const auto it = gm::script_asset_cache.find(name.data()); it != gm::script_asset_cache.end())
 			{
-				return script_execute(arg_count, args, it, self, other);
+				const auto res = script_execute(arg_count, args, it, self, other);
+				is_inside_call = false;
+				return res;
 			}
 			else
 			{
@@ -169,12 +180,16 @@ namespace gm
 				{
 					gm::script_asset_cache[name.data()] = script_function_index.asInt32();
 
-					return script_execute(arg_count, args, gm::script_asset_cache.find(name.data()), self, other);
+					const auto res = script_execute(arg_count, args, gm::script_asset_cache.find(name.data()), self, other);
+					is_inside_call = false;
+					return res;
 				}
 			}
 		}
 
 		LOG(WARNING) << name << " function not found!";
+
+		is_inside_call = false;
 		return {};
 	}
 

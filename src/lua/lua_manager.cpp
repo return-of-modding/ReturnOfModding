@@ -435,6 +435,41 @@ namespace big
 		}
 	}
 
+	bool lua_manager::pre_builtin_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue* args)
+	{
+		std::lock_guard guard(m_module_lock);
+
+		bool call_orig_if_true = true;
+
+		for (const auto& module : m_modules)
+		{
+			for (const auto& cb : module->m_pre_builtin_execute_callbacks[original_func_ptr])
+			{
+				const auto new_call_orig_if_true = cb(self, other, result, std::span(args, arg_count));
+				if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
+				    && new_call_orig_if_true.get<bool>() == false)
+				{
+					call_orig_if_true = false;
+				}
+			}
+		}
+
+		return call_orig_if_true;
+	}
+
+	void big::lua_manager::post_builtin_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue* args)
+	{
+		std::lock_guard guard(m_module_lock);
+
+		for (const auto& module : m_modules)
+		{
+			for (const auto& cb : module->m_post_builtin_execute_callbacks[original_func_ptr])
+			{
+				cb(self, other, result, std::span(args, arg_count));
+			}
+		}
+	}
+
 	bool lua_manager::pre_script_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args)
 	{
 		std::lock_guard guard(m_module_lock);

@@ -42,30 +42,30 @@ Registers a callback that will be called right after any object function is call
 gm.post_code_execute(callback)
 ```
 
-### `pre_script_hook(script_function_index, callback)`
+### `pre_script_hook(function_index, callback)`
 
 Registers a callback that will be called right before any game script function is called.
 
 - **Parameters:**
-  - `script_function_index` (number): index of the game script function to hook, for example `gm.constants.callback_execute`
+  - `function_index` (number): index of the game script / builtin game maker function to hook, for example `gm.constants.callback_execute`
   - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance), result (RValue), arg_count (number), args (RValue array) ) -> Return true or false depending on if you want the orig method to be called.
 
 **Example Usage:**
 ```lua
-gm.pre_script_hook(script_function_index, callback)
+gm.pre_script_hook(function_index, callback)
 ```
 
-### `post_script_hook(script_function_index, callback)`
+### `post_script_hook(function_index, callback)`
 
 Registers a callback that will be called right after any game script function is called.
 
 - **Parameters:**
-  - `script_function_index` (number): index of the game script function to hook, for example `gm.constants.callback_execute`
+  - `function_index` (number): index of the game script / builtin game maker function to hook, for example `gm.constants.callback_execute`
   - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance), result (RValue), arg_count (number), args (RValue array) )
 
 **Example Usage:**
 ```lua
-gm.post_script_hook(script_function_index, callback)
+gm.post_script_hook(function_index, callback)
 ```
 
 ### `variable_global_get(name)`
