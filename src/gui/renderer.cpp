@@ -28,26 +28,36 @@ namespace big
 	void renderer::wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	{
 		for (const auto& cb : m_wndproc_callbacks)
+		{
 			cb(hwnd, msg, wparam, lparam);
+		}
 
 		ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
 	}
 
+	static HWND g_hWnd{};
+
 	bool renderer::create_device_d3d11()
 	{
-		// Create a dummy device, get swapchain vmt, hook present.
-		DXGI_SWAP_CHAIN_DESC swap_chain_desc{0};
-		swap_chain_desc.BufferDesc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
-		swap_chain_desc.BufferCount                 = 1;
-		swap_chain_desc.BufferUsage                 = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swap_chain_desc.OutputWindow                = GetDesktopWindow();
-		swap_chain_desc.SampleDesc.Count            = 1;
-		swap_chain_desc.Windowed                    = TRUE;
-		swap_chain_desc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-		swap_chain_desc.BufferDesc.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-		swap_chain_desc.SwapEffect                  = DXGI_SWAP_EFFECT_DISCARD;
-		D3D_FEATURE_LEVEL feature_level             = D3D_FEATURE_LEVEL_11_0;
-		HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_NULL, nullptr, 0, &feature_level, 1, D3D11_SDK_VERSION, &swap_chain_desc, &m_dxgi_swapchain, &m_d3d_device, nullptr, nullptr);
+		DXGI_SWAP_CHAIN_DESC sd;
+		ZeroMemory(&sd, sizeof(sd));
+		sd.BufferCount                        = 1;
+		sd.BufferDesc.Width                   = 640;
+		sd.BufferDesc.Height                  = 480;
+		sd.BufferDesc.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM;
+		sd.BufferDesc.RefreshRate.Numerator   = 60;
+		sd.BufferDesc.RefreshRate.Denominator = 1;
+		sd.BufferUsage                        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		sd.OutputWindow                       = g_hWnd;
+		sd.SampleDesc.Count                   = 1;
+		sd.SampleDesc.Quality                 = 0;
+		sd.Windowed                           = TRUE;
+
+		D3D_FEATURE_LEVEL FeatureLevelsRequested = D3D_FEATURE_LEVEL_11_0;
+		UINT numLevelsRequested                  = 1;
+		D3D_FEATURE_LEVEL FeatureLevelsSupported;
+
+		HRESULT res = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, &FeatureLevelsRequested, numLevelsRequested, D3D11_SDK_VERSION, &sd, &m_dxgi_swapchain, &m_d3d_device, &FeatureLevelsSupported, nullptr);
 		if (FAILED(res))
 		{
 			LOG(FATAL) << "D3D11CreateDeviceAndSwapChain() failed. [res: " << HEX_TO_UPPER(res) << "]";
@@ -88,7 +98,9 @@ namespace big
 	static HRESULT WINAPI hook_Present(IDXGISwapChain* swapchain, UINT sync_interval, UINT flags)
 	{
 		if (g_running && ((flags & (UINT)DXGI_PRESENT_TEST) != (UINT)DXGI_PRESENT_TEST))
+		{
 			g_renderer->render_imgui_d3d11(swapchain);
+		}
 
 		return g_hooking->get_original<hook_Present>()(swapchain, sync_interval, flags);
 	}
@@ -96,7 +108,9 @@ namespace big
 	static HRESULT WINAPI hook_Present1(IDXGISwapChain* swapchain, UINT sync_interval, UINT flags, const void* present_parameters)
 	{
 		if (g_running && ((flags & (UINT)DXGI_PRESENT_TEST) != (UINT)DXGI_PRESENT_TEST))
+		{
 			g_renderer->render_imgui_d3d11(swapchain);
+		}
 
 		return g_hooking->get_original<hook_Present1>()(swapchain, sync_interval, flags, present_parameters);
 	}
@@ -146,7 +160,9 @@ namespace big
 	void renderer::init_imgui_context(HWND window_handle)
 	{
 		if (ImGui::GetCurrentContext())
+		{
 			return;
+		}
 
 		ImGui::CreateContext();
 		ImGui_ImplWin32_Init(window_handle);
@@ -154,6 +170,7 @@ namespace big
 
 	void renderer::hook(HWND window_handle)
 	{
+		g_hWnd = window_handle;
 		if (!create_device_d3d11())
 		{
 			LOG(FATAL) << "create_device_d3d11 failed.";
@@ -208,10 +225,14 @@ namespace big
 		if (ImGui::GetCurrentContext())
 		{
 			if (ImGui::GetIO().BackendRendererUserData)
+			{
 				ImGui_ImplDX11_Shutdown();
+			}
 
 			if (ImGui::GetIO().BackendPlatformUserData)
+			{
 				ImGui_ImplWin32_Shutdown();
+			}
 
 			ImGui::DestroyContext();
 		}
@@ -274,7 +295,9 @@ namespace big
 				ImGui::NewFrame();
 
 				for (const auto& cb : m_dx_callbacks | std::views::values)
+				{
 					cb();
+				}
 
 				ImGui::Render();
 
@@ -290,7 +313,9 @@ namespace big
 
 		file font_file_path = windows_fonts.get_file("./msyh.ttc");
 		if (!font_file_path.exists())
+		{
 			font_file_path = windows_fonts.get_file("./msyh.ttf");
+		}
 		auto font_file            = std::ifstream(font_file_path.get_path(), std::ios::binary | std::ios::ate);
 		const auto font_data_size = static_cast<int>(font_file.tellg());
 		const auto font_data      = std::make_unique<uint8_t[]>(font_data_size);
@@ -307,10 +332,10 @@ namespace big
 			strcpy(fnt_cfg.Name, "Fnt20px");
 
 			io.Fonts->AddFontFromMemoryTTF(const_cast<uint8_t*>(font_storopia),
-			    sizeof(font_storopia),
-			    20.f,
-			    &fnt_cfg,
-			    io.Fonts->GetGlyphRangesDefault());
+			                               sizeof(font_storopia),
+			                               20.f,
+			                               &fnt_cfg,
+			                               io.Fonts->GetGlyphRangesDefault());
 			fnt_cfg.MergeMode = true;
 			io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 20.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon());
 			io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 20.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
@@ -367,8 +392,8 @@ namespace big
 
 		init_imgui_context(window_handle);
 
-		auto file_path = g_file_manager.get_project_file("./imgui.ini").get_path();
-		static std::string path = file_path.make_preferred().string();
+		auto file_path                             = g_file_manager.get_project_file("./imgui.ini").get_path();
+		static std::string path                    = file_path.make_preferred().string();
 		ImGui::GetCurrentContext()->IO.IniFilename = path.c_str();
 
 		init_fonts();
@@ -436,7 +461,9 @@ namespace big
 		g_gui->restore_default_style();
 
 		if (rel_size != 1.0f)
+		{
 			ImGui::GetStyle().ScaleAllSizes(rel_size);
+		}
 
 		ImGui::GetStyle().MouseCursorScale = 1.0f;
 		ImGui::GetIO().FontGlobalScale     = rel_size;
@@ -452,4 +479,4 @@ namespace big
 	{
 		ImGui_ImplDX11_CreateDeviceObjects();
 	}
-}
+} // namespace big
