@@ -33,25 +33,24 @@ namespace big
 		ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
 	}
 
-	bool renderer::create_device_d3d11(HWND window_handle)
+	bool renderer::create_device_d3d11()
 	{
-		// Create the D3DDevice
-		DXGI_SWAP_CHAIN_DESC swapchain_desc = {};
-		swapchain_desc.Windowed             = TRUE;
-		swapchain_desc.BufferCount          = 2;
-		swapchain_desc.BufferDesc.Format    = DXGI_FORMAT_R8G8B8A8_UNORM;
-		swapchain_desc.BufferUsage          = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapchain_desc.OutputWindow         = window_handle;
-		swapchain_desc.SampleDesc.Count     = 1;
-
-		const D3D_FEATURE_LEVEL feature_levels[] = {
-		    D3D_FEATURE_LEVEL_11_0,
-		    D3D_FEATURE_LEVEL_10_0,
-		};
-		HRESULT hr = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_NULL, nullptr, 0, feature_levels, 2, D3D11_SDK_VERSION, &swapchain_desc, &m_dxgi_swapchain, &m_d3d_device, nullptr, nullptr);
-		if (hr != S_OK)
+		// Create a dummy device, get swapchain vmt, hook present.
+		DXGI_SWAP_CHAIN_DESC swap_chain_desc{0};
+		swap_chain_desc.BufferDesc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+		swap_chain_desc.BufferCount                 = 1;
+		swap_chain_desc.BufferUsage                 = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swap_chain_desc.OutputWindow                = GetDesktopWindow();
+		swap_chain_desc.SampleDesc.Count            = 1;
+		swap_chain_desc.Windowed                    = TRUE;
+		swap_chain_desc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+		swap_chain_desc.BufferDesc.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+		swap_chain_desc.SwapEffect                  = DXGI_SWAP_EFFECT_DISCARD;
+		D3D_FEATURE_LEVEL feature_level             = D3D_FEATURE_LEVEL_11_0;
+		HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_NULL, nullptr, 0, &feature_level, 1, D3D11_SDK_VERSION, &swap_chain_desc, &m_dxgi_swapchain, &m_d3d_device, nullptr, nullptr);
+		if (FAILED(res))
 		{
-			LOG(FATAL) << "D3D11CreateDeviceAndSwapChain() failed. [rv: " << hr << "]";
+			LOG(FATAL) << "D3D11CreateDeviceAndSwapChain() failed. [res: " << HEX_TO_UPPER(res) << "]";
 			return false;
 		}
 

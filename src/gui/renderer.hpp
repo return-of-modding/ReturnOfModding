@@ -71,7 +71,7 @@ namespace big
 		void cleanup();
 		void cleanup_d3d11_device();
 		void hook(HWND window_handle);
-		bool create_device_d3d11(HWND window_handle);
+		bool create_device_d3d11();
 		void create_render_target(IDXGISwapChain* swapchain);
 		void init_imgui_context(HWND window_handle);
 	};
