@@ -154,7 +154,7 @@ namespace big
 
 	void renderer::hook(HWND window_handle)
 	{
-		if (!create_device_d3d11(GetConsoleWindow()))
+		if (!create_device_d3d11())
 		{
 			LOG(FATAL) << "create_device_d3d11 failed.";
 			return;
