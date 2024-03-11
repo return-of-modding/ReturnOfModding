@@ -75,6 +75,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    LOG(INFO) << "Renderer initialized.";
 			    auto gui_instance = std::make_unique<gui>();
 
+			    hotkey::init_hotkeys();
+
 			    if (!g_abort)
 			    {
 				    g_hooking->enable();
@@ -93,8 +95,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 			    auto lua_manager_instance =
 			        std::make_unique<lua_manager>(g_file_manager.get_project_folder("config"),
-			        g_file_manager.get_project_folder("plugins_data"),
-			        g_file_manager.get_project_folder("plugins"));
+			                                      g_file_manager.get_project_folder("plugins_data"),
+			                                      g_file_manager.get_project_folder("plugins"));
 			    LOG(INFO) << "Lua manager initialized.";
 
 			    if (g_abort)
