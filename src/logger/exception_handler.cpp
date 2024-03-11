@@ -2,6 +2,8 @@
 
 #include "stack_trace.hpp"
 
+#include <DbgHelp.h>
+
 namespace big
 {
 	inline auto hash_stack_trace(std::vector<uint64_t> stack_trace)
@@ -24,6 +26,72 @@ namespace big
 		SetUnhandledExceptionFilter(reinterpret_cast<decltype(&vectored_exception_handler)>(m_exception_handler));
 	}
 
+	typedef BOOL(WINAPI* MINIDUMPWRITEDUMP)(HANDLE hProcess, DWORD dwPid, HANDLE hFile, MINIDUMP_TYPE DumpType, const PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam, const PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam, const PMINIDUMP_CALLBACK_INFORMATION CallbackParam);
+
+	static bool write_mini_dump(EXCEPTION_POINTERS* exception_info)
+	{
+		bool returncode = false;
+
+		const std::filesystem::path dumpFileName = g_file_manager.get_project_file("./ReturnOfModding_crash.dmp").get_path();
+		if (std::filesystem::exists(dumpFileName))
+		{
+			std::filesystem::remove(dumpFileName);
+		}
+
+		HANDLE hDumpFile = CreateFileW(dumpFileName.c_str(), GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+
+		HMODULE hDbgHelpDll      = nullptr;
+		BOOL bMiniDumpSuccessful = FALSE;
+		MINIDUMPWRITEDUMP pDump  = nullptr;
+		const MINIDUMP_TYPE minidump_type = static_cast<MINIDUMP_TYPE>(MiniDumpNormal | MiniDumpWithHandleData | MiniDumpWithProcessThreadData | MiniDumpWithThreadInfo | MiniDumpWithIndirectlyReferencedMemory);
+
+		if (hDumpFile == INVALID_HANDLE_VALUE)
+		{
+			goto cleanup;
+		}
+
+		// Load the DBGHELP DLL
+		hDbgHelpDll = ::LoadLibraryW(L"DBGHELP.DLL");
+		if (!hDbgHelpDll)
+		{
+			goto cleanup;
+		}
+
+		pDump = (MINIDUMPWRITEDUMP)::GetProcAddress(hDbgHelpDll, "MiniDumpWriteDump");
+		if (!pDump)
+		{
+			goto cleanup;
+		}
+
+		// Initialize minidump structure
+		MINIDUMP_EXCEPTION_INFORMATION mdei;
+		mdei.ThreadId          = GetCurrentThreadId();
+		mdei.ExceptionPointers = exception_info;
+		mdei.ClientPointers    = FALSE;
+
+		bMiniDumpSuccessful = pDump(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile, minidump_type, &mdei, 0, NULL);
+		if (!bMiniDumpSuccessful)
+		{
+			goto cleanup;
+		}
+
+		returncode = true;
+
+	cleanup:
+
+		if (hDumpFile != INVALID_HANDLE_VALUE)
+		{
+			CloseHandle(hDumpFile);
+		}
+
+		if (hDbgHelpDll)
+		{
+			FreeLibrary(hDbgHelpDll);
+		}
+
+		return returncode;
+	}
+
 	LONG vectored_exception_handler(EXCEPTION_POINTERS* exception_info)
 	{
 		const auto exception_code = exception_info->ExceptionRecord->ExceptionCode;
@@ -31,6 +99,13 @@ namespace big
 		{
 			return EXCEPTION_CONTINUE_SEARCH;
 		}
+
+		if (IsDebuggerPresent())
+		{
+			return EXCEPTION_CONTINUE_SEARCH;
+		}
+
+		write_mini_dump(exception_info);
 
 		static std::set<std::size_t> logged_exceptions;
 
