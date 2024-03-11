@@ -11,6 +11,10 @@ Return Of Modding is a modding plugin / framework for Risk of Rain Returns.
 
 - Place the main ReturnOfModding file, called `version.dll`, next to the game executable called `Risk of Rain Returns.exe` inside the game folder.
 
+## User Interface
+
+- Return of Modding ships with a ImGui user interface. The default key for opening the GUI is INSERT
+
 ## Creating mods with Return Of Modding
 
 - Define a `main.lua` file in which to code your mod.
@@ -43,7 +47,7 @@ Interesting folders under the root folder:
 
 - `plugins`: Location of .lua, README, manifest.json files.
 - `plugins_data`: Used for data that must persist between sessions but not be manipulated by the user.
-- `config`: Used for data that must persist between sessions and that can be manipulated by the user.
+- `config`: Used for data that must persist between sessions and that can be manipulated by the user. A TOML library is exposed to Lua and is the preferred method for configuring mods.
 
 ## Credits
 
@@ -51,3 +55,4 @@ This project wouldn't have been possible without
 
 - [Archie-osu](https://github.com/Archie-osu) [with their YYToolkit project](https://github.com/AurieFramework/YYToolkit)
 - [ModShovel](https://github.com/nkrapivin/modshovel)
+- People from the Modding Discord with their feedback.
