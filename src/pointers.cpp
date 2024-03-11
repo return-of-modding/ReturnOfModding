@@ -199,7 +199,9 @@ namespace big
 			}
 			else
 			{
-				LOG(FATAL) << "Just tried to load from cache a pointer supposedly within the rorr module range but isn't! Offset from start of pointers instance: " << (reinterpret_cast<uintptr_t>(field_ptr) - reinterpret_cast<uintptr_t>(this));
+				LOG(FATAL) << "Just tried to load from cache a pointer supposedly within the rorr module range but "
+				              "isn't! Offset from start of pointers instance: "
+				           << (reinterpret_cast<uintptr_t>(field_ptr) - reinterpret_cast<uintptr_t>(this));
 			}
 
 			field_ptr++;
@@ -216,14 +218,14 @@ namespace big
 		constexpr auto rorr_batch_and_hash = pointers::get_rorr_batch();
 		constexpr cstxpr_str rorr_batch_name{"RORR"};
 		write_to_cache_or_read_from_cache<rorr_batch_name,
-		    rorr_batch_and_hash.m_hash,
-		    rorr_pointers_layout_info::offset_of_cache_begin_field,
-		    rorr_pointers_layout_info::offset_of_cache_end_field,
-		    rorr_batch_and_hash.m_batch>(m_rorr_pointers_cache, mem_region);
+		                                  rorr_batch_and_hash.m_hash,
+		                                  rorr_pointers_layout_info::offset_of_cache_begin_field,
+		                                  rorr_pointers_layout_info::offset_of_cache_end_field,
+		                                  rorr_batch_and_hash.m_batch>(m_rorr_pointers_cache, mem_region);
 	}
 
 	pointers::~pointers()
 	{
 		g_pointers = nullptr;
 	}
-}
+} // namespace big

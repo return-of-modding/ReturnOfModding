@@ -1,7 +1,7 @@
 #pragma once
 #include "RToken.hpp"
-#include "VMBuffer.hpp"
 #include "RValue.hpp"
+#include "VMBuffer.hpp"
 
 struct YYGMLFuncs;
 
@@ -31,6 +31,7 @@ struct CCode
 	{
 		return this->i_str;
 	}
+
 	inline YYObjectBase* GetStatic()
 	{
 		return this->i_pPrototype;

@@ -11,7 +11,6 @@ namespace big
 		//memory::byte_patch::make(g_pointers->m_gta.m_crash_trigger.add(4).as<uint8_t*>(), 0x00)->apply();
 
 		//memory::byte_patch::make(g_pointers->m_sc.m_read_attribute_patch, std::vector{0x90, 0x90})->apply();
-		
 	}
 
 	byte_patch_manager::byte_patch_manager()
@@ -27,4 +26,4 @@ namespace big
 
 		g_byte_patch_manager = nullptr;
 	}
-}
+} // namespace big

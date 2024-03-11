@@ -2,8 +2,8 @@
 
 namespace gm
 {
-	using RVariableRoutineGetter = bool(*)(CInstance* self, void* a2, RValue* out);
-	using RVariableRoutineSetter = bool(*)(CInstance* self, void* a2, RValue* new_value);
+	using RVariableRoutineGetter = bool (*)(CInstance* self, void* a2, RValue* out);
+	using RVariableRoutineSetter = bool (*)(CInstance* self, void* a2, RValue* new_value);
 
 	struct RVariableRoutine
 	{
@@ -14,4 +14,4 @@ namespace gm
 	};
 
 	static_assert(sizeof(RVariableRoutine) == 32);
-}
+} // namespace gm

@@ -76,7 +76,7 @@ struct YYObjectBase : CInstanceBase
 	unsigned int m_visitedGC;
 	int m_GCgen;
 	int m_GCcreationframe;
-	int m_slot; // offset 30(int) | 120(byte)
+	int m_slot;            // offset 30(int) | 120(byte)
 	YYObjectBaseType type; // m_kind
 	int m_rvalueInitType;
 	int m_curSlot;

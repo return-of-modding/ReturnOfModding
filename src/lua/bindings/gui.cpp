@@ -10,21 +10,27 @@ namespace lua::gui
 	{
 		big::lua_module* module = big::lua_module::this_from(env);
 		if (module)
+		{
 			module->m_menu_bar_callbacks.push_back(std::move(element));
+		}
 	}
 
 	static void add_always_draw_independent_element(sol::this_environment& env, std::unique_ptr<lua::gui::gui_element> element)
 	{
 		big::lua_module* module = big::lua_module::this_from(env);
 		if (module)
+		{
 			module->m_always_draw_independent_gui.push_back(std::move(element));
+		}
 	}
 
 	static void add_independent_element(sol::this_environment& env, std::unique_ptr<lua::gui::gui_element> element)
 	{
 		big::lua_module* module = big::lua_module::this_from(env);
 		if (module)
+		{
 			module->m_independent_gui.push_back(std::move(element));
+		}
 	}
 
 	// Lua API: Function
@@ -118,4 +124,4 @@ namespace lua::gui
 		ns["add_always_draw_imgui"] = add_always_draw_imgui;
 		ns["add_to_menu_bar"]       = add_to_menu_bar;
 	}
-}
+} // namespace lua::gui

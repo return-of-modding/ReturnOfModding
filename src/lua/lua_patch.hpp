@@ -30,4 +30,4 @@ namespace big
 		// Restore the original value.
 		void restore();
 	};
-}
+} // namespace big

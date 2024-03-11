@@ -28,4 +28,4 @@ namespace ts::v1
 
 		NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(manifest, name, version_number, website_url, description, dependencies)
 	};
-}
+} // namespace ts::v1

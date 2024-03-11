@@ -48,12 +48,16 @@ void RValue::__localCopy(const RValue& other)
 
 		bool is_array{(tmp.type & MASK_TYPE_RVALUE) == ARRAY};
 		if (is_array)
+		{
 			++(reinterpret_cast<RValue*>(&tmp)->ref_array->m_refCount);
+		}
 
 		__localFree();
 
 		if (is_array)
+		{
 			--(reinterpret_cast<RValue*>(&tmp)->ref_array->m_refCount);
+		}
 
 		COPY_RValue__Post(this, &other);
 
@@ -188,10 +192,10 @@ RValue RValue::operator-()
 	switch ((type & MASK_TYPE_RVALUE))
 	{
 	case _BOOL:
-	case REAL: ret.value = -value; break;
+	case REAL:   ret.value = -value; break;
 	case _INT32: ret.i32 = -i32; break;
 	case _INT64: ret.i64 = -i64; break;
-	default: LOG(FATAL) << "unhandled";
+	default:     LOG(FATAL) << "unhandled";
 	}
 
 	return ret;
@@ -287,11 +291,11 @@ RValue& RValue::operator++()
 	switch (type & MASK_TYPE_RVALUE)
 	{
 	case _BOOL:
-	case REAL: ++value; break;
+	case REAL:   ++value; break;
 	case _INT32: ++i32; break;
 	case _INT64: ++i64; break;
-	case PTR: ptr = reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) + 1); break;
-	default: LOG(FATAL) << "unhandled";
+	case PTR:    ptr = reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) + 1); break;
+	default:     LOG(FATAL) << "unhandled";
 	}
 	return *this;
 }
@@ -308,11 +312,11 @@ RValue& RValue::operator--()
 	switch (type & MASK_TYPE_RVALUE)
 	{
 	case _BOOL:
-	case REAL: --value; break;
+	case REAL:   --value; break;
 	case _INT32: --i32; break;
 	case _INT64: --i64; break;
-	case PTR: ptr = reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) - 1); break;
-	default: LOG(FATAL) << "unhandled";
+	case PTR:    ptr = reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) - 1); break;
+	default:     LOG(FATAL) << "unhandled";
 	}
 	return *this;
 }
@@ -330,23 +334,25 @@ bool RValue::operator==(const RValue& rhs) const
 	int rhsType = rhs.type & MASK_TYPE_RVALUE;
 
 	if (lhsType == STRING && rhsType == STRING)
+	{
 		return strcmp(ref_string->get(), rhs.ref_string->get()) == 0;
+	}
 
 	double lhsD = this->asReal();
 	double rhsD = 0.0;
 	switch (rhsType)
 	{
 	case REAL:
-	case _BOOL: rhsD = rhs.value; break;
-	case _INT32: rhsD = static_cast<double>(rhs.i32); break;
-	case _INT64: rhsD = static_cast<double>(rhs.i64); break;
+	case _BOOL:     rhsD = rhs.value; break;
+	case _INT32:    rhsD = static_cast<double>(rhs.i32); break;
+	case _INT64:    rhsD = static_cast<double>(rhs.i64); break;
 	case ARRAY:
 	case REF:
 	case OBJECT:
-	case PTR: rhsD = static_cast<double>(reinterpret_cast<uintptr_t>(ptr)); break;
+	case PTR:       rhsD = static_cast<double>(reinterpret_cast<uintptr_t>(ptr)); break;
 	case UNSET:
 	case UNDEFINED: rhsD = std::nan(""); break;
-	default: LOG(FATAL) << "unhandled";
+	default:        LOG(FATAL) << "unhandled";
 	}
 
 	return lhsD == rhsD;
@@ -380,7 +386,7 @@ std::string RValue::asString()
 {
 	switch (type & MASK_TYPE_RVALUE)
 	{
-	case REAL: return std::to_string(value);
+	case REAL:   return std::to_string(value);
 	case _INT32: return std::to_string(i32);
 	case _INT64: return std::to_string(i64);
 	case REF:
@@ -393,10 +399,14 @@ std::string RValue::asString()
 	case ARRAY:
 	{
 		if (this->ref_array->m_Array == nullptr)
+		{
 			return "{ <null array pointer> }";
+		}
 		int arrlen = this->ref_array->length;
 		if (arrlen <= 0)
+		{
 			return "{ <empty array> }";
+		}
 
 		std::stringstream ss;
 
@@ -407,23 +417,29 @@ std::string RValue::asString()
 			if (elem)
 			{
 				if ((elem->type & MASK_TYPE_RVALUE) == STRING)
+				{
 					ss << '"';
+				}
 				ss << elem->asString();
 				if ((elem->type & MASK_TYPE_RVALUE) == STRING)
+				{
 					ss << '"';
+				}
 				if (i < arrlen - 1)
+				{
 					ss << ", ";
+				}
 			}
 		}
 		ss << " }";
 
 		return ss.str();
 	}
-	case _BOOL: return (value > 0.5) ? "true" : "false";
-	case UNSET: return "<unset>";
+	case _BOOL:     return (value > 0.5) ? "true" : "false";
+	case UNSET:     return "<unset>";
 	case UNDEFINED: return "<undefined>";
-	case STRING: return ref_string->get();
-	default: return "<UNHANDLED TYPE TO STRING!>";
+	case STRING:    return ref_string->get();
+	default:        return "<UNHANDLED TYPE TO STRING!>";
 	}
 
 	return "";
@@ -434,18 +450,18 @@ double RValue::asReal() const
 	switch (type & MASK_TYPE_RVALUE)
 	{
 	case REAL:
-	case _BOOL: return value;
+	case _BOOL:     return value;
 	case UNDEFINED:
-	case UNSET: return std::nan("");
-	case _INT32: return static_cast<double>(i32);
-	case _INT64: return static_cast<double>(i64);
-	case REF: return (double)i32;
+	case UNSET:     return std::nan("");
+	case _INT32:    return static_cast<double>(i32);
+	case _INT64:    return static_cast<double>(i64);
+	case REF:       return (double)i32;
 	case ARRAY:
 	case OBJECT:
 	case VEC4:
 	case MATRIX:
 	case VEC3:
-	case PTR: return static_cast<double>(reinterpret_cast<uintptr_t>(ptr));
+	case PTR:       return static_cast<double>(reinterpret_cast<uintptr_t>(ptr));
 	case STRING:
 	{
 		try
@@ -467,16 +483,16 @@ int RValue::asInt32() const
 	switch (type & MASK_TYPE_RVALUE)
 	{
 	case REAL:
-	case _BOOL: return static_cast<int>(std::floor(value));
+	case _BOOL:  return static_cast<int>(std::floor(value));
 	case _INT32: return i32;
 	case _INT64: return static_cast<int>(i64);
-	case REF: return i32;
+	case REF:    return i32;
 	case ARRAY:
 	case OBJECT:
 	case VEC4:
 	case MATRIX:
 	case VEC3:
-	case PTR: return static_cast<int>(reinterpret_cast<intptr_t>(ptr));
+	case PTR:    return static_cast<int>(reinterpret_cast<intptr_t>(ptr));
 	case STRING:
 	{
 		try
@@ -498,25 +514,29 @@ bool RValue::asBoolean() const
 	switch (type & MASK_TYPE_RVALUE)
 	{
 	case REAL:
-	case _BOOL: return value > 0.5 ? true : false;
+	case _BOOL:  return value > 0.5 ? true : false;
 	case _INT32: return i32 > 0 ? true : false;
 	case _INT64: return i64 > 0L ? true : false;
-	case REF: return i32 > 0 ? true : false;
+	case REF:    return i32 > 0 ? true : false;
 	case ARRAY:
 	case OBJECT:
 	case VEC4:
 	case MATRIX:
 	case VEC3:
-	case PTR: return ptr != nullptr ? true : false;
+	case PTR:    return ptr != nullptr ? true : false;
 	case STRING:
 	{
 		try
 		{
 			const std::string v = ref_string->get();
 			if (v == "true" || v == "True")
+			{
 				return true;
+			}
 			else if (v == "false" || v == "False")
+			{
 				return false;
+			}
 			LOG(FATAL) << "unhandled";
 		}
 		catch (...)
@@ -534,12 +554,12 @@ long long RValue::asInt64() const
 	switch (type & MASK_TYPE_RVALUE)
 	{
 	case REAL:
-	case _BOOL: return static_cast<long long>(std::floor(value));
+	case _BOOL:  return static_cast<long long>(std::floor(value));
 	case _INT32: return static_cast<long long>(i32);
 	case _INT64: return i64;
-	case REF: return static_cast<long long>(i32);
+	case REF:    return static_cast<long long>(i32);
 	case ARRAY:
-	case PTR: return static_cast<long long>(reinterpret_cast<uintptr_t>(ptr));
+	case PTR:    return static_cast<long long>(reinterpret_cast<uintptr_t>(ptr));
 	case STRING:
 	{
 		try
@@ -602,7 +622,7 @@ void* RValue::asPointer() const
 	switch (type & MASK_TYPE_RVALUE)
 	{
 	case REAL:
-	case _BOOL: return reinterpret_cast<void*>(static_cast<uintptr_t>(std::floor(value)));
+	case _BOOL:  return reinterpret_cast<void*>(static_cast<uintptr_t>(std::floor(value)));
 	case _INT32: return reinterpret_cast<void*>(static_cast<uintptr_t>(i32));
 	case _INT64: return reinterpret_cast<void*>(static_cast<uintptr_t>(i64));
 	case ARRAY:
@@ -611,8 +631,8 @@ void* RValue::asPointer() const
 	case VEC3:
 	case VEC4:
 	case MATRIX:
-	case PTR: return ptr;
-	default: LOG(FATAL) << "unhandled";
+	case PTR:    return ptr;
+	default:     LOG(FATAL) << "unhandled";
 	}
 
 	return nullptr;

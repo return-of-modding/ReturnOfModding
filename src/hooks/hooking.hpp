@@ -1,8 +1,8 @@
 #pragma once
-#include "MinHook.h"
 #include "call_hook.hpp"
-#include "common.hpp"
+
 #include "detour_hook.hpp"
+#include "MinHook.h"
 #include "vmt_hook.hpp"
 #include "vtable_hook.hpp"
 
@@ -15,6 +15,7 @@ namespace big
 		{
 			MH_Initialize();
 		}
+
 		~minhook_keepalive()
 		{
 			MH_Uninitialize();
@@ -130,4 +131,4 @@ namespace big
 	};
 
 	inline hooking* g_hooking{};
-}
+} // namespace big

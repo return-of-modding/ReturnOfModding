@@ -56,7 +56,9 @@ namespace memory
 
 			m_value = std::make_unique<byte[]>(m_size);
 			for (int i = 0; i < m_size; i++)
+			{
 				m_value[i] = span[i];
+			}
 		}
 
 	protected:
@@ -71,4 +73,4 @@ namespace memory
 
 		friend bool operator==(const std::unique_ptr<byte_patch>& a, const byte_patch* b);
 	};
-}
+} // namespace memory

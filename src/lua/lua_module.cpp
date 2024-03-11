@@ -13,17 +13,17 @@ namespace big
 		// Name: _ENV - Plugin Specific Global Table
 		// Each mod/plugin have their own global table containing helpers, such as:
 		// - Their own guid
-		// 
+		//
 		// - Path to their own folder inside `config`: Used for data that must persist between sessions that can be manipulated by the user.
-		// 
+		//
 		// - Path to their own folder inside `plugins_data`: Used for data that must persist between sessions but not be manipulated by the user.
-		// 
+		//
 		// - Path to their own folder inside `plugins`: Location of .lua, README, manifest.json files.
-		// 
+		//
 		// You can access other mods helpers through the `mods[OTHER_MOD_GUID]` table.
-		// 
+		//
 		// **Example Usage:**
-		// 
+		//
 		// ```lua
 		// print(_ENV["!guid"])
 		//
@@ -71,7 +71,9 @@ namespace big
 	lua_module::~lua_module()
 	{
 		for (auto memory : m_allocated_memory)
+		{
 			delete[] memory;
+		}
 	}
 
 	const std::filesystem::path& lua_module::path() const
@@ -125,12 +127,15 @@ namespace big
 	}
 
 	static std::string dummy_guid = "No guid (issue with a required module?)";
+
 	std::string lua_module::guid_from(sol::this_environment this_env)
 	{
 		sol::environment& env            = this_env;
 		sol::optional<std::string> _guid = env["!guid"];
 		if (_guid)
+		{
 			return _guid.value();
+		}
 		return dummy_guid;
 	}
 
@@ -139,7 +144,9 @@ namespace big
 		sol::environment& env                 = this_env;
 		sol::optional<big::lua_module*> _this = env["!this"];
 		if (_this)
+		{
 			return _this.value();
+		}
 		return nullptr;
 	}
-}
+} // namespace big

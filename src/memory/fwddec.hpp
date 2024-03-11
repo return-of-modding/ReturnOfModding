@@ -8,4 +8,4 @@ namespace memory
 	class pattern;
 	class pattern_batch;
 	class byte_patch;
-}
+} // namespace memory

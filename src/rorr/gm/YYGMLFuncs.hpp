@@ -10,9 +10,12 @@ using PFUNC_YYGML       = void (*)(CInstance* self, CInstance* other);
 struct YYGMLFuncs
 {
 	const char* m_name;
-	union {
+
+	union
+	{
 		PFUNC_YYGMLScript m_script_function;
 		PFUNC_YYGML m_function;
 	};
+
 	YYVAR* m_func_var;
 };

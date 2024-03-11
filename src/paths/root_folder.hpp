@@ -94,7 +94,7 @@ namespace big::paths
 		const char* env_root_folder = std::getenv(root_folder_arg_name);
 		if (env_root_folder)
 		{
-			root_folder = env_root_folder;
+			root_folder  = env_root_folder;
 			root_folder /= g_project_name;
 			LOG(INFO) << "Root folder set through env variable: "
 			          << reinterpret_cast<const char*>(root_folder.u8string().c_str());
@@ -112,14 +112,13 @@ namespace big::paths
 				int argc    = 0;
 				auto** argv = CommandLineToArgvA(args, &argc);
 
-				options.add_options()(root_folder_arg_name, root_folder_arg_name,
-				    cxxopts::value<std::string>()->default_value(""));
+				options.add_options()(root_folder_arg_name, root_folder_arg_name, cxxopts::value<std::string>()->default_value(""));
 
 				const auto result = options.parse(argc, argv);
-				
+
 				if (result.count(root_folder_arg_name))
 				{
-					root_folder = result[root_folder_arg_name].as<std::string>();
+					root_folder  = result[root_folder_arg_name].as<std::string>();
 					root_folder /= g_project_name;
 					LOG(INFO) << "Root folder set through command line args: "
 					          << reinterpret_cast<const char*>(root_folder.u8string().c_str());
@@ -153,4 +152,4 @@ namespace big::paths
 
 		return root_folder;
 	}
-}
+} // namespace big::paths

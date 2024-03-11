@@ -1,5 +1,5 @@
 #pragma once
-#include "common.hpp"
+
 
 namespace big
 {
@@ -15,4 +15,4 @@ namespace big
 	};
 
 	extern LONG vectored_exception_handler(EXCEPTION_POINTERS* exception_info);
-}
+} // namespace big

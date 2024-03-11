@@ -8,4 +8,4 @@ namespace memory
 		const char* m_ida;
 		void (*m_on_signature_found)(memory::handle ptr);
 	};
-}
+} // namespace memory

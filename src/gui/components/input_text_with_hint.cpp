@@ -7,7 +7,9 @@ namespace big
 	{
 		bool returned = false;
 		if (returned = ImGui::InputTextWithHint(label.data(), hint.data(), buf, buf_size, flag); returned && cb)
+		{
 			cb();
+		}
 
 		return returned;
 	}
@@ -16,8 +18,10 @@ namespace big
 	{
 		bool returned = false;
 		if (returned = ImGui::InputTextWithHint(label.data(), hint.data(), &buf, flag); returned && cb)
+		{
 			cb();
+		}
 
 		return returned;
 	}
-}
+} // namespace big

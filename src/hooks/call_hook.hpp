@@ -1,5 +1,5 @@
 #pragma once
-#include "common.hpp"
+
 #include "memory/handle.hpp"
 
 namespace big
@@ -24,8 +24,8 @@ namespace big
 
 		call_hook(call_hook&& that)            = delete;
 		call_hook& operator=(call_hook&& that) = delete;
-		call_hook(call_hook const&)            = delete;
-		call_hook& operator=(call_hook const&) = delete;
+		call_hook(const call_hook&)            = delete;
+		call_hook& operator=(const call_hook&) = delete;
 
 		template<typename T>
 		T get_original();
@@ -46,4 +46,4 @@ namespace big
 	{
 		return static_cast<T>(m_original_function);
 	}
-}
+} // namespace big

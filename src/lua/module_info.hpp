@@ -11,4 +11,4 @@ namespace big
 		std::string m_guid_with_version{};
 		ts::v1::manifest m_manifest{};
 	};
-}
+} // namespace big

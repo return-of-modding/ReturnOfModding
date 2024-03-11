@@ -21,4 +21,4 @@ namespace big
 
 		std::filesystem::path m_folder_path;
 	};
-}
+} // namespace big

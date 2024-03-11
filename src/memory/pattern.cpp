@@ -4,7 +4,7 @@
 
 namespace memory
 {
-	std::optional<uint8_t> to_hex(char const c)
+	std::optional<uint8_t> to_hex(const char c)
 	{
 		switch (c)
 		{
@@ -30,7 +30,7 @@ namespace memory
 		case 'D': return static_cast<uint8_t>(0xD);
 		case 'E': return static_cast<uint8_t>(0xE);
 		case 'F': return static_cast<uint8_t>(0xF);
-		default: return std::nullopt;
+		default:  return std::nullopt;
 		}
 	}
 
@@ -40,7 +40,9 @@ namespace memory
 		for (std::size_t i{}; i != size; ++i)
 		{
 			if (ida_sig[i] == ' ')
+			{
 				continue;
+			}
 			bool last = (i == ida_sig.size() - 1);
 			if (ida_sig[i] != '?')
 			{
@@ -73,9 +75,13 @@ namespace memory
 		for (std::size_t i{}; i != size; ++i)
 		{
 			if (mask[i] != '?')
+			{
 				m_bytes.emplace_back(static_cast<const uint8_t*>(bytes)[i]);
+			}
 			else
+			{
 				m_bytes.push_back(std::nullopt);
+			}
 		}
 	}
-}
+} // namespace memory

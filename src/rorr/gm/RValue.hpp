@@ -19,7 +19,8 @@ struct matrix44
 	vec4 m[4];
 };
 
-constexpr int MASK_TYPE_RVALUE = 0x0ffffff;
+constexpr int MASK_TYPE_RVALUE = 0x0'ff'ff'ff;
+
 enum RValueType : int
 {
 	REAL      = 0,
@@ -57,6 +58,7 @@ typedef RValue* (*ARRAYLVal)(RValue* _pV, int _index);
 #define YYC_DELETE(a) delete a
 
 class YYObjectBase;
+
 template<typename T>
 struct _RefFactory
 {
@@ -64,11 +66,13 @@ struct _RefFactory
 	{
 		return _thing;
 	}
+
 	static T Create(T _thing, int& _size)
 	{
 		_size = 0;
 		return _thing;
 	}
+
 	static T Destroy(T _thing)
 	{
 		return _thing;
@@ -141,6 +145,7 @@ struct _RefThing
 
 		return _other;
 	}
+
 	static _RefThing<T>* remove(_RefThing<T>* _other)
 	{
 		if (_other != nullptr)
@@ -157,9 +162,11 @@ typedef _RefThing<const char*> RefString;
 struct RefDynamicArrayOfRValue;
 
 #pragma pack(push, 4)
+
 struct DValue
 {
-	union {
+	union
+	{
 		int64_t __64;
 		void* __ptr;
 		RefDynamicArrayOfRValue* __arr;
@@ -172,7 +179,8 @@ struct DValue
 
 struct RValue
 {
-	union {
+	union
+	{
 		// values.
 		int i32;
 		long long i64;
@@ -186,6 +194,7 @@ struct RValue
 		vec4* vec4;
 		matrix44* matrix44;
 	};
+
 	// use for flags (Hijack for Enumerable and Configurable bits in JavaScript)
 	int flags;
 	// kind of value
@@ -278,18 +287,22 @@ struct RefDynamicArrayOfRValue : YYObjectBase
 	{
 		return iterator(m_Array);
 	}
+
 	iterator end()
 	{
 		return iterator(m_Array + length);
 	}
+
 	size_type size() const noexcept
 	{
 		return length;
 	}
+
 	size_type max_size() const noexcept
 	{
 		return length;
 	}
+
 	bool empty() const noexcept
 	{
 		return length == 0;

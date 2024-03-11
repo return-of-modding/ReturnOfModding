@@ -83,7 +83,7 @@ namespace memory
 		return std::nullopt;
 	}
 
-	std::optional<handle> range::scan(pattern const& sig) const
+	std::optional<handle> range::scan(const pattern& sig) const
 	{
 		auto data   = sig.m_bytes.data();
 		auto length = sig.m_bytes.size();
@@ -109,7 +109,7 @@ namespace memory
 		return true;
 	}
 
-	std::vector<handle> range::scan_all(pattern const& sig) const
+	std::vector<handle> range::scan_all(const pattern& sig) const
 	{
 		std::vector<handle> result{};
 		auto data   = sig.m_bytes.data();
@@ -126,4 +126,4 @@ namespace memory
 
 		return result;
 	}
-}
+} // namespace memory

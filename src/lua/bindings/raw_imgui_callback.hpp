@@ -16,4 +16,4 @@ namespace lua::gui
 
 		void draw() override;
 	};
-}
+} // namespace lua::gui

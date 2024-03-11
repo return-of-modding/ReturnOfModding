@@ -12,6 +12,7 @@ namespace big
 	};
 
 	using cache_data = std::unique_ptr<uint8_t[]>;
+
 	class cache_file final
 	{
 	public:
@@ -75,4 +76,4 @@ namespace big
 		cache_header m_cache_header;
 		cache_data m_data;
 	};
-}
+} // namespace big

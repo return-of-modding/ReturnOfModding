@@ -1,14 +1,14 @@
 #pragma once
 #include "gm/CInstance_hooks.hpp"
-#include "gm/CRoom.hpp"
 #include "gm/Code_Execute.hpp"
 #include "gm/Code_Function_GET_the_function_t.hpp"
+#include "gm/CRoom.hpp"
+#include "gm/debug_console.hpp"
 #include "gm/GetSaveFileName_t.hpp"
+#include "gm/inputs.hpp"
 #include "gm/RVariableRoutine.hpp"
 #include "gm/Script_Data.hpp"
 #include "gm/StructCreate.hpp"
-#include "gm/debug_console.hpp"
-#include "gm/inputs.hpp"
 
 #include <memory/handle.hpp>
 
@@ -16,6 +16,7 @@ namespace big
 {
 	// needed for serialization of the pointers cache
 #pragma pack(push, 1)
+
 	struct rorr_pointers
 	{
 		int* m_gamemaker_version_major;
@@ -51,6 +52,7 @@ namespace big
 
 		gm::GetSaveFileName_t m_get_save_file_name;
 	};
+
 #pragma pack(pop)
 	static_assert(sizeof(rorr_pointers) % 8 == 0, "Pointers are not properly aligned");
-}
+} // namespace big

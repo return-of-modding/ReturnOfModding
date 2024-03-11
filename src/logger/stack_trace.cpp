@@ -3,8 +3,8 @@
 #include "memory/module.hpp"
 
 #include <DbgHelp.h>
-#include <winternl.h>
 #include <rorr/gm/Code_Execute_trace.hpp>
+#include <winternl.h>
 
 namespace big
 {
@@ -56,17 +56,23 @@ namespace big
 	{
 		// modules cached already
 		if (m_modules.size())
+		{
 			return;
+		}
 
 		m_dump << "Dumping modules:\n";
 
 		const auto peb = reinterpret_cast<PPEB>(NtCurrentTeb()->ProcessEnvironmentBlock);
 		if (!peb)
+		{
 			return;
+		}
 
 		const auto ldr_data = peb->Ldr;
 		if (!ldr_data)
+		{
 			return;
+		}
 
 		const auto module_list = &ldr_data->InMemoryOrderModuleList;
 		auto module_entry      = module_list->Flink;
@@ -74,7 +80,9 @@ namespace big
 		{
 			const auto table_entry = CONTAINING_RECORD(module_entry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
 			if (!table_entry)
+			{
 				continue;
+			}
 
 			if (table_entry->FullDllName.Buffer)
 			{
@@ -147,12 +155,16 @@ namespace big
 				if (module_info)
 				{
 					if (module_info->m_base == (uint64_t)GetModuleHandle(0))
+					{
 						m_dump << module_info->m_path.filename().string() << " "
 						       << std::string_view(symbol->Name, symbol->NameLen) << " ("
 						       << module_info->m_path.filename().string() << "+" << HEX_TO_UPPER(addr - module_info->m_base) << ")";
+					}
 					else
+					{
 						m_dump << module_info->m_path.filename().string() << " "
 						       << std::string_view(symbol->Name, symbol->NameLen);
+					}
 				}
 				else
 				{
@@ -174,10 +186,11 @@ namespace big
 	}
 
 	// Raised by SetThreadName to notify the debugger thread names
-	constexpr DWORD SetThreadName_exception_code = 0x406D1388;
+	constexpr DWORD SetThreadName_exception_code = 0x40'6D'13'88;
 
 	// Raised by MSVC C++ Exceptions
-	constexpr DWORD msvc_exception_code = 0xE06D7363;
+	constexpr DWORD msvc_exception_code = 0xE0'6D'73'63;
+
 	void stack_trace::dump_cpp_exception()
 	{
 		if (m_exception_info->ExceptionRecord->ExceptionCode == msvc_exception_code)
@@ -238,7 +251,9 @@ namespace big
 	std::string stack_trace::exception_code_to_string(const DWORD code)
 	{
 		if (const auto& it = exceptions.find(code); it != exceptions.end())
+		{
 			return it->second;
+		}
 
 		if (code == msvc_exception_code)
 		{
@@ -254,4 +269,4 @@ namespace big
 		exception_code_str << HEX_TO_UPPER(code);
 		return "UNKNOWN_EXCEPTION: CODE: " + exception_code_str.str();
 	}
-}
+} // namespace big

@@ -1,6 +1,6 @@
 #include "hooks/hooking.hpp"
 
-#include "common.hpp"
+
 #include "gui/gui.hpp"
 #include "gui/renderer.hpp"
 #include "memory/module.hpp"
@@ -8,8 +8,8 @@
 #include "rorr/gm/CInstance_hooks.hpp"
 #include "rorr/gm/Code_Execute_hook.hpp"
 #include "rorr/gm/debug_console.hpp"
-#include "rorr/gm/inputs.hpp"
 #include "rorr/gm/GetSaveFileName_hook.hpp"
+#include "rorr/gm/inputs.hpp"
 
 #include <MinHook.h>
 
@@ -94,4 +94,4 @@ namespace big
 			MH_ApplyQueued();
 		}
 	}
-}
+} // namespace big

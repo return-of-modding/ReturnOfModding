@@ -9,4 +9,4 @@ namespace big
 		ImGui::TextWrapped(text.data());
 		ImGui::PopFont();
 	}
-}
+} // namespace big

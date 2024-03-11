@@ -37,4 +37,4 @@ namespace big::bits
 	{
 		*address |= bits;
 	}
-}
+} // namespace big::bits

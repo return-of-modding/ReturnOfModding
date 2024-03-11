@@ -26,9 +26,13 @@ namespace big
 	bool cache_file::load()
 	{
 		if (!m_cache_file.exists())
+		{
 			return false;
+		}
 		if (m_data)
+		{
 			return true;
+		}
 
 		auto file = std::ifstream(m_cache_file.get_path(), std::ios::binary);
 
@@ -44,7 +48,9 @@ namespace big
 	bool cache_file::write() const
 	{
 		if (!m_data)
+		{
 			return false;
+		}
 
 		auto file = std::ofstream(m_cache_file.get_path(), std::ios::binary);
 
@@ -68,7 +74,9 @@ namespace big
 	bool cache_file::up_to_date(uint32_t file_version) const
 	{
 		if (!m_data)
+		{
 			return false;
+		}
 
 		return m_cache_version == m_cache_header.m_cache_version && file_version == m_cache_header.m_file_version;
 	}
@@ -89,4 +97,4 @@ namespace big
 	{
 		m_cache_version = cache_version;
 	}
-}
+} // namespace big

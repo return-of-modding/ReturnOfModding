@@ -8,4 +8,4 @@ namespace Utils
 	{
 		uint32_t MurMurHash(const unsigned char* key, int len, uint32_t seed);
 	}
-}
+} // namespace Utils

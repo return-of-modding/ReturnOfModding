@@ -13,4 +13,4 @@ namespace big
 	{
 		const char* str;
 	};
-}
+} // namespace big

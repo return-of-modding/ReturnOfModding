@@ -15,9 +15,13 @@ namespace big
 			WCHAR path[MAX_PATH];
 
 			if (IsWow64Process(GetCurrentProcess(), &wow64) && wow64)
+			{
 				GetSystemWow64DirectoryW(path, MAX_PATH);
+			}
 			else
+			{
 				GetSystemDirectoryW(path, MAX_PATH);
+			}
 
 			lstrcatW(path, L"\\");
 			lstrcatW(path, dll_proxy_names[index]);
@@ -32,7 +36,9 @@ namespace big
 	{
 		static T proc = nullptr;
 		if (proc != nullptr)
+		{
 			return proc;
+		}
 		return proc = reinterpret_cast<T>(get_function(index, funcName));
 	}
 
@@ -122,4 +128,4 @@ namespace big
 	{
 		return forward_version_call(VerQueryValueW)(pBlock, lpSubBlock, lplpBuffer, puLen);
 	}
-}
+} // namespace big

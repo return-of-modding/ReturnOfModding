@@ -23,7 +23,9 @@ namespace big::string
 		std::string str;
 		std::stringstream ss(text);
 		while (std::getline(ss, str, delim))
+		{
 			result.push_back(get_text_value<T>(str));
+		}
 		return result;
 	}
 
@@ -55,4 +57,4 @@ namespace big::string
 
 		return result;
 	}
-}
+} // namespace big::string

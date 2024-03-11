@@ -4,7 +4,7 @@ namespace big
 {
 	thread_pool::thread_pool(const std::size_t preallocated_thread_count) :
 	    m_accept_jobs(true),
-		m_allocated_thread_count(preallocated_thread_count)
+	    m_allocated_thread_count(preallocated_thread_count)
 	{
 		rescale_thread_pool();
 
@@ -24,7 +24,9 @@ namespace big
 		if (m_thread_pool.size() < m_allocated_thread_count)
 		{
 			for (uint32_t i = 0; i < m_allocated_thread_count; i++)
+			{
 				m_thread_pool.emplace_back(std::thread(&thread_pool::run, this));
+			}
 		}
 	}
 
@@ -37,7 +39,9 @@ namespace big
 		m_data_condition.notify_all();
 
 		for (auto& thread : m_thread_pool)
+		{
 			thread.join();
+		}
 
 		m_thread_pool.clear();
 	}
@@ -56,7 +60,8 @@ namespace big
 
 					if (m_allocated_thread_count++ >= MAX_POOL_SIZE)
 					{
-						LOG(FATAL) << "The thread pool limit has been reached, whatever you did this should not occur in production.";
+						LOG(FATAL) << "The thread pool limit has been reached, whatever you did this should not occur "
+						              "in production.";
 					}
 					if (m_accept_jobs && m_allocated_thread_count <= MAX_POOL_SIZE)
 					{
@@ -74,14 +79,20 @@ namespace big
 		{
 			std::unique_lock lock(m_lock);
 
-			m_data_condition.wait(lock, [this]() {
-				return !m_job_stack.empty() || !m_accept_jobs;
-			});
+			m_data_condition.wait(lock,
+			                      [this]()
+			                      {
+				                      return !m_job_stack.empty() || !m_accept_jobs;
+			                      });
 
 			if (!m_accept_jobs)
+			{
 				break;
+			}
 			if (m_job_stack.empty())
+			{
 				continue;
+			}
 
 			thread_pool_job job = m_job_stack.top();
 			m_job_stack.pop();
@@ -107,4 +118,4 @@ namespace big
 
 		LOG(VERBOSE) << "Thread " << std::this_thread::get_id() << " exiting...";
 	}
-}
+} // namespace big

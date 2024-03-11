@@ -10,6 +10,7 @@
 #include "threads/thread_pool.hpp"
 #include "threads/util.hpp"
 #include "version.hpp"
+
 //#include "debug/debug.hpp"
 
 BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
@@ -22,10 +23,13 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		g_main_thread = CreateThread(
 		    nullptr,
 		    0,
-		    [](PVOID) -> DWORD {
+		    [](PVOID) -> DWORD
+		    {
 			    HWND target_window{};
 			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
+			    {
 				    std::this_thread::sleep_for(10ms);
+			    }
 
 			    std::this_thread::sleep_for(2000ms);
 
@@ -78,14 +82,17 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 				    std::this_thread::sleep_for(3000ms);
 				    while (!g_gml_safe)
+				    {
 					    std::this_thread::sleep_for(3000ms);
+				    }
 
 				    YYObjectPinMap::init_pin_map();
 			    }
 
 			    g_running = true;
 
-			    auto lua_manager_instance = std::make_unique<lua_manager>(g_file_manager.get_project_folder("config"),
+			    auto lua_manager_instance =
+			        std::make_unique<lua_manager>(g_file_manager.get_project_folder("config"),
 			        g_file_manager.get_project_folder("plugins_data"),
 			        g_file_manager.get_project_folder("plugins"));
 			    LOG(INFO) << "Lua manager initialized.";
@@ -97,7 +104,9 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    }
 
 			    while (g_running)
+			    {
 				    std::this_thread::sleep_for(500ms);
+			    }
 
 			    lua_manager_instance.reset();
 			    LOG(INFO) << "Lua manager uninitialized.";

@@ -10,4 +10,4 @@ namespace big
 		FAILED_TO_LOAD,
 		SUCCESS
 	};
-}
+} // namespace big

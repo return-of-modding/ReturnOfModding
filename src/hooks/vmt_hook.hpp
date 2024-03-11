@@ -1,5 +1,5 @@
 #pragma once
-#include "common.hpp"
+
 
 namespace big
 {
@@ -14,8 +14,8 @@ namespace big
 
 		vmt_hook(vmt_hook&& that)            = delete;
 		vmt_hook& operator=(vmt_hook&& that) = delete;
-		vmt_hook(vmt_hook const&)            = delete;
-		vmt_hook& operator=(vmt_hook const&) = delete;
+		vmt_hook(const vmt_hook&)            = delete;
+		vmt_hook& operator=(const vmt_hook&) = delete;
 
 		void hook(std::size_t index, void* func);
 		void unhook(std::size_t index);
@@ -39,4 +39,4 @@ namespace big
 	{
 		return static_cast<T>(m_original_table[index]);
 	}
-}
+} // namespace big

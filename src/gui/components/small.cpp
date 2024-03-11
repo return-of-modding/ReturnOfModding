@@ -8,4 +8,4 @@ namespace big
 	{
 		components::custom_text(text.data(), g_renderer->font_small);
 	}
-}
+} // namespace big

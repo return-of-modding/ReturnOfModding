@@ -78,6 +78,6 @@ namespace big
 
 	inline constexpr auto g_project_name             = "ReturnOfModding";
 	inline constexpr auto g_target_window_class_name = "YYGameMakerYY";
-}
+} // namespace big
 
 #endif

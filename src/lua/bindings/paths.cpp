@@ -35,4 +35,4 @@ namespace lua::paths
 		ns["config"]       = config;
 		ns["plugins_data"] = plugins_data;
 	}
-}
+} // namespace lua::paths

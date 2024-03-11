@@ -2,9 +2,9 @@
 
 #include "rorr/gm/Code_Function_GET_the_function.hpp"
 #include "rorr/gm/EVariableType.hpp"
+#include "rorr/gm/pin_map.hpp"
 #include "rorr/gm/Variable_BuiltIn.hpp"
 #include "rorr/gm/YYGMLFuncs.hpp"
-#include "rorr/gm/pin_map.hpp"
 
 #include <hde64.h>
 #include <lua/lua_manager.hpp>
@@ -18,7 +18,7 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 	switch (res.type & MASK_TYPE_RVALUE)
 	{
 	case STRING: return sol::make_object<const char*>(this_state_, res.ref_string->get());
-	case _BOOL: return sol::make_object<bool>(this_state_, res.asBoolean());
+	case _BOOL:  return sol::make_object<bool>(this_state_, res.asBoolean());
 	case REAL:
 	case _INT32:
 	case _INT64: return sol::make_object<double>(this_state_, res.asReal());
@@ -29,30 +29,44 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 	case PTR: return sol::make_object<uintptr_t>(this_state_, (uintptr_t)res.ptr);
 	case OBJECT:
 		return res.yy_object_base->type == YYObjectBaseType::CINSTANCE ?
-		    sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr) :
-		    sol::make_object<YYObjectBase*>(this_state_, res.yy_object_base);
+		           sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr) :
+		           sol::make_object<YYObjectBase*>(this_state_, res.yy_object_base);
 	case UNDEFINED:
-	case UNSET: return sol::lua_nil;
-	default: return sol::make_object<RValue>(this_state_, res);
+	case UNSET:     return sol::lua_nil;
+	default:        return sol::make_object<RValue>(this_state_, res);
 	}
 }
 
 static RValue parse_sol_object(sol::object arg)
 {
 	if (arg.get_type() == sol::type::number)
+	{
 		return RValue(arg.as<double>());
+	}
 	else if (arg.get_type() == sol::type::string)
+	{
 		return RValue(arg.as<std::string>());
+	}
 	else if (arg.get_type() == sol::type::boolean)
+	{
 		return RValue(arg.as<bool>());
+	}
 	else if (arg.is<RefDynamicArrayOfRValue*>())
+	{
 		return RValue(arg.as<RefDynamicArrayOfRValue*>());
+	}
 	else if (arg.is<CInstance*>())
+	{
 		return RValue(arg.as<CInstance*>());
+	}
 	else if (arg.is<YYObjectBase*>())
+	{
 		return RValue(arg.as<YYObjectBase*>());
+	}
 	else if (arg.is<RValue>())
+	{
 		return arg.as<RValue>();
+	}
 
 	return {};
 }
@@ -82,7 +96,9 @@ namespace lua::game_maker
 	{
 		big::lua_module* mdl = big::lua_module::this_from(env);
 		if (mdl)
+		{
 			mdl->m_pre_code_execute_callbacks.push_back(cb);
+		}
 	}
 
 	// Lua API: Function
@@ -94,7 +110,9 @@ namespace lua::game_maker
 	{
 		big::lua_module* mdl = big::lua_module::this_from(env);
 		if (mdl)
+		{
 			mdl->m_post_code_execute_callbacks.push_back(cb);
+		}
 	}
 
 	static bool is_Builtin_Call_Method(uintptr_t return_address)
@@ -129,6 +147,7 @@ namespace lua::game_maker
 	}
 
 	static uintptr_t original_script_func_ptr;
+
 	static RValue* central_script_hook(CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args)
 	{
 #pragma region Figure out which original function to call
@@ -162,13 +181,21 @@ namespace lua::game_maker
 			{
 				intptr_t imm = 0;
 				if (instruction.flags & F_IMM8)
+				{
 					imm = (int8_t)instruction.imm.imm8;
+				}
 				else if (instruction.flags & F_IMM16)
+				{
 					imm = (int16_t)instruction.imm.imm16;
+				}
 				else if (instruction.flags & F_IMM32)
+				{
 					imm = (int32_t)instruction.imm.imm32;
+				}
 				else
+				{
 					imm = (int64_t)instruction.imm.imm64;
+				}
 
 				original_script_func_ptr += imm + instruction.len;
 			}
@@ -198,6 +225,7 @@ namespace lua::game_maker
 	// This is some horrible hack, but I can't be bothered to fix all of this mess right now
 #pragma optimize("", off)
 	static uintptr_t original_builtin_func_ptr;
+
 	static RValue* central_builtin_hook(RValue* result, CInstance* self, CInstance* other, int arg_count, RValue* args)
 	{
 #pragma region Figure out which original function to call
@@ -228,6 +256,7 @@ namespace lua::game_maker
 
 		return result;
 	}
+
 #pragma optimize("", on)
 
 	struct make_central_script_result
@@ -270,9 +299,9 @@ namespace lua::game_maker
 			{
 				gm::code_function_info result{};
 				big::g_pointers->m_rorr.m_code_function_GET_the_function(script_function_index,
-				    &result.function_name,
-				    &result.function_ptr,
-				    &result.function_arg_count);
+				                                                         &result.function_name,
+				                                                         &result.function_ptr,
+				                                                         &result.function_arg_count);
 
 				if (result.function_ptr)
 				{
@@ -400,102 +429,102 @@ namespace lua::game_maker
 		// Table containing all possible types of an YYObjectBaseType
 		{
 			state.new_enum<YYObjectBaseType>("YYObjectBaseType",
-			    {
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: YYOBJECTBASE: YYOBJECTBASE
-			        {"YYOBJECTBASE", YYObjectBaseType::YYOBJECTBASE},
+			                                 {
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: YYOBJECTBASE: YYOBJECTBASE
+			                                     {"YYOBJECTBASE", YYObjectBaseType::YYOBJECTBASE},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: CINSTANCE: CINSTANCE
-			        {"CINSTANCE", YYObjectBaseType::CINSTANCE},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: CINSTANCE: CINSTANCE
+			                                     {"CINSTANCE", YYObjectBaseType::CINSTANCE},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: ACCESSOR: ACCESSOR
-			        {"ACCESSOR", YYObjectBaseType::ACCESSOR},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: ACCESSOR: ACCESSOR
+			                                     {"ACCESSOR", YYObjectBaseType::ACCESSOR},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: SCRIPTREF: SCRIPTREF
-			        {"SCRIPTREF", YYObjectBaseType::SCRIPTREF},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: SCRIPTREF: SCRIPTREF
+			                                     {"SCRIPTREF", YYObjectBaseType::SCRIPTREF},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: PROPERTY: PROPERTY
-			        {"PROPERTY", YYObjectBaseType::PROPERTY},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: PROPERTY: PROPERTY
+			                                     {"PROPERTY", YYObjectBaseType::PROPERTY},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: ARRAY: ARRAY
-			        {"ARRAY", YYObjectBaseType::ARRAY},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: ARRAY: ARRAY
+			                                     {"ARRAY", YYObjectBaseType::ARRAY},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: WEAKREF: WEAKREF
-			        {"WEAKREF", YYObjectBaseType::WEAKREF},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: WEAKREF: WEAKREF
+			                                     {"WEAKREF", YYObjectBaseType::WEAKREF},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: CONTAINER: CONTAINER
-			        {"CONTAINER", YYObjectBaseType::CONTAINER},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: CONTAINER: CONTAINER
+			                                     {"CONTAINER", YYObjectBaseType::CONTAINER},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: SEQUENCE: SEQUENCE
-			        {"SEQUENCE", YYObjectBaseType::SEQUENCE},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: SEQUENCE: SEQUENCE
+			                                     {"SEQUENCE", YYObjectBaseType::SEQUENCE},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: SEQUENCEINSTANCE: SEQUENCEINSTANCE
-			        {"SEQUENCEINSTANCE", YYObjectBaseType::SEQUENCEINSTANCE},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: SEQUENCEINSTANCE: SEQUENCEINSTANCE
+			                                     {"SEQUENCEINSTANCE", YYObjectBaseType::SEQUENCEINSTANCE},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: SEQUENCETRACK: SEQUENCETRACK
-			        {"SEQUENCETRACK", YYObjectBaseType::SEQUENCETRACK},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: SEQUENCETRACK: SEQUENCETRACK
+			                                     {"SEQUENCETRACK", YYObjectBaseType::SEQUENCETRACK},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: SEQUENCECURVE: SEQUENCECURVE
-			        {"SEQUENCECURVE", YYObjectBaseType::SEQUENCECURVE},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: SEQUENCECURVE: SEQUENCECURVE
+			                                     {"SEQUENCECURVE", YYObjectBaseType::SEQUENCECURVE},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: SEQUENCECURVECHANNEL: SEQUENCECURVECHANNEL
-			        {"SEQUENCECURVECHANNEL", YYObjectBaseType::SEQUENCECURVECHANNEL},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: SEQUENCECURVECHANNEL: SEQUENCECURVECHANNEL
+			                                     {"SEQUENCECURVECHANNEL", YYObjectBaseType::SEQUENCECURVECHANNEL},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: SEQUENCEKEYFRAMESTORE: SEQUENCEKEYFRAMESTORE
-			        {"SEQUENCEKEYFRAMESTORE", YYObjectBaseType::SEQUENCEKEYFRAMESTORE},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: SEQUENCEKEYFRAMESTORE: SEQUENCEKEYFRAMESTORE
+			                                     {"SEQUENCEKEYFRAMESTORE", YYObjectBaseType::SEQUENCEKEYFRAMESTORE},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: SEQUENCEKEYFRAME: SEQUENCEKEYFRAME
-			        {"SEQUENCEKEYFRAME", YYObjectBaseType::SEQUENCEKEYFRAME},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: SEQUENCEKEYFRAME: SEQUENCEKEYFRAME
+			                                     {"SEQUENCEKEYFRAME", YYObjectBaseType::SEQUENCEKEYFRAME},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: SEQUENCEEVALTREE: SEQUENCEEVALTREE
-			        {"SEQUENCEEVALTREE", YYObjectBaseType::SEQUENCEEVALTREE},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: SEQUENCEEVALTREE: SEQUENCEEVALTREE
+			                                     {"SEQUENCEEVALTREE", YYObjectBaseType::SEQUENCEEVALTREE},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: SEQUENCEEVALNODE: SEQUENCEEVALNODE
-			        {"SEQUENCEEVALNODE", YYObjectBaseType::SEQUENCEEVALNODE},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: SEQUENCEEVALNODE: SEQUENCEEVALNODE
+			                                     {"SEQUENCEEVALNODE", YYObjectBaseType::SEQUENCEEVALNODE},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: SEQUENCEEVENT: SEQUENCEEVENT
-			        {"SEQUENCEEVENT", YYObjectBaseType::SEQUENCEEVENT},
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: SEQUENCEEVENT: SEQUENCEEVENT
+			                                     {"SEQUENCEEVENT", YYObjectBaseType::SEQUENCEEVENT},
 
-			        // Lua API: Field
-			        // Table: YYObjectBaseType
-			        // Field: NINESLICE: NINESLICE
-			        {"NINESLICE", YYObjectBaseType::NINESLICE},
-			    });
+			                                     // Lua API: Field
+			                                     // Table: YYObjectBaseType
+			                                     // Field: NINESLICE: NINESLICE
+			                                     {"NINESLICE", YYObjectBaseType::NINESLICE},
+			                                 });
 		}
 
 		// Lua API: Class
@@ -505,7 +534,8 @@ namespace lua::game_maker
 			sol::usertype<YYObjectBase> type = state.new_usertype<YYObjectBase>(
 			    "YYObjectBase",
 			    sol::meta_function::index,
-			    [](sol::this_state this_state_, sol::object self, sol::stack_object key) -> sol::reference {
+			    [](sol::this_state this_state_, sol::object self, sol::stack_object key) -> sol::reference
+			    {
 				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
 				    if (v)
 				    {
@@ -525,7 +555,8 @@ namespace lua::game_maker
 				    }
 			    },
 			    sol::meta_function::new_index,
-			    [](sol::object self, sol::stack_object key, sol::stack_object value) {
+			    [](sol::object self, sol::stack_object key, sol::stack_object value)
+			    {
 				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
 				    if (v)
 				    {
@@ -551,18 +582,22 @@ namespace lua::game_maker
 			// Lua API: Field
 			// Class: YYObjectBase
 			// Field: cinstance: CInstance or nil if not a CInstance
-			type["cinstance"] = sol::property([](YYObjectBase& inst, sol::this_state this_state_) {
-				return inst.type == YYObjectBaseType::CINSTANCE ? sol::make_object(this_state_, (CInstance*)&inst) : sol::lua_nil;
-			});
+			type["cinstance"] = sol::property(
+			    [](YYObjectBase& inst, sol::this_state this_state_)
+			    {
+				    return inst.type == YYObjectBaseType::CINSTANCE ? sol::make_object(this_state_, (CInstance*)&inst) : sol::lua_nil;
+			    });
 
 			// Lua API: Field
 			// Class: YYObjectBase
 			// Field: script_name: string or nil if not a SCRIPTREF
-			type["script_name"] = sol::property([](YYObjectBase& inst, sol::this_state this_state_) {
-				return inst.type == YYObjectBaseType::SCRIPTREF ?
-				    sol::make_object(this_state_, ((CScriptRef*)&inst)->m_call_script->m_script_name) :
-				    sol::lua_nil;
-			});
+			type["script_name"] = sol::property(
+			    [](YYObjectBase& inst, sol::this_state this_state_)
+			    {
+				    return inst.type == YYObjectBaseType::SCRIPTREF ?
+				               sol::make_object(this_state_, ((CScriptRef*)&inst)->m_call_script->m_script_name) :
+				               sol::lua_nil;
+			    });
 		}
 
 		// Lua API: Class
@@ -594,19 +629,23 @@ namespace lua::game_maker
 			// Class: RValue
 			// Field: value: The actual value behind the RValue, or RValue if the type is not handled yet.
 			type["value"] = sol::property(
-			    [](RValue& inst, sol::this_state this_state_) {
+			    [](RValue& inst, sol::this_state this_state_)
+			    {
 				    return RValue_to_lua(inst, this_state_);
 			    },
-			    [](RValue& inst, sol::object arg, sol::this_state this_state_) {
+			    [](RValue& inst, sol::object arg, sol::this_state this_state_)
+			    {
 				    inst = parse_sol_object(arg);
 			    });
 
 			// Lua API: Field
 			// Class: RValue
 			// Field: tostring: string representation of the RValue
-			type["tostring"] = sol::property([](RValue& inst) {
-				return inst.asString();
-			});
+			type["tostring"] = sol::property(
+			    [](RValue& inst)
+			    {
+				    return inst.asString();
+			    });
 		}
 
 		// Lua API: Table
@@ -614,92 +653,92 @@ namespace lua::game_maker
 		// Table containing all possible types of an RValue
 		{
 			state.new_enum<RValueType>("RValueType",
-			    {
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: REAL: REAL
-			        {"REAL", RValueType::REAL},
+			                           {
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: REAL: REAL
+			                               {"REAL", RValueType::REAL},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: STRING: STRING
-			        {"STRING", RValueType::STRING},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: STRING: STRING
+			                               {"STRING", RValueType::STRING},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: ARRAY: ARRAY
-			        {"ARRAY", RValueType::ARRAY},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: ARRAY: ARRAY
+			                               {"ARRAY", RValueType::ARRAY},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: PTR: PTR
-			        {"PTR", RValueType::PTR},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: PTR: PTR
+			                               {"PTR", RValueType::PTR},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: VEC3: VEC3
-			        {"VEC3", RValueType::VEC3},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: VEC3: VEC3
+			                               {"VEC3", RValueType::VEC3},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: UNDEFINED: UNDEFINED
-			        {"UNDEFINED", RValueType::UNDEFINED},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: UNDEFINED: UNDEFINED
+			                               {"UNDEFINED", RValueType::UNDEFINED},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: OBJECT: OBJECT
-			        {"OBJECT", RValueType::OBJECT},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: OBJECT: OBJECT
+			                               {"OBJECT", RValueType::OBJECT},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: INT32: INT32
-			        {"INT32", RValueType::_INT32},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: INT32: INT32
+			                               {"INT32", RValueType::_INT32},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: VEC4: VEC4
-			        {"VEC4", RValueType::VEC4},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: VEC4: VEC4
+			                               {"VEC4", RValueType::VEC4},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: MATRIX: MATRIX
-			        {"MATRIX", RValueType::MATRIX},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: MATRIX: MATRIX
+			                               {"MATRIX", RValueType::MATRIX},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: INT64: INT64
-			        {"INT64", RValueType::_INT64},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: INT64: INT64
+			                               {"INT64", RValueType::_INT64},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: ACCESSOR: ACCESSOR
-			        {"ACCESSOR", RValueType::ACCESSOR},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: ACCESSOR: ACCESSOR
+			                               {"ACCESSOR", RValueType::ACCESSOR},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: JSNULL: JSNULL
-			        {"JSNULL", RValueType::JSNULL},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: JSNULL: JSNULL
+			                               {"JSNULL", RValueType::JSNULL},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: BOOL: BOOL
-			        {"BOOL", RValueType::_BOOL},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: BOOL: BOOL
+			                               {"BOOL", RValueType::_BOOL},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: ITERATOR: ITERATOR
-			        {"ITERATOR", RValueType::ITERATOR},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: ITERATOR: ITERATOR
+			                               {"ITERATOR", RValueType::ITERATOR},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: REF: REF
-			        {"REF", RValueType::REF},
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: REF: REF
+			                               {"REF", RValueType::REF},
 
-			        // Lua API: Field
-			        // Table: RValueType
-			        // Field: UNSET: UNSET
-			        {"UNSET", RValueType::UNSET},
-			    });
+			                               // Lua API: Field
+			                               // Table: RValueType
+			                               // Field: UNSET: UNSET
+			                               {"UNSET", RValueType::UNSET},
+			                           });
 		}
 
 		// Lua API: Table
@@ -707,52 +746,52 @@ namespace lua::game_maker
 		// Table containing all possible kind / type of variable within the GM engine.
 		{
 			state.new_enum<EVariableType>("EVariableType",
-			    {
-			        // Lua API: Field
-			        // Table: EVariableType
-			        // Field: SELF: SELF
-			        {"SELF", EVariableType::SELF},
+			                              {
+			                                  // Lua API: Field
+			                                  // Table: EVariableType
+			                                  // Field: SELF: SELF
+			                                  {"SELF", EVariableType::SELF},
 
-			        // Lua API: Field
-			        // Table: EVariableType
-			        // Field: OTHER: OTHER
-			        {"OTHER", EVariableType::OTHER},
+			                                  // Lua API: Field
+			                                  // Table: EVariableType
+			                                  // Field: OTHER: OTHER
+			                                  {"OTHER", EVariableType::OTHER},
 
-			        // Lua API: Field
-			        // Table: EVariableType
-			        // Field: ALL: ALL
-			        {"ALL", EVariableType::ALL},
+			                                  // Lua API: Field
+			                                  // Table: EVariableType
+			                                  // Field: ALL: ALL
+			                                  {"ALL", EVariableType::ALL},
 
-			        // Lua API: Field
-			        // Table: EVariableType
-			        // Field: NOONE: NOONE
-			        {"NOONE", EVariableType::NOONE},
+			                                  // Lua API: Field
+			                                  // Table: EVariableType
+			                                  // Field: NOONE: NOONE
+			                                  {"NOONE", EVariableType::NOONE},
 
-			        // Lua API: Field
-			        // Table: EVariableType
-			        // Field: GLOBAL: GLOBAL
-			        {"GLOBAL", EVariableType::GLOBAL},
+			                                  // Lua API: Field
+			                                  // Table: EVariableType
+			                                  // Field: GLOBAL: GLOBAL
+			                                  {"GLOBAL", EVariableType::GLOBAL},
 
-			        // Lua API: Field
-			        // Table: EVariableType
-			        // Field: BUILTIN: BUILTIN
-			        {"BUILTIN", EVariableType::BUILTIN},
+			                                  // Lua API: Field
+			                                  // Table: EVariableType
+			                                  // Field: BUILTIN: BUILTIN
+			                                  {"BUILTIN", EVariableType::BUILTIN},
 
-			        // Lua API: Field
-			        // Table: EVariableType
-			        // Field: LOCAL: LOCAL
-			        {"LOCAL", EVariableType::LOCAL},
+			                                  // Lua API: Field
+			                                  // Table: EVariableType
+			                                  // Field: LOCAL: LOCAL
+			                                  {"LOCAL", EVariableType::LOCAL},
 
-			        // Lua API: Field
-			        // Table: EVariableType
-			        // Field: STACKTOP: STACKTOP
-			        {"STACKTOP", EVariableType::STACKTOP},
+			                                  // Lua API: Field
+			                                  // Table: EVariableType
+			                                  // Field: STACKTOP: STACKTOP
+			                                  {"STACKTOP", EVariableType::STACKTOP},
 
-			        // Lua API: Field
-			        // Table: EVariableType
-			        // Field: ARGUMENT: ARGUMENT
-			        {"ARGUMENT", EVariableType::ARGUMENT},
-			    });
+			                                  // Lua API: Field
+			                                  // Table: EVariableType
+			                                  // Field: ARGUMENT: ARGUMENT
+			                                  {"ARGUMENT", EVariableType::ARGUMENT},
+			                              });
 		}
 
 		// Lua API: Class
@@ -766,7 +805,8 @@ namespace lua::game_maker
 			sol::usertype<CInstance> type = state.new_usertype<CInstance>(
 			    "CInstance",
 			    sol::meta_function::index,
-			    [](sol::this_state this_state_, sol::object self, sol::stack_object key) -> sol::reference {
+			    [](sol::this_state this_state_, sol::object self, sol::stack_object key) -> sol::reference
+			    {
 				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
 				    if (v)
 				    {
@@ -786,7 +826,8 @@ namespace lua::game_maker
 				    }
 			    },
 			    sol::meta_function::new_index,
-			    [](sol::object self, sol::stack_object key, sol::stack_object value) {
+			    [](sol::object self, sol::stack_object key, sol::stack_object value)
+			    {
 				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
 				    if (v)
 				    {
@@ -929,16 +970,20 @@ namespace lua::game_maker
 			// Lua API: Field
 			// Class: CInstance
 			// Field: bbox: number[4] array
-			type["bbox"] = sol::property([](CInstance& inst) {
-				return std::span(inst.bbox);
-			});
+			type["bbox"] = sol::property(
+			    [](CInstance& inst)
+			    {
+				    return std::span(inst.bbox);
+			    });
 
 			// Lua API: Field
 			// Class: CInstance
 			// Field: timer: number[12] array
-			type["timer"] = sol::property([](CInstance& inst) {
-				return std::span(inst.timer);
-			});
+			type["timer"] = sol::property(
+			    [](CInstance& inst)
+			    {
+				    return std::span(inst.timer);
+			    });
 
 			// Lua API: Field
 			// Class: CInstance
@@ -1000,7 +1045,8 @@ namespace lua::game_maker
 			    sol::base_classes,
 			    sol::bases<YYObjectBase>(),
 			    sol::meta_function::index,
-			    [](sol::this_state this_state_, RefDynamicArrayOfRValue& self, sol::stack_object position_) -> sol::reference {
+			    [](sol::this_state this_state_, RefDynamicArrayOfRValue& self, sol::stack_object position_) -> sol::reference
+			    {
 				    if (position_.get_type() != sol::type::number)
 				    {
 					    return sol::lua_nil;
@@ -1019,9 +1065,11 @@ namespace lua::game_maker
 				    return RValue_to_lua(val, this_state_);
 			    },
 			    sol::meta_function::garbage_collect,
-			    sol::destructor([](RefDynamicArrayOfRValue& inst) {
-				    YYObjectPinMap::unpin(&inst);
-			    }));
+			    sol::destructor(
+			        [](RefDynamicArrayOfRValue& inst)
+			        {
+				        YYObjectPinMap::unpin(&inst);
+			        }));
 
 			sol::protected_function ipairs_func = type[sol::meta_function::ipairs];
 			type[sol::meta_function::pairs]     = ipairs_func;
@@ -1063,7 +1111,8 @@ namespace lua::game_maker
 			// Field: constants_type_sorted: constants_type_sorted[type_name][i] = constant_name
 			auto constants_type_sorted = ns["constants_type_sorted"].get_or_create<sol::table>();
 
-			auto asset_loop_over = [&](std::string type, const std::string& custom_type_name = "", double start = 0.0) {
+			auto asset_loop_over = [&](std::string type, const std::string& custom_type_name = "", double start = 0.0)
+			{
 				const char* asset_name{"<undefined>"};
 
 				std::string routine_name = type + "_get_name";
@@ -1111,7 +1160,8 @@ namespace lua::game_maker
 				return i;
 			};
 
-			auto room_loop_over = [&]() {
+			auto room_loop_over = [&]()
+			{
 				std::string room = "room";
 
 				const char* asset_name{"<undefined>"};
@@ -1137,7 +1187,8 @@ namespace lua::game_maker
 				}
 			};
 
-			auto script_loop_over = [&](std::string type, const std::string& custom_type_name = "", double start = 0.0) {
+			auto script_loop_over = [&](std::string type, const std::string& custom_type_name = "", double start = 0.0)
+			{
 				const char* asset_name{"<undefined>"};
 
 				std::string routine_name = type + "_get_name";
@@ -1209,34 +1260,40 @@ namespace lua::game_maker
 
 		auto meta_gm = state.create_table();
 		// Wrapper so that users can do gm.room_goto(new_room) for example instead of gm.call("room_goto", new_room)
-		meta_gm.set_function(sol::meta_function::index, [](sol::this_state this_state_, sol::table self, std::string key) -> sol::reference {
-			auto v = self.raw_get<sol::optional<sol::reference>>(key);
-			if (v)
-			{
-				return v.value();
-			}
-			else
-			{
-				if (!key.size())
-				{
-					return sol::lua_nil;
-				}
+		meta_gm.set_function(sol::meta_function::index,
+		                     [](sol::this_state this_state_, sol::table self, std::string key) -> sol::reference
+		                     {
+			                     auto v = self.raw_get<sol::optional<sol::reference>>(key);
+			                     if (v)
+			                     {
+				                     return v.value();
+			                     }
+			                     else
+			                     {
+				                     if (!key.size())
+				                     {
+					                     return sol::lua_nil;
+				                     }
 
-				self.raw_set(key,
-				    sol::overload(
-				        [key, this_state_](sol::variadic_args args) {
-					        return RValue_to_lua(gm::call(key, parse_variadic_args(args)), this_state_);
-				        },
-				        [key, this_state_](CInstance* self, CInstance* other, sol::variadic_args args) {
-					        return RValue_to_lua(gm::call(key, self, other, parse_variadic_args(args)), this_state_);
-				        }));
+				                     self.raw_set(key,
+				                                  sol::overload(
+				                                      [key, this_state_](sol::variadic_args args)
+				                                      {
+					                                      return RValue_to_lua(gm::call(key, parse_variadic_args(args)), this_state_);
+				                                      },
+				                                      [key, this_state_](CInstance* self, CInstance* other, sol::variadic_args args)
+				                                      {
+					                                      return RValue_to_lua(gm::call(key, self, other, parse_variadic_args(args)), this_state_);
+				                                      }));
 
-				return self.raw_get<sol::reference>(key);
-			}
-		});
-		meta_gm.set_function(sol::meta_function::new_index, [](lua_State* L) -> int {
-			return luaL_error(L, "Can't define new game maker functions this way");
-		});
+				                     return self.raw_get<sol::reference>(key);
+			                     }
+		                     });
+		meta_gm.set_function(sol::meta_function::new_index,
+		                     [](lua_State* L) -> int
+		                     {
+			                     return luaL_error(L, "Can't define new game maker functions this way");
+		                     });
 		state["gm"][sol::metatable_key] = meta_gm;
 	}
-}
+} // namespace lua::game_maker

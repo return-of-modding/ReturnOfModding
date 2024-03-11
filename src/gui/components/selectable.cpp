@@ -15,7 +15,9 @@ namespace big
 	void components::selectable(const std::string_view text, bool selected, std::function<void()> cb)
 	{
 		if (components::selectable(text.data(), selected))
+		{
 			cb();
+		}
 	}
 
 	void components::selectable(const std::string_view text, bool selected, ImGuiSelectableFlags flag, std::function<void()> cb)
@@ -25,4 +27,4 @@ namespace big
 			cb();
 		}
 	}
-}
+} // namespace big

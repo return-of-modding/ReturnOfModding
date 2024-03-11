@@ -11,7 +11,7 @@ namespace lua::log
 	{
 		std::stringstream data;
 
-		size_t i = 0;
+		size_t i                        = 0;
 		const size_t last_element_index = args.size() - 1;
 		for (const auto& arg : args)
 		{
@@ -80,9 +80,9 @@ namespace lua::log
 	{
 		tostring = state["tostring"];
 
-		state["print"] = info;
+		state["print"]      = info;
 		original_error_func = state["error"];
-		state["error"] = error;
+		state["error"]      = error;
 
 		auto ns       = state["log"].get_or_create<sol::table>();
 		ns["info"]    = info;
@@ -90,4 +90,4 @@ namespace lua::log
 		ns["debug"]   = debug;
 		ns["error"]   = error;
 	}
-}
+} // namespace lua::log

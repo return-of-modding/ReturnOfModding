@@ -19,7 +19,8 @@ struct CScript
 	YYGMLFuncs* m_funcs;
 	CInstance* m_static_object;
 
-	union {
+	union
+	{
 		const char* m_script;
 		int m_compiled_index;
 	};

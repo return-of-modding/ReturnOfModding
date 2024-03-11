@@ -12,4 +12,4 @@ namespace big
 	};
 
 	inline byte_patch_manager* g_byte_patch_manager;
-}
+} // namespace big

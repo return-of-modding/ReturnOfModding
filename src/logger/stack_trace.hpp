@@ -1,5 +1,5 @@
 #pragma once
-#include "common.hpp"
+
 
 namespace big
 {
@@ -66,4 +66,4 @@ namespace big
 
 		return os;
 	}
-}
+} // namespace big

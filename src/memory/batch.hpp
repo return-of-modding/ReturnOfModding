@@ -27,8 +27,8 @@ namespace memory
 
 	struct signature_hasher
 	{
-		static inline constexpr uint32_t FNV_PRIME_32  = 16777619u;
-		static inline constexpr uint32_t FNV_OFFSET_32 = 2166136261u;
+		static inline constexpr uint32_t FNV_PRIME_32  = 16'777'619u;
+		static inline constexpr uint32_t FNV_OFFSET_32 = 2'166'136'261u;
 
 		static inline constexpr uint32_t fnv1a_32(const char* str, uint32_t hash = FNV_OFFSET_32) noexcept
 		{
@@ -86,7 +86,9 @@ namespace memory
 				future.wait();
 
 				if (!future.get())
+				{
 					found_all_patterns = false;
+				}
 			}
 
 			g_futures.clear();
@@ -115,4 +117,4 @@ namespace memory
 			return false;
 		}
 	};
-}
+} // namespace memory

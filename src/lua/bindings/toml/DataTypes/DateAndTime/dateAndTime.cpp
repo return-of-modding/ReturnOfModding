@@ -1,21 +1,25 @@
 #include <lua/bindings/toml/DataTypes/DateAndTime/dateAndTime.hpp>
 
-std::ostream & operator<<(std::ostream & os, const TOMLDate & date) {
+std::ostream& operator<<(std::ostream& os, const TOMLDate& date)
+{
 	os << date.date;
 	return os;
 }
 
-std::ostream & operator<<(std::ostream & os, const TOMLTime & time) {
+std::ostream& operator<<(std::ostream& os, const TOMLTime& time)
+{
 	os << time.time;
 	return os;
 }
 
-std::ostream & operator<<(std::ostream & os, const TOMLTimeOffset & timeOffset) {
+std::ostream& operator<<(std::ostream& os, const TOMLTimeOffset& timeOffset)
+{
 	os << timeOffset.timeOffset;
 	return os;
 }
 
-std::ostream & operator<<(std::ostream & os, const TOMLDateTime & dateTime) {
+std::ostream& operator<<(std::ostream& os, const TOMLDateTime& dateTime)
+{
 	os << dateTime.asDateTime();
 	return os;
 }

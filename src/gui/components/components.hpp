@@ -33,12 +33,16 @@ namespace big
 			bool status = false;
 
 			if constexpr (color.x != 0.24f || color.y != 0.23f || color.z != 0.29f || color.w != 1.0f)
+			{
 				ImGui::PushStyleColor(ImGuiCol_Button, color);
+			}
 
 			status = ImGui::Button(text.data(), size);
 
 			if constexpr (color.x != 0.24f || color.y != 0.23f || color.z != 0.29f || color.w != 1.0f)
+			{
 				ImGui::PopStyleColor(1);
+			}
 			return status;
 		}
 
@@ -62,12 +66,16 @@ namespace big
 		template<typename PredicateFn, typename ComponentsFn>
 		static void disable_unless(PredicateFn predicate_fn, ComponentsFn components_fn)
 		{
-			auto const result = predicate_fn();
+			const auto result = predicate_fn();
 			if (!result)
+			{
 				ImGui::BeginDisabled(true);
+			}
 			components_fn();
 			if (!result)
+			{
 				ImGui::EndDisabled();
+			}
 		}
 	};
-}
+} // namespace big

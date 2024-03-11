@@ -32,9 +32,11 @@ namespace big
 
 		lua::window::deserialize();
 
-		m_reload_watcher_thread = std::thread([&]() {
-			reload_changed_plugins();
-		});
+		m_reload_watcher_thread = std::thread(
+		    [&]()
+		    {
+			    reload_changed_plugins();
+		    });
 	}
 
 	lua_manager::~lua_manager()
@@ -92,7 +94,9 @@ namespace big
 		for (const auto& entry : std::filesystem::recursive_directory_iterator(m_plugins_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
 		{
 			if (!entry.is_directory())
+			{
 				continue;
+			}
 
 			plugins_search_path += entry.path().string() + "/?.lua;";
 		}
@@ -118,7 +122,8 @@ namespace big
 	template<size_t N>
 	static constexpr auto not_supported_lua_function(const char (&function_name)[N])
 	{
-		return [function_name](sol::this_environment env, sol::variadic_args args) {
+		return [function_name](sol::this_environment env, sol::variadic_args args)
+		{
 			LOG(FATAL) << big::lua_module::guid_from(env) << " tried calling a currently not supported lua function: " << function_name;
 			Logger::FlushQueue();
 		};
@@ -215,7 +220,8 @@ namespace big
 		// If no match is found with the folder path then we just set the same env as the require caller.
 		// TODO: This is hacked together, need to be cleaned up at some point.
 		// TODO: sub folders are not supported currently.
-		m_state["require"] = [&](std::string path, sol::variadic_args args, sol::this_environment this_env) -> sol::object {
+		m_state["require"] = [&](std::string path, sol::variadic_args args, sol::this_environment this_env) -> sol::object
+		{
 			sol::environment& env = this_env;
 
 			// Example of a non local require (mod is requiring a file from another mod/package):
@@ -383,10 +389,13 @@ namespace big
 		// Name: on_all_mods_loaded
 		// Param: callback: function: callback that will be called once all mods are loaded. The callback function should match signature func()
 		// Registers a callback that will be called once all mods are loaded. Will be called instantly if mods are already loaded and that you are just hot-reloading your mod.
-		mods["on_all_mods_loaded"] = [](sol::protected_function cb, sol::this_environment env) {
+		mods["on_all_mods_loaded"] = [](sol::protected_function cb, sol::this_environment env)
+		{
 			big::lua_module* mdl = big::lua_module::this_from(env);
 			if (mdl)
+			{
 				mdl->m_on_all_mods_loaded_callbacks.push_back(cb);
+			}
 		};
 
 		// Let's keep that list sorted the same as the solution file explorer
@@ -579,9 +588,11 @@ namespace big
 	{
 		std::lock_guard guard(m_module_lock);
 
-		std::erase_if(m_modules, [&](auto& module) {
-			return module_guid == module->guid();
-		});
+		std::erase_if(m_modules,
+		              [&](auto& module)
+		              {
+			              return module_guid == module->guid();
+		              });
 	}
 
 	load_module_result lua_manager::load_module(const module_info& module_info, bool ignore_failed_to_load)
@@ -639,7 +650,9 @@ namespace big
 								unload_module(module->guid());
 								const auto module_info = get_module_info(module_path);
 								if (module_info)
+								{
 									const auto load_result = load_module(module_info.value(), true);
+								}
 								break;
 							}
 						}
@@ -656,8 +669,12 @@ namespace big
 		std::lock_guard guard(m_module_lock);
 
 		for (const auto& module : m_modules)
+		{
 			if (module->guid() == module_guid)
+			{
 				return true;
+			}
+		}
 
 		return false;
 	}
@@ -667,8 +684,12 @@ namespace big
 		std::lock_guard guard(m_module_lock);
 
 		for (const auto& module : m_modules)
+		{
 			if (module->guid() == module_guid)
+			{
 				return module;
+			}
+		}
 
 		return {};
 	}
@@ -739,7 +760,9 @@ namespace big
 			{
 				const auto module_info = get_module_info(entry.path());
 				if (module_info)
+				{
 					module_guid_to_module_info.insert({module_info.value().m_guid_with_version, module_info.value()});
+				}
 			}
 		}
 
@@ -751,13 +774,15 @@ namespace big
 		}
 
 		// Sort depending on module dependencies.
-		const auto sorted_modules = topological_sort(module_guids, [&](const std::string& guid) {
-			if (module_guid_to_module_info.contains(guid))
-			{
-				return module_guid_to_module_info[guid].m_manifest.dependencies;
-			}
-			return std::vector<std::string>();
-		});
+		const auto sorted_modules = topological_sort(module_guids,
+		                                             [&](const std::string& guid)
+		                                             {
+			                                             if (module_guid_to_module_info.contains(guid))
+			                                             {
+				                                             return module_guid_to_module_info[guid].m_manifest.dependencies;
+			                                             }
+			                                             return std::vector<std::string>();
+		                                             });
 
 		std::unordered_set<std::string> missing_modules;
 		for (const auto& guid : sorted_modules)
@@ -790,8 +815,10 @@ namespace big
 				{
 					// Don't log the fact that the mod loader failed to load, it's normal (see comment above)
 					if (!guid.contains(mod_loader_name))
+					{
 						LOG(WARNING) << (module_info.m_guid_with_version.size() ? module_info.m_guid_with_version : guid)
 						             << " (file path: " << reinterpret_cast<const char*>(module_info.m_path.u8string().c_str()) << " does not exist in the filesystem. Not loading it.";
+					}
 
 					missing_modules.insert(guid);
 				}
@@ -809,13 +836,16 @@ namespace big
 
 		m_is_all_mods_loaded = true;
 	}
+
 	void lua_manager::unload_all_modules()
 	{
 		std::lock_guard guard(m_module_lock);
 
 		for (auto& module : m_modules)
+		{
 			module.reset();
+		}
 
 		m_modules.clear();
 	}
-}
+} // namespace big

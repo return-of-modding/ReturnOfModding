@@ -12,11 +12,15 @@ void CInstance::imgui_dump()
 
 	const auto sprite_name = gm::call("sprite_get_name", sprite_index);
 	if (sprite_name.type == RValueType::STRING)
+	{
 		ImGui::Text("Sprite Name: %s (Index: %d) ", sprite_name.ref_string->m_thing, sprite_index);
+	}
 
 	const auto layer_name = gm::call("layer_get_name", layer);
 	if (layer_name.type == RValueType::STRING)
+	{
 		ImGui::Text("Layer Name: %s (Index: %d) ", layer_name.ref_string->m_thing, layer);
+	}
 
 	ImGui::Text("Depth: %.2f | %.2f", depth, i_currentdepth);
 }
@@ -42,7 +46,7 @@ void CInstance::imgui_dump_instance_variables()
 			if (ImGui::Button(std::format("SAVE ##btn{}", var_name).c_str()))
 			{
 				gm::call("variable_instance_set",
-				    std::to_array<RValue, 3>({id, var_name, std::stod(var_to_input_texts[var_name].data())}));
+				         std::to_array<RValue, 3>({id, var_name, std::stod(var_to_input_texts[var_name].data())}));
 			}
 		}
 	}
@@ -50,6 +54,7 @@ void CInstance::imgui_dump_instance_variables()
 
 static std::unordered_map<int, std::string> object_index_to_name;
 static std::string dummy;
+
 const std::string& CInstance::object_name() const
 {
 	if (!object_index_to_name.contains(object_index))

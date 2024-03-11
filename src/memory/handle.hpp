@@ -102,4 +102,4 @@ namespace memory
 	{
 		return ptr != nullptr;
 	}
-}
+} // namespace memory

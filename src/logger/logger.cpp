@@ -44,7 +44,9 @@ namespace big
 		if (m_attach_console)
 		{
 			if (m_did_console_exist = ::AttachConsole(GetCurrentProcessId()); !m_did_console_exist)
+			{
 				AllocConsole();
+			}
 
 			if (m_console_handle = GetStdHandle(STD_OUTPUT_HANDLE); m_console_handle != nullptr)
 			{
@@ -69,12 +71,16 @@ namespace big
 		open_outstreams();
 
 		Logger::Init();
-		Logger::AddSink([this](LogMessagePtr msg) {
-			format_file(std::move(msg));
-		});
-		Logger::AddSink([this](LogMessagePtr msg) {
-			(this->*m_console_logger)(std::move(msg));
-		});
+		Logger::AddSink(
+		    [this](LogMessagePtr msg)
+		    {
+			    format_file(std::move(msg));
+		    });
+		Logger::AddSink(
+		    [this](LogMessagePtr msg)
+		    {
+			    (this->*m_console_logger)(std::move(msg));
+		    });
 	}
 
 	void logger::destroy()
@@ -83,10 +89,14 @@ namespace big
 		close_outstreams();
 
 		if (m_did_console_exist)
+		{
 			SetConsoleMode(m_console_handle, m_original_console_mode);
+		}
 
 		if (!m_did_console_exist && m_attach_console)
+		{
 			FreeConsole();
+		}
 	}
 
 	void logger::create_backup()
@@ -98,20 +108,22 @@ namespace big
 			auto local_time = std::localtime(&time_t);
 
 			m_file.move(std::format("./backup/{:0>2}-{:0>2}-{}-{:0>2}-{:0>2}-{:0>2}_{}",
-			    local_time->tm_mon + 1,
-			    local_time->tm_mday,
-			    local_time->tm_year + 1900,
-			    local_time->tm_hour,
-			    local_time->tm_min,
-			    local_time->tm_sec,
-			    m_file.get_path().filename().string().c_str()));
+			                        local_time->tm_mon + 1,
+			                        local_time->tm_mday,
+			                        local_time->tm_year + 1900,
+			                        local_time->tm_hour,
+			                        local_time->tm_min,
+			                        local_time->tm_sec,
+			                        m_file.get_path().filename().string().c_str()));
 		}
 	}
 
 	void logger::open_outstreams()
 	{
 		if (m_attach_console)
+		{
 			m_console_out.open("CONOUT$", std::ios_base::out | std::ios_base::app);
+		}
 
 		m_file_out.open(m_file.get_path(), std::ios_base::out | std::ios_base::trunc);
 	}
@@ -119,7 +131,9 @@ namespace big
 	void logger::close_outstreams()
 	{
 		if (m_attach_console)
+		{
 			m_console_out.close();
+		}
 
 		m_file_out.close();
 	}
@@ -129,9 +143,9 @@ namespace big
 		switch (level)
 		{
 		case VERBOSE: return LogColor::BLUE;
-		case INFO: return LogColor::GREEN;
+		case INFO:    return LogColor::GREEN;
 		case WARNING: return LogColor::YELLOW;
-		case FATAL: return LogColor::RED;
+		case FATAL:   return LogColor::RED;
 		}
 		return LogColor::WHITE;
 	}
@@ -176,7 +190,9 @@ namespace big
 	void logger::format_file(const LogMessagePtr msg)
 	{
 		if (!m_file_out.is_open())
+		{
 			return;
+		}
 
 		const auto timestamp = std::format("{0:%H:%M:%S}", msg->Timestamp());
 		const auto& location = msg->Location();
@@ -189,4 +205,4 @@ namespace big
 
 		m_file_out.flush();
 	}
-}
+} // namespace big

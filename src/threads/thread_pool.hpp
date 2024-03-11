@@ -36,4 +36,4 @@ namespace big
 	};
 
 	inline thread_pool* g_thread_pool{};
-}
+} // namespace big

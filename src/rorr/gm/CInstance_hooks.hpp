@@ -1,8 +1,7 @@
 #pragma once
 
-#include "hooks/hooking.hpp"
 #include "CInstance.hpp"
-
+#include "hooks/hooking.hpp"
 
 namespace gm
 {
@@ -12,6 +11,7 @@ namespace gm
 	inline std::unordered_map<int, CInstance*> CInstance_id_to_CInstance;
 
 	using CInstance_ctor = CInstance* (*)(CInstance* this_, float a2, float a3, int a4, int a5, bool a6);
+
 	inline CInstance* hook_CInstance_ctor(CInstance* this_, float a2, float a3, int a4, int a5, bool a6)
 	{
 		std::lock_guard lock(CInstance_containers_mutex);
@@ -26,13 +26,16 @@ namespace gm
 	}
 
 	using CInstance_dctor = void* (*)(CInstance* this_);
+
 	inline void* hook_CInstance_dctor(CInstance* this_)
 	{
 		std::lock_guard lock(CInstance_containers_mutex);
 
-		std::erase_if(CInstances_all, [=](CInstance* other) {
-			return this_ == other;
-		});
+		std::erase_if(CInstances_all,
+		              [=](CInstance* other)
+		              {
+			              return this_ == other;
+		              });
 
 		CInstance_id_to_CInstance.erase(this_->id);
 
@@ -42,6 +45,7 @@ namespace gm
 	}
 
 	using CObjectGM_AddInstance = void (*)(void* CObjectGM_this, CInstance* real_this);
+
 	inline void hook_CObjectGM_AddInstance(void* CObjectGM_this, CInstance* real_this)
 	{
 		big::g_hooking->get_original<hook_CObjectGM_AddInstance>()(CObjectGM_this, real_this);
@@ -50,12 +54,15 @@ namespace gm
 	}
 
 	using CObjectGM_RemoveInstance = void (*)(void* CObjectGM_this, CInstance* real_this);
+
 	inline void hook_CObjectGM_RemoveInstance(void* CObjectGM_this, CInstance* real_this)
 	{
-		std::erase_if(CInstances_active, [=](CInstance* other) {
-			return real_this == other;
-		});
+		std::erase_if(CInstances_active,
+		              [=](CInstance* other)
+		              {
+			              return real_this == other;
+		              });
 
 		big::g_hooking->get_original<hook_CObjectGM_RemoveInstance>()(CObjectGM_this, real_this);
 	}
-}
+} // namespace gm

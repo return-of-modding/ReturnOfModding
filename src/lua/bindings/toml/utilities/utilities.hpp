@@ -1,8 +1,8 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
 
-#include <lua/bindings/toml/Options.hpp>
 #include <cstddef>
+#include <lua/bindings/toml/Options.hpp>
 #include <magic_enum/magic_enum.hpp>
 #include <optional>
 #include <string>
@@ -33,7 +33,7 @@ std::string sourcePositionToString(toml::source_position s);
 std::string parseErrorToString(toml::parse_error e);
 
 /// Inserts the values in `e` into `table`.
-void parseErrorToTable(toml::parse_error e, sol::table & table);
+void parseErrorToTable(toml::parse_error e, sol::table &table);
 
 /// Takes a Lua table, with keys representing flag names, and values
 toml::format_flags tableToFormatFlags(sol::optional<sol::table> t);

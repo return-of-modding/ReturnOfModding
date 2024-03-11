@@ -9,4 +9,4 @@ namespace big::debug
 			std::this_thread::sleep_for(1s);
 		}
 	}
-}
+} // namespace big::debug

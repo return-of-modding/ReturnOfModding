@@ -1,9 +1,9 @@
 #pragma once
-#include "rorr/rorr_pointers.hpp"
+#include "file_manager/cache_file.hpp"
 #include "memory/batch.hpp"
 #include "memory/byte_patch.hpp"
 #include "memory/module.hpp"
-#include "file_manager/cache_file.hpp"
+#include "rorr/rorr_pointers.hpp"
 #include "string/compile_time_str.hpp"
 
 namespace big
@@ -117,4 +117,4 @@ namespace big
 	};
 
 	inline pointers* g_pointers{};
-}
+} // namespace big

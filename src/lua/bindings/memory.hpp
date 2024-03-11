@@ -219,4 +219,4 @@ namespace lua::memory
 	};
 
 	void bind(sol::state& state);
-}
+} // namespace lua::memory

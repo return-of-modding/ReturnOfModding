@@ -19,4 +19,4 @@ namespace gm
 
 		return res;
 	}
-}
+} // namespace gm

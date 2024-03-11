@@ -36,4 +36,4 @@ namespace big
 	{
 		std::memcpy(m_table, m_backup_table.get(), m_num_funcs * sizeof(void*));
 	}
-}
+} // namespace big

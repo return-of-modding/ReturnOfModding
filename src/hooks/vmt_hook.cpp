@@ -1,6 +1,6 @@
 #include "vmt_hook.hpp"
 
-#include "common.hpp"
+
 
 namespace big
 {
@@ -19,8 +19,8 @@ namespace big
 
 	void vmt_hook::init(void* obj, std::size_t num_funcs)
 	{
-		m_object = static_cast<void***>(obj);
-		m_num_funcs = num_funcs;
+		m_object         = static_cast<void***>(obj);
+		m_num_funcs      = num_funcs;
 		m_original_table = *m_object;
 		m_new_table      = std::make_unique<void*[]>(m_num_funcs);
 
@@ -50,6 +50,8 @@ namespace big
 	void vmt_hook::disable()
 	{
 		if (m_object)
+		{
 			*m_object = m_original_table;
+		}
 	}
-}
+} // namespace big

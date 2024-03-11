@@ -60,11 +60,12 @@ inline int tomlTo(sol::state_view state, toml::format_flags flags)
 	}
 	else
 	{
-		return luaL_argerror(L,
+		return luaL_argerror(
+		    L,
 		    1,
 		    std::string(std::string("A string containing a TOML document, or a table with strings as keys "
 		                            "should be the first argument, not")
-		        + solLuaDataTypeToString(sol::type_of(L, 1)))
+		                + solLuaDataTypeToString(sol::type_of(L, 1)))
 		        .c_str());
 	}
 
@@ -106,7 +107,8 @@ extern "C"
 		}
 		else
 		{
-			return luaL_argerror(L,
+			return luaL_argerror(
+			    L,
 			    1,
 			    std::string(std::string("A Lua table with strings as keys should be the first argument, not ") + solLuaDataTypeToString(sol::type_of(L, 1)))
 			        .c_str());
@@ -135,20 +137,20 @@ extern "C"
 				else
 				{
 					return luaL_argerror(L,
-					    2,
-					    "The key \"file\" in the second argument to `toml.encodeToFile` is either "
-					    "missing, or it's value is invalid");
+					                     2,
+					                     "The key \"file\" in the second argument to `toml.encodeToFile` is either "
+					                     "missing, or it's value is invalid");
 				}
 				overwrite = (*fileAndOptions)["overwrite"].get_or(false);
 			}
 			else
 			{
 				return luaL_argerror(L,
-				    2,
-				    std::string(std::string("A file path (string), or a table should be the second "
-				                            "argument, not ")
-				        + solLuaDataTypeToString(sol::type_of(L, 2)))
-				        .c_str());
+				                     2,
+				                     std::string(std::string("A file path (string), or a table should be the second "
+				                                             "argument, not ")
+				                                 + solLuaDataTypeToString(sol::type_of(L, 2)))
+				                         .c_str());
 			}
 			auto flags = tableToFormatFlags(sol::stack::check_get<sol::table>(L, 3));
 
@@ -177,7 +179,8 @@ extern "C"
 		}
 		else
 		{
-			return luaL_argerror(L,
+			return luaL_argerror(
+			    L,
 			    1,
 			    std::string(std::string("A Lua table with strings as keys should be the first argument, not ") + solLuaDataTypeToString(sol::type_of(L, 1)))
 			        .c_str());
@@ -250,9 +253,9 @@ extern "C"
 		else
 		{
 			return luaL_argerror(L,
-			    1,
-			    std::string(std::string("A file path (string) should be the first argument, not ") + solLuaDataTypeToString(sol::type_of(L, 1)))
-			        .c_str());
+			                     1,
+			                     std::string(std::string("A file path (string) should be the first argument, not ") + solLuaDataTypeToString(sol::type_of(L, 1)))
+			                         .c_str());
 		}
 	}
 
@@ -331,4 +334,4 @@ namespace lua::toml_lua
 		tomlDateTime["time"]       = sol::property(&TOMLDateTime::getTime, &TOMLDateTime::setTime);
 		tomlDateTime["timeOffset"] = sol::property(&TOMLDateTime::getTimeOffset, &TOMLDateTime::setTimeOffset);
 	}
-}
+} // namespace lua::toml_lua

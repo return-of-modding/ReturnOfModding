@@ -1,7 +1,8 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
 
-struct Options {
+struct Options
+{
 	bool formattedIntsAsUserData = false;
 	bool temporalTypesAsUserData = true;
 };

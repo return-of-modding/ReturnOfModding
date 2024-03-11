@@ -1,6 +1,6 @@
 #pragma once
-#include "logger/exception_handler.hpp"
 #include "debug/debug.hpp"
+#include "logger/exception_handler.hpp"
 
 namespace gm
 {
@@ -77,4 +77,4 @@ namespace gm
 		big::g_hooking->get_original<hook_debug_console_output>()(this_, fmt, args);
 		va_end(args);
 	}
-}
+} // namespace gm

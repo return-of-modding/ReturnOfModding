@@ -25,4 +25,4 @@ namespace memory
 
 		std::vector<std::optional<uint8_t>> m_bytes;
 	};
-}
+} // namespace memory

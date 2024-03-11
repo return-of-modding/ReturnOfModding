@@ -28,7 +28,9 @@ namespace big
 	{
 		const auto exception_code = exception_info->ExceptionRecord->ExceptionCode;
 		if (exception_code == EXCEPTION_BREAKPOINT || exception_code == DBG_PRINTEXCEPTION_C || exception_code == DBG_PRINTEXCEPTION_WIDE_C)
+		{
 			return EXCEPTION_CONTINUE_SEARCH;
+		}
 
 		static std::set<std::size_t> logged_exceptions;
 
@@ -45,4 +47,4 @@ namespace big
 
 		return EXCEPTION_CONTINUE_SEARCH;
 	}
-}
+} // namespace big

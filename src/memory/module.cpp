@@ -12,7 +12,9 @@ namespace memory
 	handle module::get_export(std::string_view symbol_name)
 	{
 		if (!m_loaded)
+		{
 			return nullptr;
+		}
 
 		const auto dosHeader          = m_base.as<IMAGE_DOS_HEADER*>();
 		const auto ntHeader           = m_base.add(dosHeader->e_lfanew).as<IMAGE_NT_HEADERS*>();
@@ -27,7 +29,9 @@ namespace memory
 		{
 			const auto functionName = m_base.add(nameOffsetArray[i]).as<const char*>();
 			if (strcmp(functionName, symbol_name.data()))
+			{
 				continue;
+			}
 
 			return functionOffsetArray + ordinalArray[i];
 		}
@@ -51,7 +55,9 @@ namespace memory
 		while (!try_get_module())
 		{
 			if (giveup_time.has_value() && giveup_time <= std::chrono::high_resolution_clock::now())
+			{
 				break;
+			}
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 		return m_loaded;
@@ -60,11 +66,15 @@ namespace memory
 	bool module::try_get_module()
 	{
 		if (m_loaded)
+		{
 			return m_loaded;
+		}
 
 		const auto mod = GetModuleHandleA(m_name.data());
 		if (!mod)
+		{
 			return false;
+		}
 		m_loaded = true;
 
 		m_base               = mod;
@@ -75,4 +85,4 @@ namespace memory
 
 		return m_loaded;
 	}
-}
+} // namespace memory

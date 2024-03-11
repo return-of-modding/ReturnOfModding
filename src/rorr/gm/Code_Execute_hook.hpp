@@ -1,15 +1,16 @@
 #pragma once
-#include "Code_Function_GET_the_function.hpp"
 #include "Code_Execute_trace.hpp"
-#include <string/string.hpp>
+#include "Code_Function_GET_the_function.hpp"
+
 #include <lua/lua_manager.hpp>
+#include <string/string.hpp>
 
 namespace gm
 {
 	inline bool hook_Code_Execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags)
 	{
 		is_inside_code_execute = true;
-		last_executed_code = code->name;
+		last_executed_code     = code->name;
 
 		if (!big::g_gml_safe && !strcmp(code->name, "gml_Object_oLoadScreen_Step_0"))
 		{
@@ -50,4 +51,4 @@ namespace gm
 		is_inside_code_execute = false;
 		return no_error;
 	}
-}
+} // namespace gm

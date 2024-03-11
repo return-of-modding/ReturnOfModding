@@ -1,8 +1,9 @@
 #pragma once
 
 #include "pointers.hpp"
-#include "string/hash.hpp"
 #include "rorr/gm/Code_Function_GET_the_function.hpp"
+#include "string/hash.hpp"
+
 #include <unordered_set>
 
 namespace gm
@@ -102,4 +103,4 @@ namespace gm
 			LOG(INFO) << HEX_TO_UPPER_OFFSET(builtin_variable.setter);
 		}
 	}
-}
+} // namespace gm

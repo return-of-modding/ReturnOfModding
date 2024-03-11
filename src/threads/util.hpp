@@ -54,4 +54,4 @@ namespace big::threads
 			CloseHandle(h);
 		}
 	}
-}
+} // namespace big::threads

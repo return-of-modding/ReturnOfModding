@@ -39,4 +39,4 @@ namespace big
 		void* m_target;
 		void* m_detour;
 	};
-}
+} // namespace big

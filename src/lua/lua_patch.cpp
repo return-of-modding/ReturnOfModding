@@ -24,4 +24,4 @@ namespace big
 	{
 		m_byte_patch->restore();
 	}
-}
+} // namespace big

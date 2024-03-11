@@ -14,4 +14,4 @@ namespace big
 			value = default_value;
 		}
 	}
-}
+} // namespace big

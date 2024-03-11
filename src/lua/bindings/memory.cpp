@@ -109,9 +109,11 @@ namespace lua::memory
 		big::lua_module* module = big::lua_module::this_from(env);
 		if (module)
 		{
-			std::erase_if(module->m_allocated_memory, [ptr](void* addr) {
-				return ptr.get_address() == (uint64_t)addr;
-			});
+			std::erase_if(module->m_allocated_memory,
+			              [ptr](void* addr)
+			              {
+				              return ptr.get_address() == (uint64_t)addr;
+			              });
 		}
 	}
 
@@ -154,4 +156,4 @@ namespace lua::memory
 		ns["allocate"]     = allocate;
 		ns["free"]         = free;
 	}
-}
+} // namespace lua::memory

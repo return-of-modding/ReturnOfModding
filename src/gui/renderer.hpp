@@ -1,9 +1,9 @@
 #pragma once
-#include "common.hpp"
+
 
 namespace big
 {
-	using init_callback      = std::function<void()>;
+	using init_callback    = std::function<void()>;
 	using dx_callback      = std::function<void()>;
 	using wndproc_callback = std::function<void(HWND, UINT, WPARAM, LPARAM)>;
 
@@ -77,4 +77,4 @@ namespace big
 	};
 
 	inline renderer* g_renderer{};
-}
+} // namespace big

@@ -33,20 +33,24 @@ namespace ImGui
 		}
 
 		if (ImGui::InputScalar(name, type, param, NULL, NULL, format.c_str(), ImGuiInputTextFlags_CharsHexadecimal))
+		{
 			ret_val = true;
+		}
 		size_t bits = (size * 8) - 1ULL;
 		for (size_t i = bits; i < SIZE_MAX; i--)
 		{
 			if (i % 4 == 0)
+			{
 				ImGui::BeginGroup();
+			}
 			if (*param & (1ULL << i))
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32_BLACK_TRANS);
 				ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(41, 134, 204, 255));
 				if (ImGui::Button(std::string("1##").append(std::to_string(i)).append(name).c_str(), ImVec2(25, 0)))
 				{
-					ret_val = true;
-					*param ^= (1ULL << i);
+					ret_val  = true;
+					*param  ^= (1ULL << i);
 				}
 				ImGui::PopStyleColor(2);
 			}
@@ -55,8 +59,8 @@ namespace ImGui
 				ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32_BLACK_TRANS);
 				if (ImGui::Button(std::string("0##").append(std::to_string(i)).append(name).c_str(), ImVec2(25, 0)))
 				{
-					ret_val = true;
-					*param ^= (1ULL << i);
+					ret_val  = true;
+					*param  ^= (1ULL << i);
 				}
 				ImGui::PopStyleColor();
 			}
@@ -66,9 +70,11 @@ namespace ImGui
 				ImGui::EndGroup();
 			}
 			if (i % 16 != 0)
+			{
 				ImGui::SameLine();
+			}
 		}
 
 		return ret_val;
 	}
-}
+} // namespace ImGui

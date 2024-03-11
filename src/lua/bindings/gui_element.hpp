@@ -7,4 +7,4 @@ namespace lua::gui
 	public:
 		virtual void draw() = 0;
 	};
-}
+} // namespace lua::gui

@@ -27,9 +27,11 @@ namespace memory
 
 	void byte_patch::remove() const
 	{
-		std::erase_if(m_patches, [this](auto& el) {
-			return el.get() == this;
-		});
+		std::erase_if(m_patches,
+		              [this](auto& el)
+		              {
+			              return el.get() == this;
+		              });
 	}
 
 	void byte_patch::restore_all()
@@ -41,4 +43,4 @@ namespace memory
 	{
 		return a->m_address == b->m_address;
 	}
-}
+} // namespace memory

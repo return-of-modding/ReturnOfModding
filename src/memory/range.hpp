@@ -17,11 +17,11 @@ namespace memory
 
 		bool contains(handle h) const;
 
-		std::optional<handle> scan(pattern const& sig) const;
-		std::vector<handle> scan_all(pattern const& sig) const;
+		std::optional<handle> scan(const pattern& sig) const;
+		std::vector<handle> scan_all(const pattern& sig) const;
 
 	protected:
 		handle m_base;
 		std::size_t m_size;
 	};
-}
+} // namespace memory

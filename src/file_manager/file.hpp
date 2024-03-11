@@ -23,4 +23,4 @@ namespace big
 		bool m_is_project_file;
 		std::filesystem::path m_file_path;
 	};
-}
+} // namespace big

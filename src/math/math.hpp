@@ -8,4 +8,4 @@ namespace big::math
 		double radian = (3.14159265359 / 180) * deg;
 		return (float)radian;
 	}
-}
+} // namespace big::math

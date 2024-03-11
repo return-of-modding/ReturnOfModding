@@ -82,4 +82,4 @@ namespace lua::window
 			LOG(INFO) << "Failed deserialize window states: " << e.what();
 		}
 	}
-}
+} // namespace lua::window

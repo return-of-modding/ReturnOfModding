@@ -45,7 +45,7 @@ struct YYObjectPinMap
 
 			if (refcount <= 0)
 			{
-				gm::call("ds_map_delete", std::to_array<RValue, 2>({YYObjectPinMap::m_pin_map,(void*)obj}));
+				gm::call("ds_map_delete", std::to_array<RValue, 2>({YYObjectPinMap::m_pin_map, (void*)obj}));
 
 				//LOG(FATAL) << "unpin(): delete " << HEX_TO_UPPER(obj);
 

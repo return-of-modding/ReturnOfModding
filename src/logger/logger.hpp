@@ -7,9 +7,10 @@ using namespace al;
 namespace big
 {
 #define ADD_COLOR_TO_STREAM(color) "\x1b[" << int(color) << "m"
-#define RESET_STREAM_COLOR "\x1b[" << int(LogColor::RESET) << "m"
-#define HEX_TO_UPPER(value) "0x" << std::hex << std::uppercase << (DWORD64)value << std::dec << std::nouppercase
-#define HEX_TO_UPPER_OFFSET(value) "0x" << std::hex << std::uppercase << ((DWORD64)value - (DWORD64)GetModuleHandle(0)) << std::dec << std::nouppercase
+#define RESET_STREAM_COLOR         "\x1b[" << int(LogColor::RESET) << "m"
+#define HEX_TO_UPPER(value)        "0x" << std::hex << std::uppercase << (DWORD64)value << std::dec << std::nouppercase
+#define HEX_TO_UPPER_OFFSET(value) \
+	"0x" << std::hex << std::uppercase << ((DWORD64)value - (DWORD64)GetModuleHandle(0)) << std::dec << std::nouppercase
 
 	enum class LogColor
 	{
@@ -60,4 +61,4 @@ namespace big
 	};
 
 	inline logger* g_log = nullptr;
-}
+} // namespace big

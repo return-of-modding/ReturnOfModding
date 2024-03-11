@@ -6,12 +6,12 @@ using uint32_t = unsigned int;
 
 uint32_t Utils::Hash::MurMurHash(const unsigned char* key, int len, uint32_t seed)
 {
-	uint32_t c1            = 0xcc9e2d51;
-	uint32_t c2            = 0x1b873593;
+	uint32_t c1            = 0xcc'9e'2d'51;
+	uint32_t c2            = 0x1b'87'35'93;
 	uint32_t r1            = 15;
 	uint32_t r2            = 13;
 	uint32_t m             = 5;
-	uint32_t n             = 0xe6546b64;
+	uint32_t n             = 0xe6'54'6b'64;
 	uint32_t h             = 0;
 	uint32_t k             = 0;
 	uint8_t* d             = (uint8_t*)key;
@@ -30,12 +30,12 @@ uint32_t Utils::Hash::MurMurHash(const unsigned char* key, int len, uint32_t see
 		k = chunks[i];
 
 		k *= c1;
-		k = (k << r1) | (k >> (32 - r1));
+		k  = (k << r1) | (k >> (32 - r1));
 		k *= c2;
 
 		h ^= k;
-		h = (h << r2) | (h >> (32 - r2));
-		h = h * m + n;
+		h  = (h << r2) | (h >> (32 - r2));
+		h  = h * m + n;
 	}
 
 	k = 0;
@@ -48,7 +48,7 @@ uint32_t Utils::Hash::MurMurHash(const unsigned char* key, int len, uint32_t see
 	case 1:
 		k ^= tail[0];
 		k *= c1;
-		k = (k << r1) | (k >> (32 - r1));
+		k  = (k << r1) | (k >> (32 - r1));
 		k *= c2;
 		h ^= k;
 	}
@@ -56,9 +56,9 @@ uint32_t Utils::Hash::MurMurHash(const unsigned char* key, int len, uint32_t see
 	h ^= len;
 
 	h ^= (h >> 16);
-	h *= 0x85ebca6b;
+	h *= 0x85'eb'ca'6b;
 	h ^= (h >> 13);
-	h *= 0xc2b2ae35;
+	h *= 0xc2'b2'ae'35;
 	h ^= (h >> 16);
 
 	return h;

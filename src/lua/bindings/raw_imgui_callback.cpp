@@ -11,4 +11,4 @@ namespace lua::gui
 	{
 		m_callback();
 	}
-}
+} // namespace lua::gui

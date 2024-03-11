@@ -11,6 +11,7 @@ struct CHashMap
 	int m_numUsed;
 	int m_curMask;
 	int m_growThreshold;
+
 	struct CElement
 	{
 		Value v;
@@ -20,9 +21,9 @@ struct CHashMap
 
 	bool FindElement(int hHash, Value& outValue)
 	{
-		int nIdealPos = m_curMask & hHash & 0x7fffffff;
+		int nIdealPos = m_curMask & hHash & 0x7f'ff'ff'ff;
 
-		for (CElement node = m_pBuckets[nIdealPos]; node.Hash != 0; node = m_pBuckets[(++nIdealPos) & m_curMask & 0x7fffffff])
+		for (CElement node = m_pBuckets[nIdealPos]; node.Hash != 0; node = m_pBuckets[(++nIdealPos) & m_curMask & 0x7f'ff'ff'ff])
 		{
 			if (node.Hash == hHash)
 			{
@@ -35,7 +36,7 @@ struct CHashMap
 
 	static unsigned int CalculateHash(int val)
 	{
-		return 0x9E3779B1U * (unsigned int)val + 1;
+		return 0x9E'37'79'B1U * (unsigned int)val + 1;
 	}
 
 	static unsigned int CalculateHash(void* val)

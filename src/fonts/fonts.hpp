@@ -1,6 +1,6 @@
 #pragma once
 
-extern const unsigned char font_storopia[89888];
+extern const unsigned char font_storopia[89'888];
 extern const unsigned char font_icons[7880];
 
 constexpr auto FONT_ICON_FRIEND    = "A";

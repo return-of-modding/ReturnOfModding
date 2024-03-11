@@ -7,6 +7,7 @@
 namespace gm
 {
 	inline bool ignore_gml_exceptions = true;
+
 	inline void gml_exception_handler(const RValue& e)
 	{
 		std::stringstream exception_log;
@@ -54,8 +55,10 @@ namespace gm
 		TRoutine function_ptr     = nullptr;
 		int function_arg_count    = 0;
 	};
+
 	inline code_function_info dummy{};
 	inline std::unordered_map<std::string, code_function_info, big::string::transparent_string_hash, std::equal_to<>> code_function_cache;
+
 	inline code_function_info& get_code_function(std::string_view name)
 	{
 		if (const auto it = code_function_cache.find(name.data()); it != code_function_cache.end())
@@ -70,9 +73,9 @@ namespace gm
 			code_function_info result{};
 
 			big::g_pointers->m_rorr.m_code_function_GET_the_function(i,
-			    &result.function_name,
-			    &result.function_ptr,
-			    &result.function_arg_count);
+			                                                         &result.function_name,
+			                                                         &result.function_ptr,
+			                                                         &result.function_arg_count);
 
 			const auto same_name = !strcmp(result.function_name, name.data());
 			if (same_name)
@@ -86,6 +89,7 @@ namespace gm
 	}
 
 	inline void* current_function = nullptr;
+
 	inline RValue script_execute(size_t arg_count, RValue* args, const auto& it, CInstance* self, CInstance* other)
 	{
 		RValue* arranged_args;
@@ -132,6 +136,7 @@ namespace gm
 	}
 
 	inline bool is_inside_call = false;
+
 	inline RValue call(std::string_view name, CInstance* self, CInstance* other, RValue* args = nullptr, size_t arg_count = 0)
 	{
 		is_inside_call = true;
@@ -219,14 +224,17 @@ namespace gm
 	{
 		return call(name, self, other, &arg, 1);
 	}
+
 	inline RValue call(std::string_view name, CInstance* self, CInstance* other, RValue&& arg)
 	{
 		return call(name, self, other, arg);
 	}
+
 	inline RValue call(std::string_view name, RValue& arg)
 	{
 		return call(name, nullptr, nullptr, arg);
 	}
+
 	inline RValue call(std::string_view name, RValue&& arg)
 	{
 		return call(name, nullptr, nullptr, arg);
@@ -248,4 +256,4 @@ namespace gm
 			}
 		}
 	}
-}
+} // namespace gm
