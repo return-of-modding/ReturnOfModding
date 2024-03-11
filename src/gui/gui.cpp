@@ -1,9 +1,10 @@
 #include "gui.hpp"
 
-#include "common.hpp"
 #include "gui/renderer.hpp"
 #include "lua/bindings/imgui_window.hpp"
 
+#include <gui/widgets/imgui_hotkey.hpp>
+#include <input/hotkey.hpp>
 #include <input/is_key_pressed.hpp>
 #include <lua/lua_manager.hpp>
 #include <pointers.hpp>
@@ -16,24 +17,29 @@
 
 namespace big
 {
-	gui::gui() :
-	    m_is_open(false),
-	    m_override_mouse(false)
+	gui::gui()
 	{
+		init_pref();
+
 		g_renderer->add_dx_callback(
-		    [this] {
+		    [this]
+		    {
 			    dx_on_tick();
 		    },
 		    -5);
 
-		g_renderer->add_wndproc_callback([this](HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
-			wndproc(hwnd, msg, wparam, lparam);
-		});
+		g_renderer->add_wndproc_callback(
+		    [this](HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+		    {
+			    wndproc(hwnd, msg, wparam, lparam);
+		    });
 
-		g_renderer->add_init_callback([this]() {
-			dx_init();
-			g_renderer->rescale(g_gui->scale);
-		});
+		g_renderer->add_init_callback(
+		    [this]()
+		    {
+			    dx_init();
+			    g_renderer->rescale(g_gui->scale);
+		    });
 
 		g_gui = this;
 	}
@@ -51,13 +57,6 @@ namespace big
 	void gui::toggle(bool toggle)
 	{
 		m_is_open = toggle;
-
-		toggle_mouse();
-	}
-
-	void gui::override_mouse(bool override)
-	{
-		m_override_mouse = override;
 
 		toggle_mouse();
 	}
@@ -124,6 +123,8 @@ namespace big
 		save_default_style();
 	}
 
+	static bool editing_gui_keybind = false;
+
 	void gui::dx_on_tick()
 	{
 		push_theme_colors();
@@ -134,6 +135,22 @@ namespace big
 		{
 			if (ImGui::BeginMainMenuBar())
 			{
+				ImGui::SetNextWindowSize({400.0f, 0});
+				if (ImGui::BeginMenu("GUI"))
+				{
+					if (ImGui::Checkbox("Open GUI At Startup", &m_is_open_at_startup->ref<bool>()))
+					{
+						save_pref();
+					}
+
+					if (ImGui::Hotkey("Open GUI Keybind", &g_gui_toggle.vk()))
+					{
+						editing_gui_keybind = true;
+					}
+
+					ImGui::EndMenu();
+				}
+
 				if (ImGui::BeginMenu("Mods"))
 				{
 					g_lua_manager->draw_menu_bar_callbacks();
@@ -273,12 +290,12 @@ namespace big
 	void gui::push_theme_colors()
 	{
 		//auto button_color = ImGui::ColorConvertU32ToFloat4(g_gui->button_color);
-		auto button_color = ImGui::ColorConvertU32ToFloat4(2947901213);
+		auto button_color = ImGui::ColorConvertU32ToFloat4(2'947'901'213);
 		auto button_active_color =
 		    ImVec4(button_color.x + 0.33f, button_color.y + 0.33f, button_color.z + 0.33f, button_color.w);
 		auto button_hovered_color =
 		    ImVec4(button_color.x + 0.15f, button_color.y + 0.15f, button_color.z + 0.15f, button_color.w);
-		auto frame_color = ImGui::ColorConvertU32ToFloat4(2942518340);
+		auto frame_color = ImGui::ColorConvertU32ToFloat4(2'942'518'340);
 		auto frame_hovered_color =
 		    ImVec4(frame_color.x + 0.14f, frame_color.y + 0.14f, frame_color.z + 0.14f, button_color.w);
 		auto frame_active_color =
@@ -302,10 +319,9 @@ namespace big
 
 	void gui::wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	{
-		//if (msg == WM_KEYUP && wparam == g_menu_toggle)
-		if (msg == WM_KEYUP && wparam == VK_INSERT)
+		if (msg == WM_KEYUP && wparam == g_gui_toggle.vk())
 		{
-			//Persist and restore the cursor position between menu instances.
+			// Persist and restore the cursor position between menu instances.
 			static POINT cursor_coords{};
 			if (g_gui->m_is_open)
 			{
@@ -316,24 +332,88 @@ namespace big
 				SetCursorPos(cursor_coords.x, cursor_coords.y);
 			}
 
-			toggle(!m_is_open);
-			//toggle(g_editing_menu_toggle || !m_is_open);
-			/*if (g_editing_menu_toggle)
-				g_editing_menu_toggle = false;*/
+			toggle(editing_gui_keybind || !m_is_open);
+			if (editing_gui_keybind)
+			{
+				editing_gui_keybind = false;
+			}
 		}
 	}
 
 	void gui::toggle_mouse()
 	{
-		if (m_is_open || g_gui->m_override_mouse)
+		auto& io = ImGui::GetIO();
+
+		if (m_is_open)
 		{
-			ImGui::GetIO().MouseDrawCursor = true;
-			ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+			io.MouseDrawCursor  = true;
+			io.ConfigFlags     &= ~ImGuiConfigFlags_NoMouse;
 		}
 		else
 		{
-			ImGui::GetIO().MouseDrawCursor = false;
-			ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
+			io.MouseDrawCursor  = false;
+			io.ConfigFlags     |= ImGuiConfigFlags_NoMouse;
 		}
 	}
-}
+
+	void gui::init_pref()
+	{
+		try
+		{
+			m_file_path = g_file_manager.get_project_folder("config").get_path() / m_file_name;
+			if (std::filesystem::exists(m_file_path))
+			{
+				m_table = toml::parse_file(m_file_path.c_str());
+			}
+
+			constexpr auto is_open_at_startup_name = "is_open_at_startup";
+
+			const auto entry_doesnt_exist = !m_table.contains(is_open_at_startup_name);
+			if (entry_doesnt_exist)
+			{
+				m_table.insert_or_assign(is_open_at_startup_name, true);
+			}
+
+			m_is_open_at_startup = m_table.get(is_open_at_startup_name);
+			if (m_is_open_at_startup == nullptr)
+			{
+				LOG(FATAL) << "what";
+			}
+
+			if (m_is_open_at_startup == nullptr || m_is_open_at_startup->type() != toml::node_type::boolean)
+			{
+				LOG(WARNING) << "Invalid serialized data. Clearing " << is_open_at_startup_name;
+
+				m_table.insert_or_assign(is_open_at_startup_name, true);
+				m_is_open_at_startup = m_table.get(is_open_at_startup_name);
+				if (m_is_open_at_startup == nullptr)
+				{
+					LOG(FATAL) << "what2";
+				}
+			}
+
+			save_pref();
+
+			toggle(m_is_open_at_startup->ref<bool>());
+		}
+		catch (const std::exception& e)
+		{
+			LOG(INFO) << "Failed init hotkeys: " << e.what();
+
+			m_is_open = true;
+		}
+	}
+
+	void gui::save_pref()
+	{
+		std::ofstream file_stream(m_file_path, std::ios::out | std::ios::trunc);
+		if (file_stream.is_open())
+		{
+			file_stream << m_table;
+		}
+		else
+		{
+			LOG(WARNING) << "Failed to save pref.";
+		}
+	}
+} // namespace big

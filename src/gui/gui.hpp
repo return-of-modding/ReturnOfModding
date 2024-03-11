@@ -1,16 +1,19 @@
 #pragma once
-#include "common.hpp"
+
+#include "input/hotkey.hpp"
 
 namespace big
 {
+	static inline hotkey g_gui_toggle("gui_toggle", VK_INSERT);
+
 	class gui
 	{
 	public:
-		ImU32 background_color = 3696311571;
-		ImU32 text_color       = 4294967295;
-		ImU32 button_color     = 2947901213;
-		ImU32 frame_color      = 2942518340;
-		float scale = 1.0f;
+		ImU32 background_color = 3'696'311'571;
+		ImU32 text_color       = 4'294'967'295;
+		ImU32 button_color     = 2'947'901'213;
+		ImU32 frame_color      = 2'942'518'340;
+		float scale            = 1.0f;
 
 	public:
 		gui();
@@ -23,18 +26,7 @@ namespace big
 		bool is_open();
 		void toggle(bool toggle);
 
-		bool mouse_override() const
-		{
-			return m_override_mouse;
-		}
-
 		ImGuiMouseCursor m_mouse_cursor = ImGuiMouseCursor_Arrow;
-
-		/**
-		 * @brief Forces the mouse to draw and disable camera controls of the game
-		 * This function works for now but might start causing issues when more features start relying on it.
-		 */
-		void override_mouse(bool override);
 
 		void dx_init();
 		void dx_on_tick();
@@ -45,20 +37,23 @@ namespace big
 		void push_theme_colors();
 		void pop_theme_colors();
 
-		void script_on_tick();
-		static void script_func();
-
 		void wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 	private:
 		void toggle_mouse();
 
+		static inline constexpr auto m_file_name = "ReturnOfModding-ReturnOfModding-GUI.cfg";
+		std::filesystem::path m_file_path;
+		toml::table m_table;
+		void init_pref();
+		void save_pref();
+
 	private:
 		bool m_is_open;
-		bool m_override_mouse;
+		toml::node* m_is_open_at_startup;
 
 		ImGuiStyle m_default_config;
 	};
 
 	inline gui* g_gui;
-}
+} // namespace big
