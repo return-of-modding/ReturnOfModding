@@ -27,14 +27,6 @@ file(GLOB_RECURSE SRC_MAIN
     "${SRC_DIR}/**.def"
 )
 
-if (MSVC)
-  add_compile_options(/bigobj)
-  add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
-  add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-else ()
-  add_compile_options(-Wa,-mbig-obj)
-endif ()
-
 add_library(ReturnOfModding MODULE "${SRC_MAIN}")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -67,5 +59,43 @@ add_compile_definitions(ReturnOfModding
     "NOMINMAX"
     "WIN32_LEAN_AND_MEAN"
 )
+
+if (MSVC)
+    add_compile_options(/bigobj)
+    add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+    add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+
+    if (OPTIMIZE)
+        # Aggresive inlining (Release)
+        string(REPLACE "Ob2" "Ob3" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+        # Aggresive inlining (RelWithDebInfo)
+        string(REPLACE "Ob1" "Ob3" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+        # Enable intrinsics
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Oi")
+        # Favor fast code
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Ot")
+        # -ffast-math (fused multiply-add if the arch allows)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast")
+        # Whole program optimization
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GL")
+        # Function-level linking
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Gy")
+
+        # For all objects:
+        # - strip unused functions
+        # - fold identical functions
+        # - link-time code generation
+        string(REPLACE "INCREMENTAL" "INCREMENTAL:NO" CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}")
+        string(REPLACE "INCREMENTAL" "INCREMENTAL:NO" CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO}")
+        string(REPLACE "INCREMENTAL" "INCREMENTAL:NO" CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO}")
+        set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /OPT:ICF,REF /LTCG")
+        set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} /OPT:ICF,REF /LTCG")
+        set(CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO} /OPT:ICF,REF /LTCG")
+
+        set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /PDBALTPATH:ReturnOfModding.pdb")
+        set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} /PDBALTPATH:ReturnOfModding.pdb")
+        set(CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO} /PDBALTPATH:ReturnOfModding.pdb")
+    endif()
+endif()
 
 set_target_properties(ReturnOfModding PROPERTIES OUTPUT_NAME "version")
