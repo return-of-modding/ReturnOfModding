@@ -55,7 +55,7 @@ namespace lua::path
 		try
 		{
 			std::filesystem::path res = path;
-			return res.parent_path().string();
+			return (char*)res.parent_path().u8string().c_str();
 		}
 		catch (const std::exception& e)
 		{
@@ -79,7 +79,9 @@ namespace lua::path
 			for (const auto& entry : std::filesystem::recursive_directory_iterator(root_path, std::filesystem::directory_options::skip_permission_denied))
 			{
 				if (!entry.is_directory())
+				{
 					continue;
+				}
 
 				res.push_back((char*)entry.path().u8string().c_str());
 			}
@@ -106,7 +108,9 @@ namespace lua::path
 			for (const auto& entry : std::filesystem::recursive_directory_iterator(root_path, std::filesystem::directory_options::skip_permission_denied))
 			{
 				if (entry.is_directory())
+				{
 					continue;
+				}
 
 				res.push_back((char*)entry.path().u8string().c_str());
 			}
@@ -119,6 +123,46 @@ namespace lua::path
 		return res;
 	}
 
+	// Lua API: Function
+	// Table: path
+	// Name: filename
+	// Param: path: string: The path for which to retrieve the filename.
+	// Returns: string: Returns the filename identified by the path.
+	static std::string filename(const std::string& path)
+	{
+		try
+		{
+			std::filesystem::path res = path;
+			return (char*)res.filename().u8string().c_str();
+		}
+		catch (const std::exception& e)
+		{
+			LOG(WARNING) << e.what();
+		}
+
+		return "";
+	}
+
+	// Lua API: Function
+	// Table: path
+	// Name: stem
+	// Param: path: string: The path for which to retrieve the stem.
+	// Returns: string: Returns the stem of the filename identified by the path (i.e. the filename without the final extension).
+	static std::string stem(const std::string& path)
+	{
+		try
+		{
+			std::filesystem::path res = path;
+			return (char*)res.stem().u8string().c_str();
+		}
+		catch (const std::exception& e)
+		{
+			LOG(WARNING) << e.what();
+		}
+
+		return "";
+	}
+
 	void bind(sol::state& state)
 	{
 		auto ns               = state["path"].get_or_create<sol::table>();
@@ -126,5 +170,7 @@ namespace lua::path
 		ns["get_parent"]      = get_parent;
 		ns["get_directories"] = get_directories;
 		ns["get_files"]       = get_files;
+		ns["filename"]        = filename;
+		ns["stem"]            = stem;
 	}
-}
+} // namespace lua::path

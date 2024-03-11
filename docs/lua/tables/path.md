@@ -2,7 +2,7 @@
 
 Table containing helpers for manipulating file or directory paths
 
-## Functions (4)
+## Functions (6)
 
 ### `combine(path)`
 
@@ -58,6 +58,32 @@ string table = path.get_directories(root_path)
 **Example Usage:**
 ```lua
 string table = path.get_files(root_path)
+```
+
+### `filename(path)`
+
+- **Parameters:**
+  - `path` (string): The path for which to retrieve the filename.
+
+- **Returns:**
+  - `string`: Returns the filename identified by the path.
+
+**Example Usage:**
+```lua
+string = path.filename(path)
+```
+
+### `stem(path)`
+
+- **Parameters:**
+  - `path` (string): The path for which to retrieve the stem.
+
+- **Returns:**
+  - `string`: Returns the stem of the filename identified by the path (i.e. the filename without the final extension).
+
+**Example Usage:**
+```lua
+string = path.stem(path)
 ```
 
 
