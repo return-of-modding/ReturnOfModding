@@ -33,6 +33,7 @@ jobs:
           name: binary
           path: |
             build/version.dll
+            build/version.pdb
           
       - name: Generate Build Info
         id: var
@@ -103,3 +104,4 @@ jobs:
             ```
           files: |
             version.dll
+            version.pdb
