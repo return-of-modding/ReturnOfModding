@@ -80,6 +80,10 @@ if (MSVC)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GL")
         # Function-level linking
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Gy")
+        # Disable Buffer Security Check
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GS-")
+        # Package global data in COMDAT sections for optimization.
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Gw")
 
         # For all objects:
         # - strip unused functions
