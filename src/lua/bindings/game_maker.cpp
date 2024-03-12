@@ -146,7 +146,7 @@ namespace lua::game_maker
 		return E9 == 0xE9 && _08 == 0x08 && _50 == 0x50 && _FF == 0xFF;
 	}
 
-	static uintptr_t original_script_func_ptr;
+	static uintptr_t s_original_script_func_ptr;
 
 	static RValue* central_script_hook(CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args)
 	{
@@ -156,6 +156,8 @@ namespace lua::game_maker
 		const auto r10 = context.R10;
 
 		const auto return_address = (uintptr_t)_ReturnAddress();
+
+		uintptr_t original_script_func_ptr = s_original_script_func_ptr;
 
 		if (is_Call_Method(return_address))
 		{
@@ -206,6 +208,9 @@ namespace lua::game_maker
 			//	original_func_ptr += instruction.len;
 			//}
 		}
+
+		s_original_script_func_ptr = original_script_func_ptr;
+
 #pragma endregion Figure out which original function to call
 
 		const auto call_orig_if_true = big::g_lua_manager->pre_script_execute((void*)original_script_func_ptr, self, other, result, arg_count, args);
@@ -224,7 +229,7 @@ namespace lua::game_maker
 	// This can still break if the body of this function ever change
 	// This is some horrible hack, but I can't be bothered to fix all of this mess right now
 #pragma optimize("", off)
-	static uintptr_t original_builtin_func_ptr;
+	static uintptr_t s_original_builtin_func_ptr;
 
 	static RValue* central_builtin_hook(RValue* result, CInstance* self, CInstance* other, int arg_count, RValue* args)
 	{
@@ -235,6 +240,8 @@ namespace lua::game_maker
 
 		const auto return_address = (uintptr_t)_ReturnAddress();
 
+		uintptr_t original_builtin_func_ptr = s_original_builtin_func_ptr;
+
 		if (is_Builtin_Call_Method(return_address))
 		{
 			original_builtin_func_ptr = *(uintptr_t*)(r14 + 8);
@@ -243,6 +250,9 @@ namespace lua::game_maker
 		{
 			original_builtin_func_ptr = (uintptr_t)gm::current_function;
 		}
+
+		s_original_builtin_func_ptr = original_builtin_func_ptr;
+
 #pragma endregion Figure out which original function to call
 
 		const auto call_orig_if_true = big::g_lua_manager->pre_builtin_execute((void*)original_builtin_func_ptr, self, other, result, arg_count, args);
