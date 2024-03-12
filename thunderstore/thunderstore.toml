@@ -1,0 +1,25 @@
+
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "ReturnOfModding"
+name = "ReturnOfModding"
+versionNumber = "1.0.0"
+description = "Lua Mod Loader for Risk of Rain Returns"
+websiteUrl = "https://github.com/return-of-modding/ReturnOfModding/"
+containsNsfwContent = false
+
+[build]
+icon = "./icon.png"
+readme = "../README.md"
+outdir = "./ts_build"
+
+[[build.copy]]
+source = "./build/version.dll"
+target = "./ReturnOfModdingPack/version.dll"
+
+[publish]
+repository = "https://thunderstore.io"
+communities = ["risk-of-rain-returns"]
+categories = ["libraries"]
