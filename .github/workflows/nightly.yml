@@ -132,8 +132,7 @@ jobs:
           # if not empty
           if [ -n $existing_version_number ]
           then
-            sed -i 's/versionNumber = ".*"/versionNumber = "'"$existing_version_number"'"/' thunderstore.toml
-
             cd thunderstore
+            sed -i 's/versionNumber = ".*"/versionNumber = "'"$existing_version_number"'"/' thunderstore.toml
             tcli publish --token ${{ secrets.TCLI_AUTH_TOKEN }}
           fi
