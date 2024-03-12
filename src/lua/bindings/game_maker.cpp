@@ -1144,6 +1144,7 @@ namespace lua::game_maker
 						// The game maker engine message is Illegal shader index 27
 						if (type == "shader" && i == 27)
 						{
+							LOG(INFO) << "Stopping at shader " << i;
 							break;
 						}
 #endif
