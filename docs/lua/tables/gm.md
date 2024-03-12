@@ -48,7 +48,7 @@ Registers a callback that will be called right before any game script function i
 
 - **Parameters:**
   - `function_index` (number): index of the game script / builtin game maker function to hook, for example `gm.constants.callback_execute`
-  - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance), result (RValue), arg_count (number), args (RValue array) ) -> Return true or false depending on if you want the orig method to be called.
+  - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance), result (RValue), args (RValue array) ) -> Return true or false depending on if you want the orig method to be called.
 
 **Example Usage:**
 ```lua
@@ -61,7 +61,7 @@ Registers a callback that will be called right after any game script function is
 
 - **Parameters:**
   - `function_index` (number): index of the game script / builtin game maker function to hook, for example `gm.constants.callback_execute`
-  - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance), result (RValue), arg_count (number), args (RValue array) )
+  - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance), result (RValue), args (RValue array) )
 
 **Example Usage:**
 ```lua

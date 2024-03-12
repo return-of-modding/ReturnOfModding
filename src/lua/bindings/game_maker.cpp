@@ -330,7 +330,7 @@ namespace lua::game_maker
 	// Table: gm
 	// Name: pre_script_hook
 	// Param: function_index: number: index of the game script / builtin game maker function to hook, for example `gm.constants.callback_execute`
-	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), arg_count (number), args (RValue array) ) -> Return true or false depending on if you want the orig method to be called.
+	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), args (RValue array) ) -> Return true or false depending on if you want the orig method to be called.
 	// Registers a callback that will be called right before any game script function is called.
 	static void pre_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
 	{
@@ -352,7 +352,7 @@ namespace lua::game_maker
 	// Table: gm
 	// Name: post_script_hook
 	// Param: function_index: number: index of the game script / builtin game maker function to hook, for example `gm.constants.callback_execute`
-	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), arg_count (number), args (RValue array) )
+	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), args (RValue array) )
 	// Registers a callback that will be called right after any game script function is called.
 	static void post_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
 	{
