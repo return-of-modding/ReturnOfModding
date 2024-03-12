@@ -105,6 +105,14 @@ jobs:
           files: |
             version.dll
 
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 7.0.x
+
+      - name: Setup TCLI
+        run: dotnet tool install --global tcli
+
       - name: Thunderstore Release
         run: |
           set -x
@@ -126,5 +134,5 @@ jobs:
           then
             find . -name '*.pdb' -type f -delete
 
-            tcli publish --token ${{ secrets.TCLI_AUTH_TOKEN }}
+            tcli publish --config-path ./thunderstore/thunderstore.toml --token ${{ secrets.TCLI_AUTH_TOKEN }}
           fi
