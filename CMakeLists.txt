@@ -47,6 +47,12 @@ target_include_directories(ReturnOfModding PRIVATE
     "${magic_enum_SOURCE_DIR}/include"
 )
 
+if (MSVC)
+    add_compile_options(/bigobj)
+    add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+    add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+endif()
+
 target_precompile_headers(ReturnOfModding PRIVATE "${SRC_DIR}/common.hpp")
 
 target_link_libraries(ReturnOfModding PRIVATE pugixml minhook AsyncLogger dbghelp imgui lua_static sol2 tomlplusplus::tomlplusplus magic_enum)
@@ -61,10 +67,6 @@ add_compile_definitions(ReturnOfModding
 )
 
 if (MSVC)
-    add_compile_options(/bigobj)
-    add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
-    add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-
     if (OPTIMIZE)
         # Aggresive inlining (Release)
         string(REPLACE "Ob2" "Ob3" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
