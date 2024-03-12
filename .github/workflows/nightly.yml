@@ -132,7 +132,7 @@ jobs:
           # if not empty
           if [ -n $existing_version_number ]
           then
-            find . -name '*.pdb' -type f -delete
+            sed -i 's/versionNumber = ".*"/versionNumber = "'"$existing_version_number"'"/' thunderstore.toml
 
             cd thunderstore
             tcli publish --token ${{ secrets.TCLI_AUTH_TOKEN }}

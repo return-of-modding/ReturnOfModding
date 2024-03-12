@@ -13,10 +13,10 @@ containsNsfwContent = false
 [build]
 icon = "./icon.png"
 readme = "../README.md"
-outdir = "./ts_build"
+outdir = "./build"
 
 [[build.copy]]
-source = "../build/version.dll"
+source = "../version.dll"
 target = "./ReturnOfModdingPack/version.dll"
 
 [publish]
