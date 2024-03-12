@@ -1138,7 +1138,7 @@ namespace lua::game_maker
 				{
 					for (i = start; true; ++i)
 					{
-#ifdef OPTIMIZE
+#ifdef FINAL
 						// Bandaid fix for shader potential hard crash when going outside the maximum shader asset count limit.
 						// Will need manual update if the game ever receive more / less shaders.
 						// The game maker engine message is Illegal shader index 27

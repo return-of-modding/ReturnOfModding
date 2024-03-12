@@ -12,7 +12,7 @@
       "ctestCommandArgs": ""
     },
     {
-      "name": "x64-Release",
+      "name": "x64-Release-FINAL",
       "generator": "Ninja",
       "configurationType": "RelWithDebInfo",
       "inheritEnvironments": [ "msvc_x64_x64" ],
@@ -23,7 +23,7 @@
       "ctestCommandArgs": "",
       "variables": [
         {
-          "name": "OPTIMIZE",
+          "name": "FINAL",
           "value": "YES",
           "type": "BOOL"
         }

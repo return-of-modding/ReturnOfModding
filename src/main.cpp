@@ -54,6 +54,10 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    LOG(INFO) << g_project_name;
 			    LOGF(INFO, "Build (GIT SHA1): {}", version::GIT_SHA1);
 
+#ifdef FINAL
+			    LOG(INFO) << "This is a final build";
+#endif
+
 			    auto thread_pool_instance = std::make_unique<thread_pool>();
 			    LOG(INFO) << "Thread pool initialized.";
 

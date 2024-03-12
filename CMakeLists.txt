@@ -31,6 +31,10 @@ add_compile_options(/bigobj)
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
+if (FINAL)
+    add_compile_definitions(FINAL)
+endif()
+
 add_library(ReturnOfModding MODULE "${SRC_MAIN}")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -65,7 +69,7 @@ add_compile_definitions(ReturnOfModding
 )
 
 if (MSVC)
-    if (OPTIMIZE)
+    if (FINAL)
         # Aggresive inlining (Release)
         string(REPLACE "Ob2" "Ob3" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
         # Aggresive inlining (RelWithDebInfo)

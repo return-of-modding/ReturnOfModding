@@ -4,7 +4,7 @@ namespace big::debug
 {
 	inline void wait_until_debugger()
 	{
-#ifndef OPTIMIZE
+#ifndef FINAL
 		while (!IsDebuggerPresent())
 		{
 			std::this_thread::sleep_for(1s);
