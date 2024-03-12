@@ -1,4 +1,4 @@
-﻿# Return Of Modding
+# Return Of Modding
 
 [Risk of Rain Returns Modding Discord](https://discord.gg/VjS57cszMq)
 
