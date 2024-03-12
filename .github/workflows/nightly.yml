@@ -134,5 +134,6 @@ jobs:
           then
             find . -name '*.pdb' -type f -delete
 
-            tcli publish --config-path ./thunderstore/thunderstore.toml --token ${{ secrets.TCLI_AUTH_TOKEN }}
+            cd thunderstore
+            tcli publish --token ${{ secrets.TCLI_AUTH_TOKEN }}
           fi

@@ -16,7 +16,7 @@ readme = "../README.md"
 outdir = "./ts_build"
 
 [[build.copy]]
-source = "./build/version.dll"
+source = "../build/version.dll"
 target = "./ReturnOfModdingPack/version.dll"
 
 [publish]
