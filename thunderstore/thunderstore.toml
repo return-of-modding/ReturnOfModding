@@ -10,6 +10,8 @@ description = "Lua Mod Loader for Risk of Rain Returns"
 websiteUrl = "https://github.com/return-of-modding/ReturnOfModding/"
 containsNsfwContent = false
 
+[package.dependencies]
+
 [build]
 icon = "./icon.png"
 readme = "../README.md"
