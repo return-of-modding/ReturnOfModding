@@ -34,6 +34,8 @@ namespace big
 
 	exception_handler::~exception_handler()
 	{
+		MessageBoxA(0, "No more exception handler!!!", "ReturnOfModding", 0);
+
 		SetUnhandledExceptionFilter(reinterpret_cast<decltype(&vectored_exception_handler)>(m_exception_handler));
 		SetErrorMode(m_old_error_mode);
 
