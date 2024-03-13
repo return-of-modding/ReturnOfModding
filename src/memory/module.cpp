@@ -50,6 +50,8 @@ namespace memory
 
 	bool module::wait_for_module(std::optional<std::chrono::high_resolution_clock::duration> time)
 	{
+		using namespace std::chrono_literals;
+
 		const auto giveup_time = time.has_value() ? std::make_optional(std::chrono::high_resolution_clock::now() + time.value()) : std::nullopt;
 		LOG(VERBOSE) << "Waiting for " << m_name << "...";
 		while (!try_get_module())
@@ -58,7 +60,7 @@ namespace memory
 			{
 				break;
 			}
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			std::this_thread::sleep_for(100ms);
 		}
 		return m_loaded;
 	}
