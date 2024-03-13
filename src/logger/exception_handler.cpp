@@ -1,5 +1,6 @@
 #include "exception_handler.hpp"
 
+#include "paths/paths.hpp"
 #include "stack_trace.hpp"
 
 #include <DbgHelp.h>
@@ -14,51 +15,54 @@ namespace big
 		return std::hash<std::string_view>()({data, size});
 	}
 
+	static HMODULE DbgHelp_module = nullptr;
+
 	exception_handler::exception_handler()
 	{
 		m_old_error_mode    = SetErrorMode(0);
 		m_exception_handler = SetUnhandledExceptionFilter(vectored_exception_handler);
+
+		if (!DbgHelp_module)
+		{
+			DbgHelp_module = ::LoadLibraryW(L"DBGHELP.DLL");
+			if (!DbgHelp_module)
+			{
+				LOG(FATAL) << "Failed loading DbgHelp";
+			}
+		}
 	}
 
 	exception_handler::~exception_handler()
 	{
-		SetErrorMode(m_old_error_mode);
 		SetUnhandledExceptionFilter(reinterpret_cast<decltype(&vectored_exception_handler)>(m_exception_handler));
+		SetErrorMode(m_old_error_mode);
+
+		if (DbgHelp_module)
+		{
+			FreeLibrary(DbgHelp_module);
+		}
 	}
 
 	typedef BOOL(WINAPI* MINIDUMPWRITEDUMP)(HANDLE hProcess, DWORD dwPid, HANDLE hFile, MINIDUMP_TYPE DumpType, const PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam, const PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam, const PMINIDUMP_CALLBACK_INFORMATION CallbackParam);
 
-	static bool write_mini_dump(EXCEPTION_POINTERS* exception_info)
+	static BOOL write_mini_dump(EXCEPTION_POINTERS* exception_info)
 	{
-		bool returncode = false;
+		BOOL is_success = FALSE;
 
-		const std::filesystem::path dumpFileName = g_file_manager.get_project_file("./ReturnOfModding_crash.dmp").get_path();
-		if (std::filesystem::exists(dumpFileName))
-		{
-			std::filesystem::remove(dumpFileName);
-		}
+		const auto& dump_file_path = paths::remove_and_get_dump_file_path();
 
-		HANDLE hDumpFile = CreateFileW(dumpFileName.c_str(), GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+		const auto dump_file_handle = CreateFileW(dump_file_path.c_str(), GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
 
-		HMODULE hDbgHelpDll      = nullptr;
-		BOOL bMiniDumpSuccessful = FALSE;
-		MINIDUMPWRITEDUMP pDump  = nullptr;
-		const MINIDUMP_TYPE minidump_type = static_cast<MINIDUMP_TYPE>(MiniDumpNormal | MiniDumpWithHandleData | MiniDumpWithProcessThreadData | MiniDumpWithThreadInfo | MiniDumpWithIndirectlyReferencedMemory);
+		MINIDUMPWRITEDUMP MiniDumpWriteDump_function = nullptr;
+		const auto minidump_type = (MINIDUMP_TYPE)(MiniDumpNormal | MiniDumpWithHandleData | MiniDumpWithProcessThreadData | MiniDumpWithThreadInfo | MiniDumpWithIndirectlyReferencedMemory);
 
-		if (hDumpFile == INVALID_HANDLE_VALUE)
+		if (dump_file_handle == INVALID_HANDLE_VALUE)
 		{
 			goto cleanup;
 		}
 
-		// Load the DBGHELP DLL
-		hDbgHelpDll = ::LoadLibraryW(L"DBGHELP.DLL");
-		if (!hDbgHelpDll)
-		{
-			goto cleanup;
-		}
-
-		pDump = (MINIDUMPWRITEDUMP)::GetProcAddress(hDbgHelpDll, "MiniDumpWriteDump");
-		if (!pDump)
+		MiniDumpWriteDump_function = (MINIDUMPWRITEDUMP)::GetProcAddress(DbgHelp_module, "MiniDumpWriteDump");
+		if (!MiniDumpWriteDump_function)
 		{
 			goto cleanup;
 		}
@@ -69,27 +73,22 @@ namespace big
 		mdei.ExceptionPointers = exception_info;
 		mdei.ClientPointers    = FALSE;
 
-		bMiniDumpSuccessful = pDump(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile, minidump_type, &mdei, 0, NULL);
-		if (!bMiniDumpSuccessful)
+		is_success = MiniDumpWriteDump_function(GetCurrentProcess(), GetCurrentProcessId(), dump_file_handle, minidump_type, &mdei, 0, NULL);
+		if (!is_success)
 		{
 			goto cleanup;
 		}
 
-		returncode = true;
+		is_success = TRUE;
 
 	cleanup:
 
-		if (hDumpFile != INVALID_HANDLE_VALUE)
+		if (dump_file_handle != INVALID_HANDLE_VALUE)
 		{
-			CloseHandle(hDumpFile);
+			CloseHandle(dump_file_handle);
 		}
 
-		if (hDbgHelpDll)
-		{
-			FreeLibrary(hDbgHelpDll);
-		}
-
-		return returncode;
+		return is_success;
 	}
 
 	LONG vectored_exception_handler(EXCEPTION_POINTERS* exception_info)

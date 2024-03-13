@@ -1,6 +1,5 @@
 #pragma once
 
-
 namespace big
 {
 	class exception_handler final

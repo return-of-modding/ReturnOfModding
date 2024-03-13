@@ -4,7 +4,7 @@
 #include "logger/exception_handler.hpp"
 #include "lua/lua_manager.hpp"
 #include "memory/byte_patch_manager.hpp"
-#include "paths/root_folder.hpp"
+#include "paths/paths.hpp"
 #include "pointers.hpp"
 #include "rorr/gm/pin_map.hpp"
 #include "threads/thread_pool.hpp"
@@ -45,6 +45,7 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 			    std::filesystem::path root_folder = paths::get_project_root_folder();
 			    g_file_manager.init(root_folder);
+			    paths::init_dump_file_path();
 
 			    constexpr auto is_console_enabled = true;
 			    auto logger_instance = std::make_unique<logger>(g_project_name, g_file_manager.get_project_file("./LogOutput.log"), is_console_enabled);

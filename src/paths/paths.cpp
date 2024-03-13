@@ -1,7 +1,6 @@
 #pragma once
 
-#include <cxxopts.hpp>
-#include <shellapi.h>
+#include "paths.hpp"
 
 namespace big::paths
 {
@@ -151,5 +150,29 @@ namespace big::paths
 		}
 
 		return root_folder;
+	}
+
+	static std::filesystem::path dump_file_path;
+
+	void init_dump_file_path()
+	{
+		dump_file_path = g_file_manager.get_project_file("./ReturnOfModding_crash.dmp").get_path();
+	}
+
+	const std::filesystem::path& remove_and_get_dump_file_path()
+	{
+		try
+		{
+			if (std::filesystem::exists(dump_file_path))
+			{
+				std::filesystem::remove(dump_file_path);
+			}
+		}
+		catch (const std::exception& e)
+		{
+			LOG(FATAL) << e.what();
+		}
+
+		return dump_file_path;
 	}
 } // namespace big::paths
