@@ -1,15 +1,11 @@
 #pragma once
 #include "debug/debug.hpp"
 #include "logger/exception_handler.hpp"
+#include "string/string.hpp"
 
 namespace gm
 {
 	using debug_console_output_t = void (*)(void* this_, const char* fmt, ...);
-
-	static bool starts_with(const char* pre, const char* str)
-	{
-		return strncmp(pre, str, strlen(pre)) == 0;
-	}
 
 	inline void log_stacktrace_and_abort()
 	{
@@ -63,7 +59,7 @@ namespace gm
 		result.pop_back();
 		result.pop_back();
 
-		if (starts_with("ERROR!!!", result.c_str()))
+		if (big::string::starts_with("ERROR!!!", result.c_str()))
 		{
 			LOG(FATAL) << result;
 			Logger::FlushQueue();

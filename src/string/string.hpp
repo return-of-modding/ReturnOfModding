@@ -2,6 +2,11 @@
 
 namespace big::string
 {
+	inline bool starts_with(const char* pre, const char* str)
+	{
+		return strncmp(pre, str, strlen(pre)) == 0;
+	}
+
 	template<typename T>
 	inline std::enable_if_t<std::is_same_v<T, std::string>, T> get_text_value(std::string text)
 	{
