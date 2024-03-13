@@ -24,7 +24,8 @@ jobs:
       - name: Generate CMake project
         run: cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo -D FINAL=YES -S. -Bbuild -G Ninja
 
-      - name: Build 64bit release DLL
+      - name: Prepare 64bit release DLL
+        shell: bash
         run: |
           set -x
 
@@ -48,6 +49,8 @@ jobs:
           sed -i 's/"ProductVersion", *"[^"]*"/"ProductVersion", "'"$version_number"'"/g' resources.rc
           cd ..
 
+      - name: Build 64bit release DLL
+        run: |
           cmake --build ./build --config RelWithDebInfo --target ReturnOfModding --
 
       - name: Upload Artifact
