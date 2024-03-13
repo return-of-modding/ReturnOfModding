@@ -18,6 +18,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 	using namespace big;
 	if (reason == DLL_PROCESS_ATTACH)
 	{
+		static auto exception_handling = exception_handler();
+
 		DisableThreadLibraryCalls(hmod);
 		g_hmodule     = hmod;
 		g_main_thread = CreateThread(
@@ -25,13 +27,13 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		    0,
 		    [](PVOID) -> DWORD
 		    {
-			    HWND target_window{};
+			    /*HWND target_window{};
 			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
 			    {
-				    std::this_thread::sleep_for(10ms);
-			    }
+				    std::this_thread::sleep_for(5ms);
+			    }*/
 
-			    std::this_thread::sleep_for(2000ms);
+			    //std::this_thread::sleep_for(2000ms);
 
 			    //threads::suspend_all_but_one();
 			    //debug::wait_until_debugger();
@@ -40,8 +42,6 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    setlocale(LC_ALL, ".utf8");
 			    // This also change things like stringstream outputs and add comma to numbers and things like that, we don't want that, so just set locale on the C apis instead.
 			    //std::locale::global(std::locale(".utf8"));
-
-			    auto handler = exception_handler();
 
 			    std::filesystem::path root_folder = paths::get_project_root_folder();
 			    g_file_manager.init(root_folder);
@@ -76,6 +76,11 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 			    //big::threads::resume_all();
 
+			    HWND target_window{};
+			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
+			    {
+				    std::this_thread::sleep_for(5ms);
+			    }
 			    auto renderer_instance = std::make_unique<renderer>(target_window);
 			    LOG(INFO) << "Renderer initialized.";
 			    auto gui_instance = std::make_unique<gui>();
@@ -87,11 +92,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 				    g_hooking->enable();
 				    LOG(INFO) << "Hooking enabled.";
 
-				    std::this_thread::sleep_for(3000ms);
-				    while (!g_gml_safe)
-				    {
-					    std::this_thread::sleep_for(3000ms);
-				    }
+				    std::unique_lock gml_lock(g_gml_safe_mutex);
+				    g_gml_safe_notifier.wait_for(gml_lock, 20s);
 
 				    YYObjectPinMap::init_pin_map();
 			    }

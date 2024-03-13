@@ -70,10 +70,15 @@ namespace big
 	using namespace std::chrono_literals;
 
 	inline HMODULE g_hmodule{};
+
 	inline HANDLE g_main_thread{};
 	inline DWORD g_main_thread_id{};
+
 	inline std::atomic_bool g_abort{false};
 	inline std::atomic_bool g_running{false};
+
+	inline std::mutex g_gml_safe_mutex;
+	inline std::condition_variable g_gml_safe_notifier;
 	inline bool g_gml_safe{false};
 
 	inline constexpr auto g_project_name             = "ReturnOfModding";

@@ -12,11 +12,6 @@ namespace gm
 		is_inside_code_execute = true;
 		last_executed_code     = code->name;
 
-		if (!big::g_gml_safe && !strcmp(code->name, "gml_Object_oLoadScreen_Step_0"))
-		{
-			big::g_gml_safe = true;
-		}
-
 		bool no_error = true;
 		if (big::g_lua_manager)
 		{
@@ -46,6 +41,13 @@ namespace gm
 			{
 				gml_exception_handler(e.GetExceptionObject());
 			}
+		}
+
+		if (!big::g_gml_safe && big::string::starts_with("gml_Object_oInit_Alarm_", code->name))
+		{
+			std::lock_guard lk(big::g_gml_safe_mutex);
+			big::g_gml_safe_notifier.notify_all();
+			big::g_gml_safe = true;
 		}
 
 		is_inside_code_execute = false;
