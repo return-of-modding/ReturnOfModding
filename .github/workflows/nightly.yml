@@ -25,7 +25,30 @@ jobs:
         run: cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo -D FINAL=YES -S. -Bbuild -G Ninja
 
       - name: Build 64bit release DLL
-        run: cmake --build ./build --config RelWithDebInfo --target ReturnOfModding --
+        run: |
+          set -x
+
+          namespace="ReturnOfModding"
+          mod_name="ReturnOfModding"
+
+          # Get latest version number from thunderstore
+          version_number=$(curl --compressed -s "https://thunderstore.io/c/risk-of-rain-returns/api/v1/package/" | jq --arg package_name "$namespace-$mod_name" '.[]? | select(.full_name|startswith($package_name)) | .versions[0]?.version_number' || true)
+
+          # Remove quotes from output
+          version_number=$(echo "$version_number" | tr -d '"')
+
+          # Increment the patch version number
+          version_number=$(echo $version_number | awk -F. -v OFS=. 'NF==1{print ++$NF}; NF>1{$NF=sprintf("%0*d", length($NF), ($NF+1)); print}')
+
+          # For the FILEVERSION we want a , format
+          version_number_comma=$(echo $version_number | tr . ,)
+
+          cd src
+          sed -i 's/FILEVERSION .*/FILEVERSION '"$version_number_comma"'/' resources.rc
+          sed -i "s/\"ProductVersion\", *\"[^\"]*\"/\"ProductVersion\", \"$version_number\"/g" resources.rc
+          cd ..
+
+          cmake --build ./build --config RelWithDebInfo --target ReturnOfModding --
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
@@ -121,14 +144,15 @@ jobs:
           mod_name="ReturnOfModding"
 
           # Get latest version number from thunderstore
-          existing_version_number=$(curl --compressed -s "https://thunderstore.io/c/risk-of-rain-returns/api/v1/package/" | jq --arg package_name "$namespace-$mod_name" '.[]? | select(.full_name|startswith($package_name)) | .versions[0]?.version_number' || true)
+          version_number=$(curl --compressed -s "https://thunderstore.io/c/risk-of-rain-returns/api/v1/package/" | jq --arg package_name "$namespace-$mod_name" '.[]? | select(.full_name|startswith($package_name)) | .versions[0]?.version_number' || true)
 
           # Remove quotes from output
-          existing_version_number=$(echo "$existing_version_number" | tr -d '"')
+          version_number=$(echo "$version_number" | tr -d '"')
 
           # Increment the patch version number
-          existing_version_number=$(echo $existing_version_number | awk -F. -v OFS=. 'NF==1{print ++$NF}; NF>1{$NF=sprintf("%0*d", length($NF), ($NF+1)); print}')
+          version_number=$(echo $version_number | awk -F. -v OFS=. 'NF==1{print ++$NF}; NF>1{$NF=sprintf("%0*d", length($NF), ($NF+1)); print}')
 
           cd thunderstore
-          sed -i 's/versionNumber = ".*"/versionNumber = "'"$existing_version_number"'"/' thunderstore.toml
+          sed -i 's/versionNumber = ".*"/versionNumber = "'"$version_number"'"/' thunderstore.toml
+          
           tcli publish --token ${{ secrets.TCLI_AUTH_TOKEN }}

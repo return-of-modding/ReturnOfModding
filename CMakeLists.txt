@@ -25,6 +25,7 @@ file(GLOB_RECURSE SRC_MAIN
     "${SRC_DIR}/**.cxx"
     "${SRC_DIR}/**.asm"
     "${SRC_DIR}/**.def"
+    "${SRC_DIR}/**.rc"
 )
 
 add_compile_options(/bigobj)
