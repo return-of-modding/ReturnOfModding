@@ -34,7 +34,7 @@ namespace big
 
 	exception_handler::~exception_handler()
 	{
-		MessageBoxA(0, "No more exception handler!!!", "ReturnOfModding", 0);
+		MessageBoxA(0, "No more exception handler!!!", "ReturnOfModding", MB_ICONERROR);
 
 		SetUnhandledExceptionFilter(reinterpret_cast<decltype(&vectored_exception_handler)>(m_exception_handler));
 		SetErrorMode(m_old_error_mode);
@@ -60,12 +60,20 @@ namespace big
 
 		if (dump_file_handle == INVALID_HANDLE_VALUE)
 		{
+			std::stringstream error_msg;
+			error_msg << "CreateFileW error code: " << HEX_TO_UPPER(GetLastError());
+			MessageBoxA(0, error_msg.str().c_str(), "ReturnOfModding", MB_ICONERROR);
+
 			goto cleanup;
 		}
 
 		MiniDumpWriteDump_function = (MINIDUMPWRITEDUMP)::GetProcAddress(DbgHelp_module, "MiniDumpWriteDump");
 		if (!MiniDumpWriteDump_function)
 		{
+			std::stringstream error_msg;
+			error_msg << "GetProcAddress error code: " << HEX_TO_UPPER(GetLastError());
+			MessageBoxA(0, error_msg.str().c_str(), "ReturnOfModding", MB_ICONERROR);
+
 			goto cleanup;
 		}
 
@@ -78,6 +86,10 @@ namespace big
 		is_success = MiniDumpWriteDump_function(GetCurrentProcess(), GetCurrentProcessId(), dump_file_handle, minidump_type, &mdei, 0, NULL);
 		if (!is_success)
 		{
+			std::stringstream error_msg;
+			error_msg << "MiniDumpWriteDump_function error code: " << HEX_TO_UPPER(GetLastError());
+			MessageBoxA(0, error_msg.str().c_str(), "ReturnOfModding", MB_ICONERROR);
+
 			goto cleanup;
 		}
 
