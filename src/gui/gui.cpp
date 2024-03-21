@@ -371,7 +371,7 @@ namespace big
 			const auto entry_doesnt_exist = !m_table.contains(is_open_at_startup_name);
 			if (entry_doesnt_exist)
 			{
-				m_table.insert_or_assign(is_open_at_startup_name, true);
+				m_table.insert_or_assign(is_open_at_startup_name, false);
 			}
 
 			m_is_open_at_startup = m_table.get(is_open_at_startup_name);
@@ -384,7 +384,7 @@ namespace big
 			{
 				LOG(WARNING) << "Invalid serialized data. Clearing " << is_open_at_startup_name;
 
-				m_table.insert_or_assign(is_open_at_startup_name, true);
+				m_table.insert_or_assign(is_open_at_startup_name, false);
 				m_is_open_at_startup = m_table.get(is_open_at_startup_name);
 				if (m_is_open_at_startup == nullptr)
 				{

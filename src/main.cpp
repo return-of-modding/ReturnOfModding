@@ -10,12 +10,24 @@
 #include "threads/thread_pool.hpp"
 #include "threads/util.hpp"
 #include "version.hpp"
+#include "win_registry/win_registry.hpp"
 
 //#include "debug/debug.hpp"
 
 BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 {
 	using namespace big;
+
+	HKEY hKey;
+	RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Valve\\Steam", 0, KEY_READ, &hKey);
+	DWORD running_app_id;
+	win_registry::get_dword(hKey, L"RunningAppID", running_app_id, 0);
+	constexpr DWORD rorr_app_id = 1'337'520;
+	if (running_app_id != rorr_app_id)
+	{
+		return true;
+	}
+
 	if (reason == DLL_PROCESS_ATTACH)
 	{
 		static auto exception_handling = exception_handler();
