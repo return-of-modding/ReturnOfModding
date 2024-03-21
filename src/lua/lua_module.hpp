@@ -12,8 +12,6 @@ namespace big
 	{
 		module_info m_info;
 
-		std::chrono::time_point<std::chrono::file_clock> m_last_write_time;
-
 		sol::environment m_env;
 
 	public:
@@ -42,8 +40,6 @@ namespace big
 		const std::filesystem::path& path() const;
 		const ts::v1::manifest& manifest() const;
 		const std::string& guid() const;
-
-		const std::chrono::time_point<std::chrono::file_clock> last_write_time() const;
 
 		load_module_result load_and_call_plugin(sol::state& state);
 

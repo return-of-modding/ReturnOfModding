@@ -6,7 +6,6 @@ namespace big
 {
 	lua_module::lua_module(const module_info& module_info, sol::state& state) :
 	    m_info(module_info),
-	    m_last_write_time(std::filesystem::last_write_time(module_info.m_path)),
 	    m_env(state, sol::create, state.globals())
 	{
 		// Lua API: Table
@@ -89,11 +88,6 @@ namespace big
 	const std::string& lua_module::guid() const
 	{
 		return m_info.m_guid;
-	}
-
-	const std::chrono::time_point<std::chrono::file_clock> lua_module::last_write_time() const
-	{
-		return m_last_write_time;
 	}
 
 	sol::environment& lua_module::env()

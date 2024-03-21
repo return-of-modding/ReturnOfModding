@@ -3,6 +3,7 @@
 #include "lua_module.hpp"
 #include "module_info.hpp"
 
+#include <file_manager/file_watcher.hpp>
 #include <rorr/gm/CCode.hpp>
 #include <rorr/gm/CInstance.hpp>
 #include <rorr/gm/RValue.hpp>
@@ -18,13 +19,11 @@ namespace big
 		std::recursive_mutex m_module_lock;
 		std::vector<std::shared_ptr<lua_module>> m_modules;
 
-		std::thread m_reload_watcher_thread;
-		static constexpr std::chrono::seconds m_delay_between_changed_plugins_check = 3s;
-		std::chrono::high_resolution_clock::time_point m_wake_time_changed_plugins_check;
-
 		folder m_config_folder;
 		folder m_plugins_data_folder;
 		folder m_plugins_folder;
+
+		wtr::watch m_file_watcher;
 
 		bool m_is_all_mods_loaded{};
 
@@ -80,8 +79,6 @@ namespace big
 
 		void unload_module(const std::string& module_guid);
 		load_module_result load_module(const module_info& module_info, bool ignore_failed_to_load = false);
-
-		void reload_changed_plugins();
 
 		inline void for_each_module(auto func)
 		{
