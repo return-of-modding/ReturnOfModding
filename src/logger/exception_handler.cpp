@@ -34,7 +34,7 @@ namespace big
 
 	exception_handler::~exception_handler()
 	{
-		MessageBoxA(0, "No more exception handler!!!", "ReturnOfModding", MB_ICONERROR);
+		MessageBoxA(0, "No more exception handler!!!\nIf this continues to happen, try not launching from the executable but from Steam.", "ReturnOfModding", MB_ICONERROR);
 
 		SetUnhandledExceptionFilter(reinterpret_cast<decltype(&vectored_exception_handler)>(m_exception_handler));
 		SetErrorMode(m_old_error_mode);
