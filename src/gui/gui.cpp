@@ -131,6 +131,50 @@ namespace big
 
 		g_lua_manager->always_draw_independent_gui();
 
+		if (!m_onboarded->ref<bool>())
+		{
+			static bool onboarding_open = false;
+			if (!onboarding_open)
+			{
+				toggle(true);
+				ImGui::OpenPopup("Welcome to Return Of Modding");
+				onboarding_open = true;
+			}
+
+			const auto window_size = ImVec2{600, 400};
+			ImGui::SetNextWindowSize(window_size, ImGuiCond_Always);
+
+			RECT rect;
+			ImVec2 window_position = ImVec2(640, 360);
+			if (GetWindowRect(g_renderer->m_window_handle, &rect))
+			{
+				float width     = rect.right - rect.left;
+				float height    = rect.bottom - rect.top;
+				window_position = ImVec2{(width - window_size.x) / 2, (height - window_size.y) / 2};
+			}
+			ImGui::SetNextWindowPos(window_position, ImGuiCond_Always);
+
+			if (ImGui::BeginPopupModal("Welcome to Return Of Modding"))
+			{
+				ImGui::SeparatorText("Change the GUI opening key if you wish");
+				if (ImGui::Hotkey("Open GUI Keybind", g_gui_toggle))
+				{
+					editing_gui_keybind = true;
+				}
+
+				if (ImGui::Button("Close"))
+				{
+					m_onboarded->ref<bool>() = true;
+					save_pref();
+					ImGui::CloseCurrentPopup();
+				}
+
+				ImGui::EndPopup();
+			}
+
+			//ImGui::SetWindowFocus("Welcome to Return Of Modding");
+		}
+
 		if (m_is_open)
 		{
 			if (ImGui::BeginMainMenuBar())
@@ -143,7 +187,7 @@ namespace big
 						save_pref();
 					}
 
-					if (ImGui::Hotkey("Open GUI Keybind", &g_gui_toggle.vk()))
+					if (ImGui::Hotkey("Open GUI Keybind", g_gui_toggle))
 					{
 						editing_gui_keybind = true;
 					}
@@ -319,7 +363,7 @@ namespace big
 
 	void gui::wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	{
-		if (msg == WM_KEYUP && wparam == g_gui_toggle.vk())
+		if (msg == WM_KEYUP && wparam == g_gui_toggle.get_vk_value())
 		{
 			// Persist and restore the cursor position between menu instances.
 			static POINT cursor_coords{};
@@ -366,31 +410,37 @@ namespace big
 				m_table = toml::parse_file(m_file_path.c_str());
 			}
 
-			constexpr auto is_open_at_startup_name = "is_open_at_startup";
-
-			const auto entry_doesnt_exist = !m_table.contains(is_open_at_startup_name);
-			if (entry_doesnt_exist)
+			auto init_node = [](toml::table& table, toml::node*& node, const char* node_name, bool default_value)
 			{
-				m_table.insert_or_assign(is_open_at_startup_name, false);
-			}
-
-			m_is_open_at_startup = m_table.get(is_open_at_startup_name);
-			if (m_is_open_at_startup == nullptr)
-			{
-				LOG(FATAL) << "what";
-			}
-
-			if (m_is_open_at_startup == nullptr || m_is_open_at_startup->type() != toml::node_type::boolean)
-			{
-				LOG(WARNING) << "Invalid serialized data. Clearing " << is_open_at_startup_name;
-
-				m_table.insert_or_assign(is_open_at_startup_name, false);
-				m_is_open_at_startup = m_table.get(is_open_at_startup_name);
-				if (m_is_open_at_startup == nullptr)
+				const auto entry_doesnt_exist = !table.contains(node_name);
+				if (entry_doesnt_exist)
 				{
-					LOG(FATAL) << "what2";
+					table.insert_or_assign(node_name, default_value);
 				}
-			}
+
+				node = table.get(node_name);
+				if (node == nullptr)
+				{
+					LOG(FATAL) << "what";
+				}
+
+				if (node == nullptr || node->type() != toml::node_type::boolean)
+				{
+					LOG(WARNING) << "Invalid serialized data. Clearing " << node_name;
+
+					table.insert_or_assign(node_name, default_value);
+					node = table.get(node_name);
+					if (node == nullptr)
+					{
+						LOG(FATAL) << "what2";
+					}
+				}
+			};
+
+			constexpr auto is_open_at_startup_name = "is_open_at_startup";
+			init_node(m_table, m_is_open_at_startup, is_open_at_startup_name, false);
+			constexpr auto onboarded_name = "onboarded";
+			init_node(m_table, m_onboarded, onboarded_name, false);
 
 			save_pref();
 
@@ -400,7 +450,7 @@ namespace big
 		{
 			LOG(INFO) << "Failed init hotkeys: " << e.what();
 
-			m_is_open = true;
+			toggle(false);
 		}
 	}
 

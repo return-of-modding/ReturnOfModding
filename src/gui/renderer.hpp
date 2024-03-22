@@ -1,6 +1,5 @@
 #pragma once
 
-
 namespace big
 {
 	using init_callback    = std::function<void()>;
@@ -21,6 +20,8 @@ namespace big
 		std::vector<wndproc_callback> m_wndproc_callbacks;
 
 	public:
+		HWND m_window_handle{};
+
 		WNDPROC m_og_wndproc = nullptr;
 
 		ImFont* font_title     = nullptr;

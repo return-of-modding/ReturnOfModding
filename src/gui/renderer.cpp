@@ -35,8 +35,6 @@ namespace big
 		ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
 	}
 
-	static HWND g_hWnd{};
-
 	bool renderer::create_device_d3d11()
 	{
 		DXGI_SWAP_CHAIN_DESC sd;
@@ -48,7 +46,7 @@ namespace big
 		sd.BufferDesc.RefreshRate.Numerator   = 60;
 		sd.BufferDesc.RefreshRate.Denominator = 1;
 		sd.BufferUsage                        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		sd.OutputWindow                       = g_hWnd;
+		sd.OutputWindow                       = m_window_handle;
 		sd.SampleDesc.Count                   = 1;
 		sd.SampleDesc.Quality                 = 0;
 		sd.Windowed                           = TRUE;
@@ -170,7 +168,7 @@ namespace big
 
 	void renderer::hook(HWND window_handle)
 	{
-		g_hWnd = window_handle;
+		m_window_handle = window_handle;
 		if (!create_device_d3d11())
 		{
 			LOG(FATAL) << "create_device_d3d11 failed.";

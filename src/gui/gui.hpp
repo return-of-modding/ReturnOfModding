@@ -51,6 +51,7 @@ namespace big
 	private:
 		bool m_is_open;
 		toml::node* m_is_open_at_startup;
+		toml::node* m_onboarded;
 
 		ImGuiStyle m_default_config;
 	};
