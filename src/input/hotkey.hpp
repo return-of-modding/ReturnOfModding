@@ -7,16 +7,18 @@ namespace big
 	class hotkey
 	{
 		std::string m_name;
-		toml::node* m_vk = nullptr;
-		int64_t m_default_vk;
+		toml::node* m_vk_string = nullptr;
+		uint8_t m_vk_value;
+		uint8_t m_default_vk;
 
 	public:
 		hotkey() = delete;
-		hotkey(const std::string& name, int64_t default_vk);
+		hotkey(const std::string& name, uint8_t default_vk);
 
 		~hotkey();
 
-		int64_t& vk();
+		const uint8_t get_vk_value() const;
+		void set_vk_value(uint8_t new_vk);
 
 		static inline std::unordered_map<std::string, hotkey*> hotkeys;
 		static inline constexpr auto m_file_name = "ReturnOfModding-ReturnOfModding-Hotkeys.cfg";
