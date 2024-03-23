@@ -172,7 +172,7 @@ function util.merge(m,...)
 	return m
 end
 
---http://lua-users.org/wiki/util.varargTheSecondClassCitizen
+--http://lua-users.org/wiki/VarargTheSecondClassCitizen
 do
 	function util.vararg(...)
 		local i, t, l = 0, {}
