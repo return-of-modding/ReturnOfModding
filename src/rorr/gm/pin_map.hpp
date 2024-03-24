@@ -58,7 +58,7 @@ struct YYObjectPinMap
 
 	inline static void cleanup_pin_map()
 	{
-		if (YYObjectPinMap::m_pin_map.type != RValueType::UNSET)
+		if (YYObjectPinMap::m_pin_map.type != RValueType::UNDEFINED)
 		{
 			gm::call("ds_map_destroy", YYObjectPinMap::m_pin_map);
 

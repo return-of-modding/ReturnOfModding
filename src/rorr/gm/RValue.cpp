@@ -76,7 +76,7 @@ RValue::~RValue()
 RValue::RValue()
 {
 	flags = 0;
-	type  = UNSET;
+	type  = UNDEFINED;
 	i64   = 0L;
 }
 
@@ -90,7 +90,7 @@ RValue::RValue(std::nullptr_t, bool undefined)
 RValue::RValue(const RValue& v)
 {
 	flags = 0;
-	type  = UNSET;
+	type  = UNDEFINED;
 	i64   = 0L;
 
 	__localCopy(v);
