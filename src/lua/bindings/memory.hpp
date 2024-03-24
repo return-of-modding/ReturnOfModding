@@ -185,7 +185,7 @@ namespace lua::memory
 			big::lua_module* module = big::lua_module::this_from(env);
 			if (module)
 			{
-				module->m_registered_patches.push_back(std::move(patch));
+				module->m_data.m_registered_patches.push_back(std::move(patch));
 			}
 
 			return raw;

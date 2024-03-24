@@ -67,12 +67,19 @@ namespace big
 		m_env["!this"] = this;
 	}
 
-	lua_module::~lua_module()
+	void lua_module::cleanup()
 	{
-		for (auto memory : m_allocated_memory)
+		for (auto memory : m_data.m_allocated_memory)
 		{
 			delete[] memory;
 		}
+
+		m_data = {};
+	}
+
+	lua_module::~lua_module()
+	{
+		cleanup();
 	}
 
 	const std::filesystem::path& lua_module::path() const

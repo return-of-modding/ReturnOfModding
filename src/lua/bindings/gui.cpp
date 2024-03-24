@@ -11,7 +11,7 @@ namespace lua::gui
 		big::lua_module* module = big::lua_module::this_from(env);
 		if (module)
 		{
-			module->m_menu_bar_callbacks.push_back(std::move(element));
+			module->m_data.m_menu_bar_callbacks.push_back(std::move(element));
 		}
 	}
 
@@ -20,7 +20,7 @@ namespace lua::gui
 		big::lua_module* module = big::lua_module::this_from(env);
 		if (module)
 		{
-			module->m_always_draw_independent_gui.push_back(std::move(element));
+			module->m_data.m_always_draw_independent_gui.push_back(std::move(element));
 		}
 	}
 
@@ -29,7 +29,7 @@ namespace lua::gui
 		big::lua_module* module = big::lua_module::this_from(env);
 		if (module)
 		{
-			module->m_independent_gui.push_back(std::move(element));
+			module->m_data.m_independent_gui.push_back(std::move(element));
 		}
 	}
 

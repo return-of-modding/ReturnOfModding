@@ -153,6 +153,7 @@ namespace big
 
 					                   if (current_folder == module_folder)
 					                   {
+						                   module->cleanup();
 						                   module->load_and_call_plugin(m_state);
 						                   return;
 					                   }
@@ -452,7 +453,7 @@ namespace big
 			big::lua_module* mdl = big::lua_module::this_from(env);
 			if (mdl)
 			{
-				mdl->m_on_all_mods_loaded_callbacks.push_back(cb);
+				mdl->m_data.m_on_all_mods_loaded_callbacks.push_back(cb);
 			}
 		};
 
@@ -475,7 +476,7 @@ namespace big
 
 		for (const auto& module : m_modules)
 		{
-			for (const auto& cb : module->m_pre_code_execute_callbacks)
+			for (const auto& cb : module->m_data.m_pre_code_execute_callbacks)
 			{
 				const auto new_call_orig_if_true = cb(self, other, code, result, flags);
 				if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
@@ -495,7 +496,7 @@ namespace big
 
 		for (const auto& module : m_modules)
 		{
-			for (const auto& cb : module->m_post_code_execute_callbacks)
+			for (const auto& cb : module->m_data.m_post_code_execute_callbacks)
 			{
 				cb(self, other, code, result, flags);
 			}
@@ -510,7 +511,7 @@ namespace big
 
 		for (const auto& module : m_modules)
 		{
-			for (const auto& cb : module->m_pre_builtin_execute_callbacks[original_func_ptr])
+			for (const auto& cb : module->m_data.m_pre_builtin_execute_callbacks[original_func_ptr])
 			{
 				const auto new_call_orig_if_true = cb(self, other, result, std::span(args, arg_count));
 				if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
@@ -530,7 +531,7 @@ namespace big
 
 		for (const auto& module : m_modules)
 		{
-			for (const auto& cb : module->m_post_builtin_execute_callbacks[original_func_ptr])
+			for (const auto& cb : module->m_data.m_post_builtin_execute_callbacks[original_func_ptr])
 			{
 				cb(self, other, result, std::span(args, arg_count));
 			}
@@ -545,7 +546,7 @@ namespace big
 
 		for (const auto& module : m_modules)
 		{
-			for (const auto& cb : module->m_pre_script_execute_callbacks[original_func_ptr])
+			for (const auto& cb : module->m_data.m_pre_script_execute_callbacks[original_func_ptr])
 			{
 				const auto new_call_orig_if_true = cb(self, other, result, std::span(args, arg_count));
 				if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
@@ -565,7 +566,7 @@ namespace big
 
 		for (const auto& module : m_modules)
 		{
-			for (const auto& cb : module->m_post_script_execute_callbacks[original_func_ptr])
+			for (const auto& cb : module->m_data.m_post_script_execute_callbacks[original_func_ptr])
 			{
 				cb(self, other, result, std::span(args, arg_count));
 			}
@@ -606,7 +607,7 @@ namespace big
 					ImGui::EndMenu();
 				}
 
-				for (const auto& element : module->m_menu_bar_callbacks)
+				for (const auto& element : module->m_data.m_menu_bar_callbacks)
 				{
 					element->draw();
 				}
@@ -622,7 +623,7 @@ namespace big
 
 		for (const auto& module : m_modules)
 		{
-			for (const auto& element : module->m_always_draw_independent_gui)
+			for (const auto& element : module->m_data.m_always_draw_independent_gui)
 			{
 				element->draw();
 			}
@@ -635,7 +636,7 @@ namespace big
 
 		for (const auto& module : m_modules)
 		{
-			for (const auto& element : module->m_independent_gui)
+			for (const auto& element : module->m_data.m_independent_gui)
 			{
 				element->draw();
 			}
@@ -678,7 +679,7 @@ namespace big
 
 			if (m_is_all_mods_loaded)
 			{
-				for (const auto& cb : module->m_on_all_mods_loaded_callbacks)
+				for (const auto& cb : module->m_data.m_on_all_mods_loaded_callbacks)
 				{
 					cb();
 				}
@@ -852,7 +853,7 @@ namespace big
 		std::lock_guard guard(m_module_lock);
 		for (const auto& module : m_modules)
 		{
-			for (const auto& cb : module->m_on_all_mods_loaded_callbacks)
+			for (const auto& cb : module->m_data.m_on_all_mods_loaded_callbacks)
 			{
 				cb();
 			}

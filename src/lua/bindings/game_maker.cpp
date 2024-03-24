@@ -97,7 +97,7 @@ namespace lua::game_maker
 		big::lua_module* mdl = big::lua_module::this_from(env);
 		if (mdl)
 		{
-			mdl->m_pre_code_execute_callbacks.push_back(cb);
+			mdl->m_data.m_pre_code_execute_callbacks.push_back(cb);
 		}
 	}
 
@@ -111,7 +111,7 @@ namespace lua::game_maker
 		big::lua_module* mdl = big::lua_module::this_from(env);
 		if (mdl)
 		{
-			mdl->m_post_code_execute_callbacks.push_back(cb);
+			mdl->m_data.m_post_code_execute_callbacks.push_back(cb);
 		}
 	}
 
@@ -289,8 +289,8 @@ namespace lua::game_maker
 				{
 					std::stringstream hook_name;
 					hook_name << mdl->guid() << " | " << script_function_index << " | "
-					          << (is_pre_hook ? mdl->m_pre_script_execute_callbacks.size() :
-					                            mdl->m_post_script_execute_callbacks.size());
+					          << (is_pre_hook ? mdl->m_data.m_pre_script_execute_callbacks.size() :
+					                            mdl->m_data.m_post_script_execute_callbacks.size());
 
 					LOG(INFO) << "hook_name: " << hook_name.str();
 
@@ -317,8 +317,8 @@ namespace lua::game_maker
 				{
 					std::stringstream hook_name;
 					hook_name << mdl->guid() << " | " << script_function_index << " | "
-					          << (is_pre_hook ? mdl->m_pre_builtin_execute_callbacks.size() :
-					                            mdl->m_post_builtin_execute_callbacks.size());
+					          << (is_pre_hook ? mdl->m_data.m_pre_builtin_execute_callbacks.size() :
+					                            mdl->m_data.m_post_builtin_execute_callbacks.size());
 
 					LOG(INFO) << "hook_name: " << hook_name.str();
 
@@ -349,11 +349,11 @@ namespace lua::game_maker
 		{
 			if (res.m_is_game_script_func)
 			{
-				res.m_this_lua_module->m_pre_script_execute_callbacks[res.m_original_func_ptr].push_back(cb);
+				res.m_this_lua_module->m_data.m_pre_script_execute_callbacks[res.m_original_func_ptr].push_back(cb);
 			}
 			else
 			{
-				res.m_this_lua_module->m_pre_builtin_execute_callbacks[res.m_original_func_ptr].push_back(cb);
+				res.m_this_lua_module->m_data.m_pre_builtin_execute_callbacks[res.m_original_func_ptr].push_back(cb);
 			}
 		}
 	}
@@ -371,11 +371,11 @@ namespace lua::game_maker
 		{
 			if (res.m_is_game_script_func)
 			{
-				res.m_this_lua_module->m_post_script_execute_callbacks[res.m_original_func_ptr].push_back(cb);
+				res.m_this_lua_module->m_data.m_post_script_execute_callbacks[res.m_original_func_ptr].push_back(cb);
 			}
 			else
 			{
-				res.m_this_lua_module->m_post_builtin_execute_callbacks[res.m_original_func_ptr].push_back(cb);
+				res.m_this_lua_module->m_data.m_post_builtin_execute_callbacks[res.m_original_func_ptr].push_back(cb);
 			}
 		}
 	}

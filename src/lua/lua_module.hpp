@@ -15,26 +15,33 @@ namespace big
 		sol::environment m_env;
 
 	public:
-		std::vector<sol::protected_function> m_on_all_mods_loaded_callbacks;
+		struct lua_module_data
+		{
+			std::vector<sol::protected_function> m_on_all_mods_loaded_callbacks;
 
-		std::vector<sol::protected_function> m_pre_code_execute_callbacks;
-		std::vector<sol::protected_function> m_post_code_execute_callbacks;
+			std::vector<sol::protected_function> m_pre_code_execute_callbacks;
+			std::vector<sol::protected_function> m_post_code_execute_callbacks;
 
-		std::unordered_map<void*, std::vector<sol::protected_function>> m_pre_builtin_execute_callbacks;
-		std::unordered_map<void*, std::vector<sol::protected_function>> m_post_builtin_execute_callbacks;
+			std::unordered_map<void*, std::vector<sol::protected_function>> m_pre_builtin_execute_callbacks;
+			std::unordered_map<void*, std::vector<sol::protected_function>> m_post_builtin_execute_callbacks;
 
-		std::unordered_map<void*, std::vector<sol::protected_function>> m_pre_script_execute_callbacks;
-		std::unordered_map<void*, std::vector<sol::protected_function>> m_post_script_execute_callbacks;
+			std::unordered_map<void*, std::vector<sol::protected_function>> m_pre_script_execute_callbacks;
+			std::unordered_map<void*, std::vector<sol::protected_function>> m_post_script_execute_callbacks;
 
-		std::vector<std::unique_ptr<lua::gui::gui_element>> m_menu_bar_callbacks;
-		std::vector<std::unique_ptr<lua::gui::gui_element>> m_always_draw_independent_gui;
-		std::vector<std::unique_ptr<lua::gui::gui_element>> m_independent_gui;
+			std::vector<std::unique_ptr<lua::gui::gui_element>> m_menu_bar_callbacks;
+			std::vector<std::unique_ptr<lua::gui::gui_element>> m_always_draw_independent_gui;
+			std::vector<std::unique_ptr<lua::gui::gui_element>> m_independent_gui;
 
-		std::vector<std::unique_ptr<lua_patch>> m_registered_patches;
+			std::vector<std::unique_ptr<lua_patch>> m_registered_patches;
 
-		std::vector<void*> m_allocated_memory;
+			std::vector<void*> m_allocated_memory;
+		};
+
+		lua_module_data m_data;
 
 		lua_module(const module_info& module_info, sol::state& state);
+
+		void cleanup();
 		~lua_module();
 
 		const std::filesystem::path& path() const;

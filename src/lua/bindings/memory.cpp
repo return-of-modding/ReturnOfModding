@@ -93,7 +93,7 @@ namespace lua::memory
 		big::lua_module* module = big::lua_module::this_from(env);
 		if (module)
 		{
-			module->m_allocated_memory.push_back(mem);
+			module->m_data.m_allocated_memory.push_back(mem);
 		}
 
 		return pointer((uint64_t)mem);
@@ -109,7 +109,7 @@ namespace lua::memory
 		big::lua_module* module = big::lua_module::this_from(env);
 		if (module)
 		{
-			std::erase_if(module->m_allocated_memory,
+			std::erase_if(module->m_data.m_allocated_memory,
 			              [ptr](void* addr)
 			              {
 				              return ptr.get_address() == (uint64_t)addr;
