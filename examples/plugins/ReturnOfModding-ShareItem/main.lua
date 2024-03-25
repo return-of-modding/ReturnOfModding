@@ -18,7 +18,7 @@ gm.post_script_hook(gm.constants.item_give, function(self, other, result, args)
         if actor.object_index == gm.constants.oP then
             for i = 1, #gm.CInstance.instances_active do
                 local inst = gm.CInstance.instances_active[i]
-                if inst.object_index == gm.constants.oP and inst ~= actor.id then
+                if inst.object_index == gm.constants.oP and inst.id ~= actor.id then
                     local item_id = args[2].value
                     local count = args[3].value
                     local stack_kind = args[4].value
