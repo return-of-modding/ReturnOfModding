@@ -3,11 +3,12 @@
 #include "paths/paths.hpp"
 #include "stack_trace.hpp"
 
+#include <csignal>
 #include <DbgHelp.h>
 
 namespace big
 {
-	inline auto hash_stack_trace(std::vector<uint64_t> stack_trace)
+	static auto hash_stack_trace(std::vector<uint64_t> stack_trace)
 	{
 		auto data        = reinterpret_cast<const char*>(stack_trace.data());
 		std::size_t size = stack_trace.size() * sizeof(uint64_t);
@@ -17,11 +18,20 @@ namespace big
 
 	static HMODULE DbgHelp_module = nullptr;
 
+	static void abort_signal_handler(int signal)
+	{
+		if (signal == SIGABRT)
+		{
+			*(int*)0xDE'AD = 0;
+		}
+		else
+		{
+			// ...
+		}
+	}
+
 	exception_handler::exception_handler()
 	{
-		m_old_error_mode    = SetErrorMode(0);
-		m_exception_handler = SetUnhandledExceptionFilter(vectored_exception_handler);
-
 		if (!DbgHelp_module)
 		{
 			DbgHelp_module = ::LoadLibraryW(L"DBGHELP.DLL");
@@ -30,11 +40,20 @@ namespace big
 				LOG(FATAL) << "Failed loading DbgHelp";
 			}
 		}
+
+		m_old_error_mode    = SetErrorMode(0);
+		m_exception_handler = SetUnhandledExceptionFilter(vectored_exception_handler);
+
+		m_previous_abort_behavior = _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+		m_previous_handler        = signal(SIGABRT, abort_signal_handler);
 	}
 
 	exception_handler::~exception_handler()
 	{
 		MessageBoxA(0, "No more exception handler!!!\nIf this continues to happen, try not launching from the executable but from Steam.", "ReturnOfModding", MB_ICONERROR);
+
+		signal(SIGABRT, m_previous_handler);
+		_set_abort_behavior(m_previous_abort_behavior, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
 
 		SetUnhandledExceptionFilter(reinterpret_cast<decltype(&vectored_exception_handler)>(m_exception_handler));
 		SetErrorMode(m_old_error_mode);
@@ -42,6 +61,7 @@ namespace big
 		if (DbgHelp_module)
 		{
 			FreeLibrary(DbgHelp_module);
+			DbgHelp_module = nullptr;
 		}
 	}
 
