@@ -17,9 +17,9 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 {
 	using namespace big;
 
-	char env_var[2]{'0', '\0'};
-	GetEnvironmentVariableA("SteamEnv", env_var, 2);
-	if (env_var[0] == '0')
+	const auto steam_env_env_var          = _wgetenv(L"SteamEnv");
+	const std::wstring good_steam_env_var = L"1";
+	if (!steam_env_env_var || steam_env_env_var != good_steam_env_var)
 	{
 		return true;
 	}
