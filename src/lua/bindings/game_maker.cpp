@@ -844,10 +844,9 @@ namespace lua::game_maker
 					    }
 					    else
 					    {
-						    const std::string key_std_str = key_str;
-						    type[key_str] = [key_std_str](sol::this_state this_state_, sol::stack_object key, sol::variadic_args args)
+						    type[key_str] = [key_str](sol::this_state this_state_, sol::stack_object key, sol::variadic_args args)
 						    {
-							    const auto res = gm::call(key_std_str, key.as<CInstance*>(), nullptr, parse_variadic_args(args));
+							    const auto res = gm::call(key_str, key.as<CInstance*>(), nullptr, parse_variadic_args(args));
 							    return RValue_to_lua(res, this_state_);
 						    };
 						    return type[key_str];
