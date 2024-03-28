@@ -1,5 +1,6 @@
 #include "exception_handler.hpp"
 
+#include "hooks/hooking.hpp"
 #include "paths/paths.hpp"
 #include "stack_trace.hpp"
 
@@ -20,14 +21,12 @@ namespace big
 
 	static void abort_signal_handler(int signal)
 	{
-		if (signal == SIGABRT)
-		{
-			*(int*)0xDE'AD = 0;
-		}
-		else
-		{
-			// ...
-		}
+		RaiseException(0xDE'AD, 0, 0, NULL);
+	}
+
+	static LPTOP_LEVEL_EXCEPTION_FILTER WINAPI hook_SetUnhandledExceptionFilter(_In_opt_ LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter)
+	{
+		return nullptr;
 	}
 
 	exception_handler::exception_handler()
@@ -41,28 +40,20 @@ namespace big
 			}
 		}
 
+		m_previous_handler        = signal(SIGABRT, abort_signal_handler);
+		m_previous_abort_behavior = _set_abort_behavior(0, _WRITE_ABORT_MSG);
+
 		m_old_error_mode    = SetErrorMode(0);
 		m_exception_handler = SetUnhandledExceptionFilter(vectored_exception_handler);
 
-		m_previous_abort_behavior = _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
-		m_previous_handler        = signal(SIGABRT, abort_signal_handler);
+		MH_Initialize();
+		MH_CreateHook(SetUnhandledExceptionFilter, hook_SetUnhandledExceptionFilter, NULL);
+		MH_EnableHook(SetUnhandledExceptionFilter);
 	}
 
 	exception_handler::~exception_handler()
 	{
 		MessageBoxA(0, "No more exception handler!!!\nIf this continues to happen, try not launching from the executable but from Steam.", "ReturnOfModding", MB_ICONERROR);
-
-		signal(SIGABRT, m_previous_handler);
-		_set_abort_behavior(m_previous_abort_behavior, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
-
-		SetUnhandledExceptionFilter(reinterpret_cast<decltype(&vectored_exception_handler)>(m_exception_handler));
-		SetErrorMode(m_old_error_mode);
-
-		if (DbgHelp_module)
-		{
-			FreeLibrary(DbgHelp_module);
-			DbgHelp_module = nullptr;
-		}
 	}
 
 	typedef BOOL(WINAPI* MINIDUMPWRITEDUMP)(HANDLE hProcess, DWORD dwPid, HANDLE hFile, MINIDUMP_TYPE DumpType, const PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam, const PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam, const PMINIDUMP_CALLBACK_INFORMATION CallbackParam);

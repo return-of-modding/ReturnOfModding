@@ -1,6 +1,5 @@
 #pragma once
 #include "call_hook.hpp"
-
 #include "detour_hook.hpp"
 #include "MinHook.h"
 #include "vmt_hook.hpp"
@@ -8,20 +7,6 @@
 
 namespace big
 {
-	class minhook_keepalive
-	{
-	public:
-		minhook_keepalive()
-		{
-			MH_Initialize();
-		}
-
-		~minhook_keepalive()
-		{
-			MH_Uninitialize();
-		}
-	};
-
 	class hooking
 	{
 	public:
@@ -124,8 +109,6 @@ namespace big
 
 	private:
 		bool m_enabled{};
-
-		minhook_keepalive m_minhook_keepalive;
 
 		static inline std::vector<detour_hook_helper> m_detour_hook_helpers;
 	};
