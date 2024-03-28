@@ -840,8 +840,7 @@ namespace lua::game_maker
 					    if (var_exists.asBoolean())
 					    {
 						    const auto res = gm::call("variable_instance_get", var_get_args);
-
-					    return RValue_to_lua(res, this_state_);
+						    return RValue_to_lua(res, this_state_);
 					    }
 					    else
 					    {
