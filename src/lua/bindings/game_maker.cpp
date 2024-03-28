@@ -163,6 +163,10 @@ namespace lua::game_maker
 		{
 			original_script_func_ptr = r10;
 		}
+		else if (gm::is_inside_call)
+		{
+			original_script_func_ptr = (uintptr_t)gm::current_function;
+		}
 		else if (is_Script_Perform(return_address))
 		{
 			// Empty. Because it's only happening for recursive calls afaik.
@@ -812,10 +816,10 @@ namespace lua::game_maker
 		//
 		// To know the specific instance variables of a given object defined by the game call dump_vars() on the instance
 		{
-			sol::usertype<CInstance> type = state.new_usertype<CInstance>(
+			static sol::usertype<CInstance> type = state.new_usertype<CInstance>(
 			    "CInstance",
 			    sol::meta_function::index,
-			    [](sol::this_state this_state_, sol::object self, sol::stack_object key) -> sol::reference
+			    [&](sol::this_state this_state_, sol::object self, sol::stack_object key) -> sol::reference
 			    {
 				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
 				    if (v)
@@ -829,10 +833,26 @@ namespace lua::game_maker
 						    return sol::lua_nil;
 					    }
 
-					    const auto res =
-					        gm::call("variable_instance_get", std::to_array<RValue, 2>({self.as<CInstance&>().id, key.as<const char*>()}));
+					    const char* key_str = key.as<const char*>();
+
+					    const auto var_get_args = std::to_array<RValue, 2>({self.as<CInstance&>().id, key_str});
+					    const auto var_exists   = gm::call("variable_instance_exists", var_get_args);
+					    if (var_exists.asBoolean())
+					    {
+						    const auto res = gm::call("variable_instance_get", var_get_args);
 
 					    return RValue_to_lua(res, this_state_);
+					    }
+					    else
+					    {
+						    const std::string key_std_str = key_str;
+						    type[key_str] = [key_std_str](sol::this_state this_state_, sol::stack_object key, sol::variadic_args args)
+						    {
+							    const auto res = gm::call(key_std_str, key.as<CInstance*>(), nullptr, parse_variadic_args(args));
+							    return RValue_to_lua(res, this_state_);
+						    };
+						    return type[key_str];
+					    }
 				    }
 			    },
 			    sol::meta_function::new_index,
