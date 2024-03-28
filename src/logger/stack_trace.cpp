@@ -143,35 +143,47 @@ namespace big
 			const auto addr = m_frame_pointers[i];
 
 			m_dump << "\n[" << i << "]\t";
+
 			if (SymFromAddr(GetCurrentProcess(), addr, &displacement64, symbol))
 			{
 				if (SymGetLineFromAddr64(GetCurrentProcess(), addr, &displacement, &line))
 				{
 					m_dump << line.FileName << " L: " << line.LineNumber << " " << std::string_view(symbol->Name, symbol->NameLen);
-
-					continue;
 				}
+				else
+				{
+					const auto module_info = get_module_by_address(addr);
+					if (module_info)
+					{
+						const auto module_name = module_info->m_path.filename().wstring();
+						if (module_name == L"VERSION.dll")
+						{
+							m_dump << module_info->m_path.filename().string() << "+" << HEX_TO_UPPER(addr - module_info->m_base);
+						}
+						else
+						{
+							m_dump << module_info->m_path.filename().string() << " "
+							       << std::string_view(symbol->Name, symbol->NameLen) << " ("
+							       << module_info->m_path.filename().string() << "+" << HEX_TO_UPPER(addr - module_info->m_base) << ")";
+						}
+					}
+					else
+					{
+						m_dump << "No module found for address " << HEX_TO_UPPER(addr);
+					}
+				}
+			}
+			else
+			{
 				const auto module_info = get_module_by_address(addr);
 				if (module_info)
 				{
-					m_dump << module_info->m_path.filename().string() << " " << std::string_view(symbol->Name, symbol->NameLen) << " ("
-					       << module_info->m_path.filename().string() << "+" << HEX_TO_UPPER(addr - module_info->m_base) << ")";
+					m_dump << module_info->m_path.filename().string() << "+" << HEX_TO_UPPER(addr - module_info->m_base) << " " << HEX_TO_UPPER(addr);
 				}
 				else
 				{
 					m_dump << "No module found for address " << HEX_TO_UPPER(addr);
 				}
-
-				continue;
-			}
-			const auto module_info = get_module_by_address(addr);
-			if (module_info)
-			{
-				m_dump << module_info->m_path.filename().string() << "+" << HEX_TO_UPPER(addr - module_info->m_base) << " " << HEX_TO_UPPER(addr);
-			}
-			else
-			{
-				m_dump << "No module found for address " << HEX_TO_UPPER(addr);
 			}
 		}
 	}
