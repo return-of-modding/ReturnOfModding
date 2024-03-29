@@ -35,48 +35,42 @@ namespace qstd
 	class runtime_func : public PLH::MemAccessor
 	{
 	public:
-		struct Parameters
+		struct parameters_t
 		{
 			template<typename T>
-			void setArg(const uint8_t idx, const T val) const
+			void set(const uint8_t idx, const T val) const
 			{
-				*(T*)getArgPtr(idx) = val;
+				*(T*)get_arg_ptr(idx) = val;
 			}
 
 			template<typename T>
-			T getArg(const uint8_t idx) const
+			T get(const uint8_t idx) const
 			{
-				return *(T*)getArgPtr(idx);
+				return *(T*)get_arg_ptr(idx);
 			}
 
 			// asm depends on this specific type
-			// we the ILCallback allocates stack space that is set to point here (check asmjit::compiler.newStack calls)
-			volatile uint64_t m_arguments;
+			// we the runtime_func allocates stack space that is set to point here (check asmjit::compiler.newStack calls)
+			volatile uintptr_t m_arguments;
 
 		private:
 			// must be char* for aliasing rules to work when reading back out
-			char* getArgPtr(const uint8_t idx) const
+			char* get_arg_ptr(const uint8_t idx) const
 			{
-				return ((char*)&m_arguments) + sizeof(uint64_t) * idx;
+				return ((char*)&m_arguments) + sizeof(uintptr_t) * idx;
 			}
 		};
 
-		struct ReturnValue
+		struct return_value_t
 		{
-			unsigned char* getRetPtr() const
-			{
-				return (unsigned char*)&m_retVal;
-			}
-
-			uint64_t m_retVal;
+			uintptr_t m_return_value;
 		};
 
-		typedef void (*tUserCallback)(const Parameters* params, const uint8_t count, ReturnValue* ret, const uint64_t original_func_ptr);
+		typedef void (*user_callback_t)(const parameters_t* params, const uint8_t count, return_value_t* return_value, const uintptr_t original_func_ptr);
 
 		runtime_func()
 		{
-			m_callbackBuf   = 0;
-			m_trampolinePtr = 0;
+			m_jit_function_buffer.clear();
 		}
 
 		~runtime_func()
@@ -86,7 +80,7 @@ namespace qstd
 		/* Construct a callback given the raw signature at runtime. 'Callback' param is the C stub to transfer to,
 		where parameters can be modified through a structure which is written back to the parameter slots depending
 		on calling convention.*/
-		uint64_t getJitFunc(const asmjit::FuncSignature& sig, const asmjit::Arch arch, const tUserCallback callback, const uint64_t original_func_ptr)
+		uintptr_t make_jit_func(const asmjit::FuncSignature& sig, const asmjit::Arch arch, const user_callback_t callback, const uintptr_t original_func_ptr)
 		{
 			asmjit::CodeHolder code;
 			auto env = asmjit::Environment::host();
@@ -101,7 +95,10 @@ namespace qstd
 			auto kFormatFlags = asmjit::FormatFlags::kMachineCode | asmjit::FormatFlags::kExplainImms | asmjit::FormatFlags::kRegCasts | asmjit::FormatFlags::kHexImms | asmjit::FormatFlags::kHexOffsets | asmjit::FormatFlags::kPositions;
 
 			log.addFlags(kFormatFlags);
+#ifndef FINAL
 			code.setLogger(&log);
+#endif // ! FINAL
+
 
 			// too small to really need it
 			func->frame().resetPreservedFP();
@@ -113,11 +110,11 @@ namespace qstd
 				const auto argType = sig.args()[argIdx];
 
 				asmjit::x86::Reg arg;
-				if (isGeneralReg(argType))
+				if (is_general_register(argType))
 				{
 					arg = cc.newUIntPtr();
 				}
-				else if (isXmmReg(argType))
+				else if (is_XMM_register(argType))
 				{
 					arg = cc.newXmm();
 				}
@@ -132,7 +129,7 @@ namespace qstd
 			}
 
 			// setup the stack structure to hold arguments for user callback
-			uint32_t stackSize = (uint32_t)(sizeof(uint64_t) * sig.argCount());
+			uint32_t stackSize = (uint32_t)(sizeof(uintptr_t) * sig.argCount());
 			argsStack          = cc.newStack(stackSize, 16);
 			asmjit::x86::Mem argsStackIdx(argsStack);
 
@@ -142,8 +139,8 @@ namespace qstd
 			// stackIdx <- stack[i].
 			argsStackIdx.setIndex(i);
 
-			// r/w are sizeof(uint64_t) width now
-			argsStackIdx.setSize(sizeof(uint64_t));
+			// r/w are sizeof(uintptr_t) width now
+			argsStackIdx.setSize(sizeof(uintptr_t));
 
 			// set i = 0
 			cc.mov(i, 0);
@@ -153,11 +150,11 @@ namespace qstd
 				const auto argType = sig.args()[argIdx];
 
 				// have to cast back to explicit register types to gen right mov type
-				if (isGeneralReg(argType))
+				if (is_general_register(argType))
 				{
 					cc.mov(argsStackIdx, argRegisters.at(argIdx).as<asmjit::x86::Gp>());
 				}
-				else if (isXmmReg(argType))
+				else if (is_XMM_register(argType))
 				{
 					cc.movq(argsStackIdx, argRegisters.at(argIdx).as<asmjit::x86::Xmm>());
 				}
@@ -167,8 +164,8 @@ namespace qstd
 					return 0;
 				}
 
-				// next structure slot (+= sizeof(uint64_t))
-				cc.add(i, sizeof(uint64_t));
+				// next structure slot (+= sizeof(uintptr_t))
+				cc.add(i, sizeof(uintptr_t));
 			}
 
 			// get pointer to stack structure and pass it to the user callback
@@ -180,7 +177,7 @@ namespace qstd
 			cc.mov(argCountParam, (uint8_t)sig.argCount());
 
 			// create buffer for ret val
-			asmjit::x86::Mem retStack = cc.newStack(sizeof(uint64_t), 16);
+			asmjit::x86::Mem retStack = cc.newStack(sizeof(uintptr_t), 16);
 			asmjit::x86::Gp retStruct = cc.newUIntPtr("retStruct");
 			cc.lea(retStruct, retStack);
 
@@ -189,7 +186,7 @@ namespace qstd
 			cc.mov(original_func_ptr_reg, original_func_ptr);
 
 			asmjit::InvokeNode* invokeNode;
-			cc.invoke(&invokeNode, (uint64_t)callback, asmjit::FuncSignatureT<void, Parameters*, uint8_t, ReturnValue*, uint64_t>());
+			cc.invoke(&invokeNode, (uintptr_t)callback, asmjit::FuncSignatureT<void, parameters_t*, uint8_t, return_value_t*, uintptr_t>());
 
 			// call to user provided function (use ABI of host compiler)
 			invokeNode->setArg(0, argStruct);
@@ -200,8 +197,8 @@ namespace qstd
 			if (sig.hasRet())
 			{
 				asmjit::x86::Mem retStackIdx(retStack);
-				retStackIdx.setSize(sizeof(uint64_t));
-				if (isGeneralReg(sig.ret()))
+				retStackIdx.setSize(sizeof(uintptr_t));
+				if (is_general_register(sig.ret()))
 				{
 					asmjit::x86::Gp tmp2 = cc.newUIntPtr();
 					cc.mov(tmp2, retStackIdx);
@@ -225,14 +222,9 @@ namespace qstd
 			size_t size = code.codeSize();
 
 			// Allocate a virtual memory (executable).
-			m_callbackBuf = (uint64_t) new char[size];
-			if (!m_callbackBuf)
-			{
-				PolyHook2DebugBreak();
-				return 0;
-			}
+			m_jit_function_buffer.reserve(size);
 
-			PLH::MemoryProtector protector(m_callbackBuf, size, PLH::ProtFlag::R | PLH::ProtFlag::W | PLH::ProtFlag::X, *this, false);
+			PLH::MemoryProtector protector((uintptr_t)m_jit_function_buffer.data(), size, PLH::ProtFlag::R | PLH::ProtFlag::W | PLH::ProtFlag::X, *this, false);
 
 			// if multiple sections, resolve linkage (1 atm)
 			if (code.hasUnresolvedLinks())
@@ -241,45 +233,43 @@ namespace qstd
 			}
 
 			// Relocate to the base-address of the allocated memory.
-			code.relocateToBase(m_callbackBuf);
-			code.copyFlattenedData((unsigned char*)m_callbackBuf, size);
+			code.relocateToBase((uintptr_t)m_jit_function_buffer.data());
+			code.copyFlattenedData(m_jit_function_buffer.data(), size);
 
-			LOG(INFO) << "JIT Stub: " << std::string(log.data());
-			return m_callbackBuf;
+#ifndef FINAL
+			LOG(INFO) << "JIT Stub: " << log.data();
+#endif
+
+			return (uintptr_t)m_jit_function_buffer.data();
 		}
 
 		/* Construct a callback given the typedef as a string. Types are any valid C/C++ data type (basic types), and pointers to
 		anything are just a uintptr_t. Calling convention is defaulted to whatever is typical for the compiler you use, you can override with
 		stdcall, fastcall, or cdecl (cdecl is default on x86). On x64 those map to the same thing.*/
-		uint64_t getJitFunc(const std::string& retType, const std::vector<std::string>& paramTypes, const asmjit::Arch arch, const tUserCallback callback, const uint64_t original_func_ptr, std::string callConv = "")
+		uintptr_t make_jit_func(const std::string& return_type, const std::vector<std::string>& param_types, const asmjit::Arch arch, const user_callback_t callback, const uintptr_t original_func_ptr, std::string call_convention = "")
 		{
 			asmjit::FuncSignature sig = {};
 
 			std::vector<asmjit::TypeId> args;
-			for (const std::string& s : paramTypes)
+			for (const std::string& s : param_types)
 			{
-				args.push_back(getTypeId(s));
+				args.push_back(get_type_id(s));
 			}
 
-			sig.init(getCallConv(callConv),
+			sig.init(get_call_convention(call_convention),
 			         asmjit::FuncSignature::kNoVarArgs,
-			         getTypeId(retType),
+			         get_type_id(return_type),
 			         args.data(),
 			         (uint32_t)args.size());
 
-			return getJitFunc(sig, arch, callback, original_func_ptr);
-		}
-
-		uint64_t* getTrampolineHolder()
-		{
-			return &m_trampolinePtr;
+			return make_jit_func(sig, arch, callback, original_func_ptr);
 		}
 
 	private:
 		// does a given type fit in a general purpose register (i.e. is it integer type)
-		bool isGeneralReg(const asmjit::TypeId typeId) const
+		bool is_general_register(const asmjit::TypeId type_id) const
 		{
-			switch (typeId)
+			switch (type_id)
 			{
 			case asmjit::TypeId::kInt8:
 			case asmjit::TypeId::kUInt8:
@@ -296,9 +286,9 @@ namespace qstd
 		}
 
 		// float, double, simd128
-		bool isXmmReg(const asmjit::TypeId typeId) const
+		bool is_XMM_register(const asmjit::TypeId type_id) const
 		{
-			switch (typeId)
+			switch (type_id)
 			{
 			case asmjit::TypeId::kFloat32:
 			case asmjit::TypeId::kFloat64: return true;
@@ -306,7 +296,7 @@ namespace qstd
 			}
 		}
 
-		asmjit::CallConvId getCallConv(const std::string& conv)
+		asmjit::CallConvId get_call_convention(const std::string& conv)
 		{
 			if (conv == "cdecl")
 			{
@@ -324,7 +314,7 @@ namespace qstd
 			return asmjit::CallConvId::kHost;
 		}
 
-		asmjit::TypeId getTypeId(const std::string& type)
+		asmjit::TypeId get_type_id(const std::string& type)
 		{
 			if (type.find('*') != std::string::npos)
 			{
@@ -373,11 +363,8 @@ namespace qstd
 			return asmjit::TypeId::kVoid;
 		}
 
-		uint64_t m_callbackBuf;
+		std::vector<uint8_t> m_jit_function_buffer;
 		asmjit::x86::Mem argsStack;
-
-		// ptr to trampoline allocated by hook, we hold this so user doesn't need to.
-		uint64_t m_trampolinePtr;
 	};
 } // namespace qstd
 
@@ -488,11 +475,11 @@ namespace lua::game_maker
 	struct runtime_hook_info
 	{
 		std::unique_ptr<qstd::runtime_func> m_runtime_func;
-		std::unique_ptr<PLH::x64Detour> m_detour;
+		std::unique_ptr<big::detour_hook> m_detour;
 
 		runtime_hook_info() = default;
 
-		runtime_hook_info(std::unique_ptr<qstd::runtime_func>&& runtime_func, std::unique_ptr<PLH::x64Detour>&& detour) :
+		runtime_hook_info(std::unique_ptr<qstd::runtime_func>&& runtime_func, std::unique_ptr<big::detour_hook>&& detour) :
 		    m_runtime_func(std::move(runtime_func)),
 		    m_detour(std::move(detour))
 		{
@@ -505,58 +492,50 @@ namespace lua::game_maker
 		}
 	};
 
-	static std::unordered_map<uint64_t, runtime_hook_info> original_func_ptr_to_info;
+	static std::unordered_map<uintptr_t, runtime_hook_info> hooks_original_func_ptr_to_info;
 
-	static void builtin_script_callback(const qstd::runtime_func::Parameters* p, const uint8_t count, qstd::runtime_func::ReturnValue* ret_val, const uint64_t original_func_ptr)
+	static void builtin_script_callback(const qstd::runtime_func::parameters_t* p, const uint8_t count, qstd::runtime_func::return_value_t* ret_val, const uintptr_t original_func_ptr)
 	{
-		const auto result    = p->getArg<RValue*>(0);
-		const auto self      = p->getArg<CInstance*>(1);
-		const auto other     = p->getArg<CInstance*>(2);
-		const auto arg_count = p->getArg<int>(3);
-		const auto args      = p->getArg<RValue*>(4);
-
-		ret_val->m_retVal = (uint64_t)result;
+		const auto result    = p->get<RValue*>(0);
+		const auto self      = p->get<CInstance*>(1);
+		const auto other     = p->get<CInstance*>(2);
+		const auto arg_count = p->get<int>(3);
+		const auto args      = p->get<RValue*>(4);
 
 		const auto call_orig_if_true = big::g_lua_manager->pre_builtin_execute((void*)original_func_ptr, self, other, result, arg_count, args);
 
-		ret_val->m_retVal = (uint64_t)result;
-
 		if (call_orig_if_true)
 		{
-			reinterpret_cast<gm::TRoutine>(*original_func_ptr_to_info[original_func_ptr].m_runtime_func->getTrampolineHolder())(result, self, other, arg_count, args);
+			hooks_original_func_ptr_to_info[original_func_ptr].m_detour->get_original<gm::TRoutine>()(result, self, other, arg_count, args);
 		}
 
-		ret_val->m_retVal = (uint64_t)result;
-
 		big::g_lua_manager->post_builtin_execute((void*)original_func_ptr, self, other, result, arg_count, args);
-
-		ret_val->m_retVal = (uint64_t)result;
 	}
 
-	static void script_callback(const qstd::runtime_func::Parameters* p, const uint8_t count, qstd::runtime_func::ReturnValue* ret_val, const uint64_t original_func_ptr)
+	static void script_callback(const qstd::runtime_func::parameters_t* p, const uint8_t count, qstd::runtime_func::return_value_t* ret_val, const uintptr_t original_func_ptr)
 	{
-		const auto self      = p->getArg<CInstance*>(0);
-		const auto other     = p->getArg<CInstance*>(1);
-		const auto result    = p->getArg<RValue*>(2);
-		const auto arg_count = p->getArg<int>(3);
-		const auto args      = p->getArg<RValue**>(4);
+		const auto self      = p->get<CInstance*>(0);
+		const auto other     = p->get<CInstance*>(1);
+		const auto result    = p->get<RValue*>(2);
+		const auto arg_count = p->get<int>(3);
+		const auto args      = p->get<RValue**>(4);
 
-		ret_val->m_retVal = (uint64_t)result;
+		ret_val->m_return_value = (uintptr_t)result;
 
 		const auto call_orig_if_true = big::g_lua_manager->pre_script_execute((void*)original_func_ptr, self, other, result, arg_count, args);
 
-		ret_val->m_retVal = (uint64_t)result;
+		ret_val->m_return_value = (uintptr_t)result;
 
 		if (call_orig_if_true)
 		{
-			reinterpret_cast<PFUNC_YYGMLScript>(*original_func_ptr_to_info[original_func_ptr].m_runtime_func->getTrampolineHolder())(self, other, result, arg_count, args);
+			hooks_original_func_ptr_to_info[original_func_ptr].m_detour->get_original<PFUNC_YYGMLScript>()(self, other, result, arg_count, args);
 		}
 
-		ret_val->m_retVal = (uint64_t)result;
+		ret_val->m_return_value = (uintptr_t)result;
 
 		big::g_lua_manager->post_script_execute((void*)original_func_ptr, self, other, result, arg_count, args);
 
-		ret_val->m_retVal = (uint64_t)result;
+		ret_val->m_return_value = (uintptr_t)result;
 	}
 
 	struct make_central_script_result
@@ -565,6 +544,8 @@ namespace lua::game_maker
 		void* m_original_func_ptr          = nullptr;
 		bool m_is_game_script_func         = false;
 	};
+
+	static std::unordered_map<int, std::string> script_index_to_name;
 
 	static make_central_script_result make_central_script_hook(const double script_function_index_double, sol::this_environment& env, bool is_pre_hook)
 	{
@@ -578,32 +559,27 @@ namespace lua::game_maker
 				if (cscript)
 				{
 					std::stringstream hook_name;
-					hook_name << mdl->guid() << " | " << script_function_index << " | "
+					hook_name << mdl->guid() << " | " << script_index_to_name[script_function_index] << " | "
 					          << (is_pre_hook ? mdl->m_data.m_pre_script_execute_callbacks.size() :
 					                            mdl->m_data.m_post_script_execute_callbacks.size());
 
 					LOG(INFO) << "hook_name: " << hook_name.str();
 
-					const auto original_func_ptr = (void*)cscript->m_funcs->m_script_function;
+					const auto original_func_ptr = (uintptr_t)cscript->m_funcs->m_script_function;
 
-					if (!original_func_ptr_to_info.contains((uint64_t)original_func_ptr))
+					if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
 					{
 						std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
-						uint64_t JIT = runtime_func->getJitFunc("uintptr_t", {"uintptr_t", "uintptr_t", "uintptr_t", "int", "uintptr_t"}, asmjit::Arch::kHost, &script_callback, (uint64_t)original_func_ptr);
+						const auto JIT = runtime_func->make_jit_func("RValue*", {"CInstance*", "CInstance*", "RValue*", "int", "RValue**"}, asmjit::Arch::kHost, &script_callback, original_func_ptr);
 
-						original_func_ptr_to_info.emplace(
-						    (uint64_t)original_func_ptr,
-						    runtime_hook_info{std::move(runtime_func),
-						                      std::make_unique<PLH::x64Detour>((uint64_t)original_func_ptr,
-						                                                       (uint64_t)JIT,
-						                                                       runtime_func->getTrampolineHolder())});
+						hooks_original_func_ptr_to_info.emplace(
+						    original_func_ptr,
+						    runtime_hook_info{std::move(runtime_func), std::make_unique<big::detour_hook>(hook_name.str(), (void*)original_func_ptr, (void*)JIT)});
 
-						original_func_ptr_to_info[(uint64_t)original_func_ptr].m_detour->hook();
+						hooks_original_func_ptr_to_info[original_func_ptr].m_detour->enable();
 					}
 
-					//big::hooking::detour_hook_helper::add(hook_name.str(), original_func_ptr, (void*)&central_script_hook);
-
-					return {mdl, original_func_ptr, true};
+					return {mdl, (void*)original_func_ptr, true};
 				}
 				else
 				{
@@ -621,30 +597,25 @@ namespace lua::game_maker
 				if (result.function_ptr)
 				{
 					std::stringstream hook_name;
-					hook_name << mdl->guid() << " | " << script_function_index << " | "
+					hook_name << mdl->guid() << " | " << script_index_to_name[script_function_index] << " | "
 					          << (is_pre_hook ? mdl->m_data.m_pre_builtin_execute_callbacks.size() :
 					                            mdl->m_data.m_post_builtin_execute_callbacks.size());
 
 					LOG(INFO) << "hook_name: " << hook_name.str();
 
-					const auto original_func_ptr = (void*)result.function_ptr;
+					const auto original_func_ptr = (uintptr_t)result.function_ptr;
 
-					if (!original_func_ptr_to_info.contains((uint64_t)original_func_ptr))
+					if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
 					{
 						std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
-						uint64_t JIT = runtime_func->getJitFunc("uintptr_t", {"uintptr_t", "uintptr_t", "uintptr_t", "int", "uintptr_t"}, asmjit::Arch::kHost, &builtin_script_callback, (uint64_t)original_func_ptr);
+						const auto JIT = runtime_func->make_jit_func("void", {"RValue*", "CInstance*", "CInstance*", "int", "RValue*"}, asmjit::Arch::kHost, &builtin_script_callback, original_func_ptr);
 
-						original_func_ptr_to_info.emplace(
-						    (uint64_t)original_func_ptr,
-						    runtime_hook_info{std::move(runtime_func),
-						                      std::make_unique<PLH::x64Detour>((uint64_t)original_func_ptr,
-						                                                       (uint64_t)JIT,
-						                                                       runtime_func->getTrampolineHolder())});
+						hooks_original_func_ptr_to_info.emplace(
+						    original_func_ptr,
+						    runtime_hook_info{std::move(runtime_func), std::make_unique<big::detour_hook>(hook_name.str(), (void*)original_func_ptr, (void*)JIT)});
 
-						original_func_ptr_to_info[(uint64_t)original_func_ptr].m_detour->hook();
+						hooks_original_func_ptr_to_info[original_func_ptr].m_detour->enable();
 					}
-
-					//big::hooking::detour_hook_helper::add(hook_name.str(), result.function_ptr, (void*)&central_builtin_hook);
 
 					return {mdl, result.function_ptr, false};
 				}
@@ -1572,6 +1543,7 @@ namespace lua::game_maker
 							constants[asset_name]                                      = i;
 							constant_types[asset_name]                                 = type;
 							constants_type_sorted[type].get_or_create<sol::table>()[i] = asset_name;
+							script_index_to_name[i]                                    = asset_name;
 							gm::script_asset_cache[asset_name]                         = i;
 						}
 						else
