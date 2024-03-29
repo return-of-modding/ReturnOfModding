@@ -34,8 +34,6 @@ add_compile_options(/bigobj)
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
- add_compile_options("/MT$<$<CONFIG:Debug>:d>")
-
 if (FINAL)
     add_compile_definitions(FINAL)
 endif()
