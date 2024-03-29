@@ -1,7 +1,5 @@
 #pragma once
 
-extern "C" uint64_t g_sound_overload_ret_addr;
-
 namespace big
 {
 	class byte_patch_manager
