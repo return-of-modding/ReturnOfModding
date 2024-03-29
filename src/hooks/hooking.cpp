@@ -1,6 +1,5 @@
 #include "hooks/hooking.hpp"
 
-
 #include "gui/gui.hpp"
 #include "gui/renderer.hpp"
 #include "memory/module.hpp"
@@ -10,8 +9,6 @@
 #include "rorr/gm/debug_console.hpp"
 #include "rorr/gm/GetSaveFileName_hook.hpp"
 #include "rorr/gm/inputs.hpp"
-
-#include <MinHook.h>
 
 namespace big
 {
@@ -58,8 +55,6 @@ namespace big
 			detour_hook_helper.m_detour_hook->enable();
 		}
 
-		MH_ApplyQueued();
-
 		m_enabled = true;
 	}
 
@@ -71,8 +66,6 @@ namespace big
 		{
 			detour_hook_helper.m_detour_hook->disable();
 		}
-
-		MH_ApplyQueued();
 
 		m_detour_hook_helpers.clear();
 	}
@@ -91,7 +84,6 @@ namespace big
 			}
 
 			m_detour_hook->enable();
-			MH_ApplyQueued();
 		}
 	}
 } // namespace big

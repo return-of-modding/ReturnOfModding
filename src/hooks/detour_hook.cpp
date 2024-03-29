@@ -1,9 +1,6 @@
 #include "detour_hook.hpp"
 
-
 #include "memory/handle.hpp"
-
-#include <MinHook.h>
 
 namespace big
 {
@@ -50,10 +47,8 @@ namespace big
 		}
 
 		fix_hook_address();
-		if (auto status = MH_CreateHook(m_target, m_detour, &m_original); status != MH_OK)
-		{
-			LOG(FATAL) << std::format("Failed to create hook '{}' at 0x{:X} (error: {})", m_name, uintptr_t(m_target), MH_StatusToString(status));
-		}
+
+		m_detour_object = std::make_unique<PLH::x64Detour>((uint64_t)m_target, (uint64_t)m_detour, (uint64_t*)&m_original);
 	}
 
 	detour_hook::~detour_hook() noexcept
@@ -62,11 +57,15 @@ namespace big
 		{
 			return;
 		}
+	}
 
-		if (auto status = MH_RemoveHook(m_target); status != MH_OK)
-		{
-			LOG(FATAL) << "Failed to remove hook '" << m_name << "' at 0x" << HEX_TO_UPPER(uintptr_t(m_target)) << "(error: " << m_name << ")";
-		}
+	detour_hook::detour_hook(detour_hook&& that) :
+	    m_name(std::move(that.m_name)),
+	    m_original(std::move(that.m_original)),
+	    m_target(std::move(that.m_target)),
+	    m_detour(std::move(that.m_detour)),
+	    m_detour_object(std::move(that.m_detour_object))
+	{
 	}
 
 	void detour_hook::enable()
@@ -76,9 +75,9 @@ namespace big
 			return;
 		}
 
-		if (auto status = MH_QueueEnableHook(m_target); status != MH_OK)
+		if (!m_detour_object->hook())
 		{
-			LOG(FATAL) << std::format("Failed to enable hook 0x{:X} ({})", uintptr_t(m_target), MH_StatusToString(status));
+			LOG(FATAL) << std::format("Failed to create hook '{}' at 0x{:X}", m_name, uintptr_t(m_target));
 		}
 	}
 
@@ -89,9 +88,12 @@ namespace big
 			return;
 		}
 
-		if (auto status = MH_QueueDisableHook(m_target); status != MH_OK)
+		if (m_detour_object->isHooked())
 		{
-			LOG(WARNING) << "Failed to disable hook '" << m_name << "'.";
+			if (m_detour_object->unHook())
+			{
+				LOG(FATAL) << "Failed to disable hook '" << m_name << "' at 0x" << HEX_TO_UPPER(uintptr_t(m_target)) << "(error: " << m_name << ")";
+			}
 		}
 	}
 

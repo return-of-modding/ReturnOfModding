@@ -1,5 +1,7 @@
 #pragma once
 
+#include <polyhook2/Detour/x64Detour.hpp>
+
 namespace big
 {
 	class detour_hook
@@ -10,7 +12,7 @@ namespace big
 		explicit detour_hook(const std::string& name, void* target, void* detour);
 		~detour_hook() noexcept;
 
-		//detour_hook(detour_hook&& that)            = delete;
+		detour_hook(detour_hook&& that);
 		//detour_hook& operator=(detour_hook&& that) = delete;
 		//detour_hook(detour_hook const&)            = delete;
 		//detour_hook& operator=(detour_hook const&) = delete;
@@ -38,5 +40,7 @@ namespace big
 		void* m_original;
 		void* m_target;
 		void* m_detour;
+
+		std::unique_ptr<PLH::x64Detour> m_detour_object;
 	};
 } // namespace big

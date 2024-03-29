@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 project(ReturnOfModding CXX C ASM_MASM)
 
 set(SRC_DIR "${PROJECT_SOURCE_DIR}/src")
@@ -13,7 +15,7 @@ include(cmake_scripts/git.cmake)
 include(cmake_scripts/imgui.cmake)
 include(cmake_scripts/json.cmake)
 include(cmake_scripts/lua.cmake)
-include(cmake_scripts/minhook.cmake)
+include(cmake_scripts/polyhook.cmake)
 include(cmake_scripts/pugixml.cmake)
 
 message(STATUS "ReturnOfModding")
@@ -32,6 +34,8 @@ add_compile_options(/bigobj)
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
+ add_compile_options("/MT$<$<CONFIG:Debug>:d>")
+
 if (FINAL)
     add_compile_definitions(FINAL)
 endif()
@@ -48,7 +52,7 @@ target_include_directories(ReturnOfModding PRIVATE
     "${cxxopts_SOURCE_DIR}/include"
     "${json_SOURCE_DIR}/single_include"
     "${imgui_SOURCE_DIR}"
-    "${minhook_SOURCE_DIR}/src/hde"
+    "${polyhook_SOURCE_DIR}"
     "${cpp-semver_SOURCE_DIR}/include"
     "${toml++_SOURCE_DIR}"
     "${sol2_SOURCE_DIR}/include"
@@ -58,7 +62,7 @@ target_include_directories(ReturnOfModding PRIVATE
 
 target_precompile_headers(ReturnOfModding PRIVATE "${SRC_DIR}/common.hpp")
 
-target_link_libraries(ReturnOfModding PRIVATE pugixml minhook AsyncLogger dbghelp imgui lua_static sol2 tomlplusplus::tomlplusplus magic_enum)
+target_link_libraries(ReturnOfModding PRIVATE pugixml AsyncLogger dbghelp imgui lua_static sol2 tomlplusplus::tomlplusplus magic_enum PolyHook_2)
 
 # Warnings as errors
 set_property(TARGET ReturnOfModding PROPERTY COMPILE_WARNING_AS_ERROR ON)

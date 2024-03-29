@@ -8,8 +8,6 @@
 
 namespace gm
 {
-	inline bool ignore_gml_exceptions = true;
-
 	inline void gml_exception_handler(const RValue& e)
 	{
 		std::stringstream exception_log;
@@ -90,13 +88,10 @@ namespace gm
 		return dummy;
 	}
 
-	inline void* current_function = nullptr;
-	inline bool is_inside_call    = false;
+	inline std::stack<void*> current_functions;
 
 	inline RValue call(std::string_view name, CInstance* self, CInstance* other, RValue* args = nullptr, size_t arg_count = 0)
 	{
-		is_inside_call = true;
-
 		const auto& func_info = get_code_function(name);
 
 		RValue res{};
@@ -105,22 +100,15 @@ namespace gm
 		{
 			try
 			{
-				current_function = func_info.function_ptr;
+				current_functions.push(func_info.function_ptr);
 				func_info.function_ptr(&res, self, other, arg_count, args);
+				current_functions.pop();
 			}
 			catch (const YYGMLException& e)
 			{
-				if (ignore_gml_exceptions)
-				{
-					gml_exception_handler(e.GetExceptionObject());
-				}
-				else
-				{
-					throw;
-				}
+				gml_exception_handler(e.GetExceptionObject());
 			}
 
-			is_inside_call = false;
 			return res;
 		}
 		// Script Execute
@@ -131,16 +119,17 @@ namespace gm
 				const auto cscript = big::g_pointers->m_rorr.m_script_data(it->second - 100'000);
 				if (cscript)
 				{
-					current_function   = cscript->m_funcs->m_script_function;
 					auto arranged_args = (RValue**)alloca(sizeof(RValue*) * arg_count);
 					for (size_t i = 0; i < arg_count; i++)
 					{
 						arranged_args[i] = &args[i];
 					}
+
+					current_functions.push(cscript->m_funcs->m_script_function);
 					cscript->m_funcs->m_script_function(self, other, &res, arg_count, arranged_args);
+					current_functions.pop();
 				}
 
-				is_inside_call = false;
 				return res;
 			}
 			else
@@ -148,7 +137,11 @@ namespace gm
 				const auto& asset_get_index = gm::get_code_function("asset_get_index");
 				RValue script_function_name{name.data()};
 				RValue script_function_index;
+
+				current_functions.push(asset_get_index.function_ptr);
 				asset_get_index.function_ptr(&script_function_index, nullptr, nullptr, 1, &script_function_name);
+				current_functions.pop();
+
 				if (script_function_index.type == RValueType::REAL)
 				{
 					gm::script_asset_cache[name.data()] = script_function_index.asInt32();
@@ -156,16 +149,17 @@ namespace gm
 					const auto cscript = big::g_pointers->m_rorr.m_script_data(script_function_index.asInt32() - 100'000);
 					if (cscript)
 					{
-						current_function   = cscript->m_funcs->m_script_function;
 						auto arranged_args = (RValue**)alloca(sizeof(RValue*) * arg_count);
 						for (size_t i = 0; i < arg_count; i++)
 						{
 							arranged_args[i] = &args[i];
 						}
+
+						current_functions.push(cscript->m_funcs->m_script_function);
 						cscript->m_funcs->m_script_function(self, other, &res, arg_count, arranged_args);
+						current_functions.pop();
 					}
 
-					is_inside_call = false;
 					return res;
 				}
 			}
@@ -173,7 +167,6 @@ namespace gm
 
 		LOG(WARNING) << name << " function not found!";
 
-		is_inside_call = false;
 		return {};
 	}
 

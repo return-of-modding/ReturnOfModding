@@ -1,7 +1,6 @@
 #pragma once
 #include "call_hook.hpp"
 #include "detour_hook.hpp"
-#include "MinHook.h"
 #include "vmt_hook.hpp"
 #include "vtable_hook.hpp"
 
@@ -57,7 +56,7 @@ namespace big
 					return;
 				}
 
-				m_target_func_to_detour_hook[target] = detour_hook(name, nullptr, detour);
+				m_target_func_to_detour_hook.emplace(target, detour_hook(name, nullptr, detour));
 
 				detour_hook_helper d{};
 				d.m_detour_hook = &m_target_func_to_detour_hook[target];
