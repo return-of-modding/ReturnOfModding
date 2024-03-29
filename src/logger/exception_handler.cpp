@@ -46,9 +46,9 @@ namespace big
 		m_old_error_mode    = SetErrorMode(0);
 		m_exception_handler = SetUnhandledExceptionFilter(vectored_exception_handler);
 
-		static uint64_t detour_trampoline = 0;
-		static PLH::x64Detour detour((uint64_t)SetUnhandledExceptionFilter, (uint64_t)hook_SetUnhandledExceptionFilter, &detour_trampoline);
-		detour.hook();
+
+		static detour_hook anti_remover("Anti Exception Handler Remover", SetUnhandledExceptionFilter, hook_SetUnhandledExceptionFilter);
+		anti_remover.enable();
 	}
 
 	exception_handler::~exception_handler()
