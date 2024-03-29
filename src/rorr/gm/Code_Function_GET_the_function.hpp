@@ -88,8 +88,6 @@ namespace gm
 		return dummy;
 	}
 
-	inline std::stack<void*> current_functions;
-
 	inline RValue call(std::string_view name, CInstance* self, CInstance* other, RValue* args = nullptr, size_t arg_count = 0)
 	{
 		const auto& func_info = get_code_function(name);
@@ -100,9 +98,7 @@ namespace gm
 		{
 			try
 			{
-				current_functions.push(func_info.function_ptr);
 				func_info.function_ptr(&res, self, other, arg_count, args);
-				current_functions.pop();
 			}
 			catch (const YYGMLException& e)
 			{
@@ -125,9 +121,7 @@ namespace gm
 						arranged_args[i] = &args[i];
 					}
 
-					current_functions.push(cscript->m_funcs->m_script_function);
 					cscript->m_funcs->m_script_function(self, other, &res, arg_count, arranged_args);
-					current_functions.pop();
 				}
 
 				return res;
@@ -138,9 +132,7 @@ namespace gm
 				RValue script_function_name{name.data()};
 				RValue script_function_index;
 
-				current_functions.push(asset_get_index.function_ptr);
 				asset_get_index.function_ptr(&script_function_index, nullptr, nullptr, 1, &script_function_name);
-				current_functions.pop();
 
 				if (script_function_index.type == RValueType::REAL)
 				{
@@ -155,9 +147,7 @@ namespace gm
 							arranged_args[i] = &args[i];
 						}
 
-						current_functions.push(cscript->m_funcs->m_script_function);
 						cscript->m_funcs->m_script_function(self, other, &res, arg_count, arranged_args);
-						current_functions.pop();
 					}
 
 					return res;
