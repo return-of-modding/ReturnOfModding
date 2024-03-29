@@ -26,7 +26,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 	if (reason == DLL_PROCESS_ATTACH)
 	{
-		static auto exception_handling = exception_handler();
+		// Purposely leak it, we are not unloading ReturnOfModding in any case.
+		auto exception_handling = new exception_handler();
 
 		DisableThreadLibraryCalls(hmod);
 		g_hmodule     = hmod;
