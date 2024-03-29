@@ -9,6 +9,7 @@
 #include "rorr/gm/debug_console.hpp"
 #include "rorr/gm/GetSaveFileName_hook.hpp"
 #include "rorr/gm/inputs.hpp"
+#include "threads/util.hpp"
 
 namespace big
 {
@@ -50,10 +51,14 @@ namespace big
 
 	void hooking::enable()
 	{
+		threads::suspend_all_but_one();
+
 		for (auto& detour_hook_helper : m_detour_hook_helpers)
 		{
 			detour_hook_helper.m_detour_hook->enable();
 		}
+
+		threads::resume_all();
 
 		m_enabled = true;
 	}
@@ -62,10 +67,14 @@ namespace big
 	{
 		m_enabled = false;
 
+		threads::suspend_all_but_one();
+
 		for (auto& detour_hook_helper : m_detour_hook_helpers)
 		{
 			detour_hook_helper.m_detour_hook->disable();
 		}
+
+		threads::resume_all();
 
 		m_detour_hook_helpers.clear();
 	}

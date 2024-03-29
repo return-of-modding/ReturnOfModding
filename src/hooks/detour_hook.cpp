@@ -1,6 +1,7 @@
 #include "detour_hook.hpp"
 
 #include "memory/handle.hpp"
+#include "threads/util.hpp"
 
 namespace big
 {
@@ -75,9 +76,25 @@ namespace big
 			return;
 		}
 
-		if (!m_detour_object->hook())
+		if (!m_detour_object->isHooked())
 		{
-			LOG(FATAL) << std::format("Failed to create hook '{}' at 0x{:X}", m_name, uintptr_t(m_target));
+			auto suspended_thread_here = false;
+			if (!threads::are_suspended)
+			{
+				suspended_thread_here = true;
+
+				threads::suspend_all_but_one();
+			}
+
+			if (!m_detour_object->hook())
+			{
+				LOG(FATAL) << std::format("Failed to create hook '{}' at 0x{:X}", m_name, uintptr_t(m_target));
+			}
+
+			if (suspended_thread_here)
+			{
+				threads::resume_all();
+			}
 		}
 	}
 
@@ -90,9 +107,19 @@ namespace big
 
 		if (m_detour_object->isHooked())
 		{
+			if (!threads::are_suspended)
+			{
+				threads::suspend_all_but_one();
+			}
+
 			if (m_detour_object->unHook())
 			{
 				LOG(FATAL) << "Failed to disable hook '" << m_name << "' at 0x" << HEX_TO_UPPER(uintptr_t(m_target)) << "(error: " << m_name << ")";
+			}
+
+			if (threads::are_suspended)
+			{
+				threads::resume_all();
 			}
 		}
 	}
