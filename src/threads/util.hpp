@@ -3,6 +3,8 @@
 
 namespace big::threads
 {
+	inline bool are_suspended = false;
+
 	inline void resume_all(DWORD target_process_id = GetCurrentProcessId(), DWORD thread_id_to_not_suspend = GetCurrentThreadId())
 	{
 		HANDLE h = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
@@ -21,6 +23,8 @@ namespace big::threads
 						{
 							ResumeThread(thread);
 							CloseHandle(thread);
+
+							are_suspended = false;
 						}
 					}
 				} while (Thread32Next(h, &te));
@@ -47,6 +51,8 @@ namespace big::threads
 						{
 							SuspendThread(thread);
 							CloseHandle(thread);
+
+							are_suspended = true;
 						}
 					}
 				} while (Thread32Next(h, &te));
