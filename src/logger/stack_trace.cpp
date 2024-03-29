@@ -19,7 +19,7 @@ namespace big
 		SymCleanup(GetCurrentProcess());
 	}
 
-	const std::vector<uint64_t>& stack_trace::frame_pointers()
+	const std::vector<uintptr_t>& stack_trace::frame_pointers()
 	{
 		return m_frame_pointers;
 	}
@@ -233,7 +233,7 @@ namespace big
 		}
 	}
 
-	const stack_trace::module_info* stack_trace::get_module_by_address(uint64_t addr) const
+	const stack_trace::module_info* stack_trace::get_module_by_address(uintptr_t addr) const
 	{
 		for (auto& mod_info : m_modules)
 		{

@@ -6,7 +6,7 @@
 
 namespace lua::memory
 {
-	pointer::pointer(uint64_t address) :
+	pointer::pointer(uintptr_t address) :
 	    m_address(address)
 	{
 	}
@@ -16,12 +16,12 @@ namespace lua::memory
 	{
 	}
 
-	pointer pointer::add(uint64_t offset)
+	pointer pointer::add(uintptr_t offset)
 	{
 		return pointer(m_address + offset);
 	}
 
-	pointer pointer::sub(uint64_t offset)
+	pointer pointer::sub(uintptr_t offset)
 	{
 		return pointer(m_address - offset);
 	}
@@ -58,10 +58,10 @@ namespace lua::memory
 
 	pointer pointer::deref()
 	{
-		return pointer(*(uint64_t*)m_address);
+		return pointer(*(uintptr_t*)m_address);
 	}
 
-	uint64_t pointer::get_address() const
+	uintptr_t pointer::get_address() const
 	{
 		return m_address;
 	}
@@ -78,7 +78,7 @@ namespace lua::memory
 	// Scans the specified memory pattern within the "Risk of Rain Returns.exe" module and returns a pointer to the found address.
 	static pointer scan_pattern(const std::string& pattern)
 	{
-		return pointer(::memory::module("Risk of Rain Returns.exe").scan(::memory::pattern(pattern)).value().as<uint64_t>());
+		return pointer(::memory::module("Risk of Rain Returns.exe").scan(::memory::pattern(pattern)).value().as<uintptr_t>());
 	}
 
 	// Lua API: Function
@@ -96,7 +96,7 @@ namespace lua::memory
 			module->m_data.m_allocated_memory.push_back(mem);
 		}
 
-		return pointer((uint64_t)mem);
+		return pointer((uintptr_t)mem);
 	}
 
 	// Lua API: Function
@@ -112,7 +112,7 @@ namespace lua::memory
 			std::erase_if(module->m_data.m_allocated_memory,
 			              [ptr](void* addr)
 			              {
-				              return ptr.get_address() == (uint64_t)addr;
+				              return ptr.get_address() == (uintptr_t)addr;
 			              });
 		}
 	}
@@ -121,7 +121,7 @@ namespace lua::memory
 	{
 		auto ns = state["memory"].get_or_create<sol::table>();
 
-		auto pointer_ut = ns.new_usertype<pointer>("pointer", sol::constructors<pointer(uint64_t)>());
+		auto pointer_ut = ns.new_usertype<pointer>("pointer", sol::constructors<pointer(uintptr_t)>());
 
 		pointer_ut["add"]         = &pointer::add;
 		pointer_ut["sub"]         = &pointer::sub;

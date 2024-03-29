@@ -1,6 +1,5 @@
 #pragma once
 
-
 namespace big
 {
 	class stack_trace
@@ -9,7 +8,7 @@ namespace big
 		stack_trace();
 		virtual ~stack_trace();
 
-		const std::vector<uint64_t>& frame_pointers();
+		const std::vector<uintptr_t>& frame_pointers();
 		void new_stack_trace(EXCEPTION_POINTERS* exception_info);
 		std::string str() const;
 
@@ -40,7 +39,7 @@ namespace big
 		void dump_stacktrace();
 		void dump_cpp_exception();
 		void grab_stacktrace();
-		const module_info* get_module_by_address(uint64_t addr) const;
+		const module_info* get_module_by_address(uintptr_t addr) const;
 
 		static std::string exception_code_to_string(const DWORD code);
 
@@ -48,7 +47,7 @@ namespace big
 		EXCEPTION_POINTERS* m_exception_info;
 
 		std::stringstream m_dump;
-		std::vector<uint64_t> m_frame_pointers;
+		std::vector<uintptr_t> m_frame_pointers;
 
 		inline static std::vector<module_info> m_modules;
 	};

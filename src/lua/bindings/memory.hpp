@@ -10,7 +10,7 @@ namespace lua::memory
 	struct pointer
 	{
 	private:
-		uint64_t m_address;
+		uintptr_t m_address;
 
 	public:
 
@@ -18,7 +18,7 @@ namespace lua::memory
 		// Class: pointer
 		// Param: address: integer: Address
 		// Returns a memory instance, with the given address.
-		explicit pointer(uint64_t address);
+		explicit pointer(uintptr_t address);
 
 		explicit pointer();
 
@@ -28,7 +28,7 @@ namespace lua::memory
 		// Param: offset: integer: offset
 		// Returns: pointer: new pointer object.
 		// Adds an offset to the current memory address and returns a new pointer object.
-		pointer add(uint64_t offset);
+		pointer add(uintptr_t offset);
 
 		// Lua API: Function
 		// Class: pointer
@@ -36,7 +36,7 @@ namespace lua::memory
 		// Param: offset: integer: offset
 		// Returns: pointer: new pointer object.
 		// Subs an offset to the current memory address and returns a new pointer object.
-		pointer sub(uint64_t offset);
+		pointer sub(uintptr_t offset);
 
 		// Lua API: Function
 		// Class: pointer
@@ -215,7 +215,7 @@ namespace lua::memory
 		// Name: get_address
 		// Returns: number: The memory address stored in the pointer object as a number.
 		// Retrieves the memory address stored in the pointer object.
-		uint64_t get_address() const;
+		uintptr_t get_address() const;
 	};
 
 	void bind(sol::state& state);
