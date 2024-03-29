@@ -253,6 +253,11 @@ namespace big
 
 			g_lua_manager->draw_independent_gui();
 
+			/*if (ImGui::Button("Crash it"))
+			{
+				*(int*)0xDE'AD = 1;
+			}*/
+
 			if (0)
 			{
 				if (ImGui::Begin("Return Of Modding"))
