@@ -408,10 +408,13 @@ namespace big
 				}
 
 				hotkey_entry->m_vk_string = m_table.get(hotkey_entry->m_name);
-				hotkey_entry->m_vk_value  = VK_KEYS[hotkey_entry->m_vk_string->ref<std::string>()];
 				if (hotkey_entry->m_vk_string == nullptr)
 				{
 					LOG(FATAL) << "what";
+				}
+				else
+				{
+					hotkey_entry->m_vk_value = VK_KEYS[hotkey_entry->m_vk_string->ref<std::string>()];
 				}
 
 				if (hotkey_entry->m_vk_string == nullptr || hotkey_entry->m_vk_string->type() != toml::node_type::string
