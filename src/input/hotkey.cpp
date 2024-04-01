@@ -414,7 +414,29 @@ namespace big
 				}
 				else
 				{
-					hotkey_entry->m_vk_value = VK_KEYS[hotkey_entry->m_vk_string->ref<std::string>()];
+					if (hotkey_entry->m_vk_string->is_string())
+					{
+						if (VK_KEYS.contains(hotkey_entry->m_vk_string->ref<std::string>()))
+						{
+							hotkey_entry->m_vk_value = VK_KEYS[hotkey_entry->m_vk_string->ref<std::string>()];
+						}
+					}
+					else if (hotkey_entry->m_vk_string->type() == toml::node_type::integer)
+					{
+						const auto vk_value = hotkey_entry->m_vk_string->ref<int64_t>();
+						if (VK_KEYS_REVERSE.contains(vk_value))
+						{
+							hotkey_entry->m_vk_value = vk_value;
+							m_table.insert_or_assign(hotkey_entry->m_name, VK_KEYS_REVERSE[vk_value]);
+							hotkey_entry->m_vk_string = m_table.get(hotkey_entry->m_name);
+						}
+					}
+					else
+					{
+						m_table.insert_or_assign(hotkey_entry->m_name, VK_KEYS_REVERSE[hotkey_entry->m_default_vk]);
+						hotkey_entry->m_vk_string = m_table.get(hotkey_entry->m_name);
+						hotkey_entry->m_vk_value  = VK_KEYS[hotkey_entry->m_vk_string->ref<std::string>()];
+					}
 				}
 
 				if (hotkey_entry->m_vk_string == nullptr || hotkey_entry->m_vk_string->type() != toml::node_type::string
@@ -424,10 +446,16 @@ namespace big
 
 					m_table.insert_or_assign(hotkey_entry->m_name, VK_KEYS_REVERSE[hotkey_entry->m_default_vk]);
 					hotkey_entry->m_vk_string = m_table.get(hotkey_entry->m_name);
-					hotkey_entry->m_vk_value  = VK_KEYS[hotkey_entry->m_vk_string->ref<std::string>()];
 					if (hotkey_entry->m_vk_string == nullptr)
 					{
 						LOG(FATAL) << "what2";
+					}
+					else
+					{
+						if (hotkey_entry->m_vk_string->is_string())
+						{
+							hotkey_entry->m_vk_value = VK_KEYS[hotkey_entry->m_vk_string->ref<std::string>()];
+						}
 					}
 				}
 			}
