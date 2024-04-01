@@ -1133,6 +1133,11 @@ namespace lua::game_maker
 					    }
 					    else
 					    {
+						    if (!gm::is_valid_call(key_str))
+						    {
+							    return sol::lua_nil;
+						    }
+
 						    const std::string key_str_copy = key_str;
 						    type[key_str] = [key_str_copy](sol::this_state this_state_, sol::stack_object key, sol::variadic_args args)
 						    {

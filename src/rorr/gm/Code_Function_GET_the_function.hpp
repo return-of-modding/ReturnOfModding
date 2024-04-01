@@ -88,6 +88,45 @@ namespace gm
 		return dummy;
 	}
 
+	inline bool is_valid_call(std::string_view name)
+	{
+		const auto& func_info = get_code_function(name);
+		if (func_info.function_ptr)
+		{
+			return true;
+		}
+
+		if (const auto it = gm::script_asset_cache.find(name.data()); it != gm::script_asset_cache.end())
+		{
+			const auto cscript = big::g_pointers->m_rorr.m_script_data(it->second - 100'000);
+			if (cscript && cscript->m_funcs && cscript->m_funcs->m_script_function)
+			{
+				return true;
+			}
+		}
+		else
+		{
+			const auto& asset_get_index = gm::get_code_function("asset_get_index");
+			RValue script_function_name{name.data()};
+			RValue script_function_index;
+
+			asset_get_index.function_ptr(&script_function_index, nullptr, nullptr, 1, &script_function_name);
+
+			if (script_function_index.type == RValueType::REAL)
+			{
+				gm::script_asset_cache[name.data()] = script_function_index.asInt32();
+
+				const auto cscript = big::g_pointers->m_rorr.m_script_data(script_function_index.asInt32() - 100'000);
+				if (cscript && cscript->m_funcs && cscript->m_funcs->m_script_function)
+				{
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
 	inline RValue call(std::string_view name, CInstance* self, CInstance* other, RValue* args = nullptr, size_t arg_count = 0)
 	{
 		const auto& func_info = get_code_function(name);
