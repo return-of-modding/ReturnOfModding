@@ -825,9 +825,11 @@ namespace big
 					continue;
 				}
 
-				if (missing_modules.contains(dependency))
+				std::string dependency_no_version_number = dependency.substr(0, dependency.find_last_of('-'));
+
+				if (missing_modules.contains(dependency_no_version_number))
 				{
-					LOG(WARNING) << "Can't load " << guid << " because it's missing " << dependency;
+					LOG(WARNING) << "Can't load " << guid << " because it's missing " << dependency_no_version_number;
 					not_missing_dependency = false;
 				}
 			}
@@ -845,7 +847,10 @@ namespace big
 						             << " (file path: " << reinterpret_cast<const char*>(module_info.m_path.u8string().c_str()) << " does not exist in the filesystem. Not loading it.";
 					}
 
-					missing_modules.insert(guid);
+					std::string guid_no_version_number = module_info.m_guid_with_version.size() ? module_info.m_guid_with_version : guid;
+					guid_no_version_number = guid_no_version_number.substr(0, guid_no_version_number.find_last_of('-'));
+
+					missing_modules.insert(guid_no_version_number);
 				}
 			}
 		}
