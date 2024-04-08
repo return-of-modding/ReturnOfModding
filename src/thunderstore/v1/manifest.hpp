@@ -24,7 +24,7 @@ namespace ts::v1
 		std::string description{};
 
 		std::vector<std::string> dependencies{};
-		std::vector<dependency> dependency_objects{};
+		std::vector<std::string> dependencies_no_version_number{};
 
 		NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(manifest, name, version_number, website_url, description, dependencies)
 	};

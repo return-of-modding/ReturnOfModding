@@ -64,20 +64,25 @@ namespace big
 			const auto splitted = big::string::split(dep, '-');
 			if (splitted.size() == 3)
 			{
-				// clang-format off
-			manifest.dependency_objects.push_back(
-				ts::v1::dependency
-				{
-					.team_name = splitted[0],
-					.name = splitted[1],
-					.version = semver::version::parse(splitted[2])
-				}
-			);
-				// clang-format on
+				manifest.dependencies_no_version_number.push_back(splitted[0] + '-' + splitted[1]);
+			}
+			else
+			{
+				LOG(FATAL) << "Invalid dependency string " << dep << " inside the following manifest: " << manifest_path << ". Example format: AuthorName-ModName-1.0.0";
 			}
 		}
 
-		const std::string guid = reinterpret_cast<const char*>(current_folder.filename().u8string().c_str());
+		const std::string folder_name = (char*)current_folder.filename().u8string().c_str();
+		const auto sep_count          = std::ranges::count(folder_name, '-');
+		if (sep_count != 1)
+		{
+			LOGF(FATAL,
+			     "Bad folder name ({}) for the following mod: {}. Should be the following format: AuthorName-ModName",
+			     folder_name,
+			     manifest.name);
+		}
+
+		const std::string guid = folder_name;
 		return {{
 		    .m_path              = module_path,
 		    .m_folder_path       = current_folder,
@@ -786,7 +791,23 @@ namespace big
 				const auto module_info = get_module_info(entry.path());
 				if (module_info)
 				{
-					module_guid_to_module_info.insert({module_info.value().m_guid_with_version, module_info.value()});
+					const auto& guid = module_info.value().m_guid;
+
+					if (module_guid_to_module_info.contains(guid))
+					{
+						if (module_info.value().m_manifest.version > module_guid_to_module_info[guid].m_manifest.version)
+						{
+							LOG(INFO) << "Found a more recent version of " << guid << " ("
+							          << module_info.value().m_manifest.version << " > "
+							          << module_guid_to_module_info[guid].m_manifest.version << "): Using that instead.";
+
+							module_guid_to_module_info[guid] = module_info.value();
+						}
+					}
+					else
+					{
+						module_guid_to_module_info.insert({guid, module_info.value()});
+					}
 				}
 			}
 		}
@@ -804,18 +825,25 @@ namespace big
 		                                             {
 			                                             if (module_guid_to_module_info.contains(guid))
 			                                             {
-				                                             return module_guid_to_module_info[guid].m_manifest.dependencies;
+				                                             return module_guid_to_module_info[guid].m_manifest.dependencies_no_version_number;
 			                                             }
 			                                             return std::vector<std::string>();
 		                                             });
 
+		/*
+		for (const auto& guid : sorted_modules)
+		{
+			LOG(VERBOSE) << guid;
+		}
+		*/
+
 		std::unordered_set<std::string> missing_modules;
 		for (const auto& guid : sorted_modules)
 		{
-			constexpr auto mod_loader_name = "ReturnOfModding-ReturnOfModding-";
+			constexpr auto mod_loader_name = "ReturnOfModding-ReturnOfModding";
 
 			bool not_missing_dependency = true;
-			for (const auto& dependency : module_guid_to_module_info[guid].m_manifest.dependencies)
+			for (const auto& dependency : module_guid_to_module_info[guid].m_manifest.dependencies_no_version_number)
 			{
 				// The mod loader is not a lua module,
 				// but might be put as a dependency in the mod manifest,
@@ -825,11 +853,9 @@ namespace big
 					continue;
 				}
 
-				std::string dependency_no_version_number = dependency.substr(0, dependency.find_last_of('-'));
-
-				if (missing_modules.contains(dependency_no_version_number))
+				if (missing_modules.contains(dependency))
 				{
-					LOG(WARNING) << "Can't load " << guid << " because it's missing " << dependency_no_version_number;
+					LOG(WARNING) << "Can't load " << guid << " because it's missing " << dependency;
 					not_missing_dependency = false;
 				}
 			}
@@ -843,14 +869,11 @@ namespace big
 					// Don't log the fact that the mod loader failed to load, it's normal (see comment above)
 					if (!guid.contains(mod_loader_name))
 					{
-						LOG(WARNING) << (module_info.m_guid_with_version.size() ? module_info.m_guid_with_version : guid)
+						LOG(WARNING) << guid
 						             << " (file path: " << reinterpret_cast<const char*>(module_info.m_path.u8string().c_str()) << " does not exist in the filesystem. Not loading it.";
 					}
 
-					std::string guid_no_version_number = module_info.m_guid_with_version.size() ? module_info.m_guid_with_version : guid;
-					guid_no_version_number = guid_no_version_number.substr(0, guid_no_version_number.find_last_of('-'));
-
-					missing_modules.insert(guid_no_version_number);
+					missing_modules.insert(guid);
 				}
 			}
 		}
