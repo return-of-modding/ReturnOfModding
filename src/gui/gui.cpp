@@ -22,9 +22,9 @@ namespace big
 		init_pref();
 
 		g_renderer->add_dx_callback({[this]
-		    {
-			    dx_on_tick();
-		    },
+		                             {
+			                             dx_on_tick();
+		                             },
 		                             -5});
 
 		g_renderer->add_wndproc_callback(
@@ -385,6 +385,8 @@ namespace big
 			{
 				editing_gui_keybind = false;
 			}
+
+			LOG(VERBOSE) << "Toggled Modding GUI to: " << (m_is_open ? "visible" : "hidden");
 		}
 	}
 
@@ -402,6 +404,8 @@ namespace big
 			io.MouseDrawCursor  = false;
 			io.ConfigFlags     |= ImGuiConfigFlags_NoMouse;
 		}
+
+		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
 	}
 
 	void gui::init_pref()

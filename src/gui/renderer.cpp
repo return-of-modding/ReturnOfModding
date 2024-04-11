@@ -324,6 +324,9 @@ namespace big
 
 		auto& io = ImGui::GetIO();
 
+		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
+		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+
 		{
 			ImFontConfig fnt_cfg{};
 			fnt_cfg.FontDataOwnedByAtlas = false;
@@ -435,12 +438,10 @@ namespace big
 		std::sort(m_dx_callbacks.begin(),
 		          m_dx_callbacks.end(),
 		          [](dx_callback& a, dx_callback& b)
-		{
+		          {
 			          return a.m_priority < b.m_priority;
 		          });
 
-			return false;
-		}
 		return true;
 	}
 
