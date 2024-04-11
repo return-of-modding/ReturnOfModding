@@ -2,8 +2,14 @@
 
 namespace big
 {
-	using init_callback    = std::function<void()>;
-	using dx_callback      = std::function<void()>;
+	using init_callback = std::function<void()>;
+
+	struct dx_callback
+	{
+		std::function<void()> m_callback;
+		int64_t m_priority;
+	};
+
 	using wndproc_callback = std::function<void(HWND, UINT, WPARAM, LPARAM)>;
 
 	class renderer final
@@ -16,7 +22,7 @@ namespace big
 		IDXGISwapChain* m_dxgi_swapchain{};
 
 		std::vector<init_callback> m_init_callbacks;
-		std::map<uint32_t, dx_callback> m_dx_callbacks;
+		std::vector<dx_callback> m_dx_callbacks;
 		std::vector<wndproc_callback> m_wndproc_callbacks;
 
 	public:
@@ -40,12 +46,11 @@ namespace big
 		/**
 		 * @brief Add a callback function to draw your ImGui content in
 		 *
-		 * @param callback Function
-		 * @param priority The higher the priority the value the later it gets drawn on top
+		 * @param callback function + priority, The higher the priority the value the later it gets drawn on top.
 		 * @return true
 		 * @return false
 		 */
-		bool add_dx_callback(dx_callback callback, uint32_t priority);
+		bool add_dx_callback(dx_callback callback);
 
 		void remove_wndproc_callback(size_t callback_index);
 

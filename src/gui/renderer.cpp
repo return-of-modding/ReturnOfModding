@@ -292,9 +292,9 @@ namespace big
 				ImGui_ImplWin32_NewFrame();
 				ImGui::NewFrame();
 
-				for (const auto& cb : m_dx_callbacks | std::views::values)
+				for (const auto& cb : m_dx_callbacks)
 				{
-					cb();
+					cb.m_callback();
 				}
 
 				ImGui::Render();
@@ -428,11 +428,16 @@ namespace big
 		return true;
 	}
 
-	bool renderer::add_dx_callback(dx_callback callback, uint32_t priority)
+	bool renderer::add_dx_callback(dx_callback callback)
 	{
-		if (!m_dx_callbacks.insert({priority, callback}).second)
+		m_dx_callbacks.push_back(callback);
+
+		std::sort(m_dx_callbacks.begin(),
+		          m_dx_callbacks.end(),
+		          [](dx_callback& a, dx_callback& b)
 		{
-			LOG(WARNING) << "Duplicate priority given on DX Callback!";
+			          return a.m_priority < b.m_priority;
+		          });
 
 			return false;
 		}

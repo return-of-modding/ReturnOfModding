@@ -21,12 +21,11 @@ namespace big
 	{
 		init_pref();
 
-		g_renderer->add_dx_callback(
-		    [this]
+		g_renderer->add_dx_callback({[this]
 		    {
 			    dx_on_tick();
 		    },
-		    -5);
+		                             -5});
 
 		g_renderer->add_wndproc_callback(
 		    [this](HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
