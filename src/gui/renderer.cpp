@@ -324,8 +324,8 @@ namespace big
 
 		auto& io = ImGui::GetIO();
 
-		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
 		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
 
 		{
 			ImFontConfig fnt_cfg{};

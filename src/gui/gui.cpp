@@ -398,14 +398,14 @@ namespace big
 		{
 			io.MouseDrawCursor  = true;
 			io.ConfigFlags     &= ~ImGuiConfigFlags_NoMouse;
+			io.ConfigFlags     &= ~ImGuiConfigFlags_NoMouseCursorChange;
 		}
 		else
 		{
 			io.MouseDrawCursor  = false;
 			io.ConfigFlags     |= ImGuiConfigFlags_NoMouse;
+			io.ConfigFlags     |= ImGuiConfigFlags_NoMouseCursorChange;
 		}
-
-		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
 	}
 
 	void gui::init_pref()
