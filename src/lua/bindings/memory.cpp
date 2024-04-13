@@ -88,7 +88,7 @@ namespace lua::memory
 	// Returns: pointer: A pointer to the newly allocated memory.
 	static pointer allocate(int size, sol::this_environment env)
 	{
-		void* mem = new uint8_t[](size);
+		void* mem = new uint8_t[size]();
 
 		big::lua_module* module = big::lua_module::this_from(env);
 		if (module)
