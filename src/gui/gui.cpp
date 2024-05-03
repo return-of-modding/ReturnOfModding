@@ -412,7 +412,8 @@ namespace big
 	{
 		try
 		{
-			m_file_path = g_file_manager.get_project_folder("config").get_path() / m_file_name;
+			const auto file_name = rom::g_project_name + '-' + rom::g_project_name + '-' + "GUI.cfg";
+			m_file_path          = g_file_manager.get_project_folder("config").get_path() / file_name;
 			if (std::filesystem::exists(m_file_path))
 			{
 				m_table = toml::parse_file(m_file_path.c_str());

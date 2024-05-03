@@ -6,7 +6,7 @@ Table containing helper functions related to process memory.
 
 ### `scan_pattern(pattern)`
 
-Scans the specified memory pattern within the "Risk of Rain Returns.exe" module and returns a pointer to the found address.
+Scans the specified memory pattern within the target main module and returns a pointer to the found address.
 
 - **Parameters:**
   - `pattern` (string): byte pattern (IDA format)

@@ -29,20 +29,6 @@ Return Of Modding is a modding plugin / framework for Risk of Rain Returns.
 
 - You can check the existing `examples` in that github repository if you wanna try stuff out.
 
-## Mod Manager Integration
-
-If you'd like to integrate Return Of Modding into your mod manager, here are the specifications:
-
-Return Of Modding is injected into the game process using DLL hijacking (more precisely, it hijacks the Windows dynamic linked library `version.dll`), which is the same technique used by other bootstrappers such as [UnityDoorstop](https://github.com/NeighTools/UnityDoorstop).
-
-The root folder used by Return Of Modding (which will then be used to load mods from this folder) can be defined in several ways:
-
-- Setting the process environment variable: `return_of_modding_root_folder <CUSTOM_PATH>`
-
-- Command line argument when launching the game executable: `--return_of_modding_root_folder <CUSTOM_PATH>`
-
-- If the process environment variable is not defined, the command line arguments are checked. If neither is defined, the ReturnOfModding folder is placed in the game folder, next to the game executable.
-
 Interesting folders under the root folder:
 
 - `plugins`: Location of .lua, README, manifest.json files.

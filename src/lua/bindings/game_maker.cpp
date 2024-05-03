@@ -1,6 +1,7 @@
 #include "game_maker.hpp"
 
-#include "lua/lua_manager.hpp"
+#include "lua/lua_manager_extension.hpp"
+#include "lua/lua_module_ext.hpp"
 #include "rorr/gm/Code_Function_GET_the_function.hpp"
 #include "rorr/gm/CScript.hpp"
 #include "rorr/gm/CScriptRef.hpp"
@@ -451,10 +452,10 @@ namespace lua::game_maker
 	// Registers a callback that will be called right before any object function is called.
 	static void pre_code_execute(sol::protected_function cb, sol::this_environment env)
 	{
-		big::lua_module* mdl = big::lua_module::this_from(env);
+		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (mdl)
 		{
-			mdl->m_data.m_pre_code_execute_callbacks.push_back(cb);
+			mdl->m_data_ext.m_pre_code_execute_callbacks.push_back(cb);
 		}
 	}
 
@@ -465,10 +466,10 @@ namespace lua::game_maker
 	// Registers a callback that will be called right after any object function is called.
 	static void post_code_execute(sol::protected_function cb, sol::this_environment env)
 	{
-		big::lua_module* mdl = big::lua_module::this_from(env);
+		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (mdl)
 		{
-			mdl->m_data.m_post_code_execute_callbacks.push_back(cb);
+			mdl->m_data_ext.m_post_code_execute_callbacks.push_back(cb);
 		}
 	}
 
@@ -502,14 +503,14 @@ namespace lua::game_maker
 		const auto arg_count = p->get<int>(3);
 		const auto args      = p->get<RValue*>(4);
 
-		const auto call_orig_if_true = big::g_lua_manager->pre_builtin_execute((void*)original_func_ptr, self, other, result, arg_count, args);
+		const auto call_orig_if_true = big::lua_manager_extension::pre_builtin_execute((void*)original_func_ptr, self, other, result, arg_count, args);
 
 		if (call_orig_if_true)
 		{
 			hooks_original_func_ptr_to_info[original_func_ptr].m_detour->get_original<gm::TRoutine>()(result, self, other, arg_count, args);
 		}
 
-		big::g_lua_manager->post_builtin_execute((void*)original_func_ptr, self, other, result, arg_count, args);
+		big::lua_manager_extension::post_builtin_execute((void*)original_func_ptr, self, other, result, arg_count, args);
 	}
 
 	static void script_callback(const qstd::runtime_func::parameters_t* p, const uint8_t count, qstd::runtime_func::return_value_t* ret_val, const uintptr_t original_func_ptr)
@@ -522,7 +523,7 @@ namespace lua::game_maker
 
 		ret_val->m_return_value = (uintptr_t)result;
 
-		const auto call_orig_if_true = big::g_lua_manager->pre_script_execute((void*)original_func_ptr, self, other, result, arg_count, args);
+		const auto call_orig_if_true = big::lua_manager_extension::pre_script_execute((void*)original_func_ptr, self, other, result, arg_count, args);
 
 		ret_val->m_return_value = (uintptr_t)result;
 
@@ -533,23 +534,23 @@ namespace lua::game_maker
 
 		ret_val->m_return_value = (uintptr_t)result;
 
-		big::g_lua_manager->post_script_execute((void*)original_func_ptr, self, other, result, arg_count, args);
+		big::lua_manager_extension::post_script_execute((void*)original_func_ptr, self, other, result, arg_count, args);
 
 		ret_val->m_return_value = (uintptr_t)result;
 	}
 
 	struct make_central_script_result
 	{
-		big::lua_module* m_this_lua_module = nullptr;
-		void* m_original_func_ptr          = nullptr;
-		bool m_is_game_script_func         = false;
+		big::lua_module_ext* m_this_lua_module = nullptr;
+		void* m_original_func_ptr              = nullptr;
+		bool m_is_game_script_func             = false;
 	};
 
 	static std::unordered_map<int, std::string> script_index_to_name;
 
 	static make_central_script_result make_central_script_hook(const double script_function_index_double, sol::this_environment& env, bool is_pre_hook)
 	{
-		big::lua_module* mdl = big::lua_module::this_from(env);
+		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (mdl)
 		{
 			const int script_function_index = script_function_index_double;
@@ -560,8 +561,8 @@ namespace lua::game_maker
 				{
 					std::stringstream hook_name;
 					hook_name << mdl->guid() << " | " << script_index_to_name[script_function_index] << " | "
-					          << (is_pre_hook ? mdl->m_data.m_pre_script_execute_callbacks.size() :
-					                            mdl->m_data.m_post_script_execute_callbacks.size());
+					          << (is_pre_hook ? mdl->m_data_ext.m_pre_script_execute_callbacks.size() :
+					                            mdl->m_data_ext.m_post_script_execute_callbacks.size());
 
 					LOG(INFO) << "hook_name: " << hook_name.str();
 
@@ -598,8 +599,8 @@ namespace lua::game_maker
 				{
 					std::stringstream hook_name;
 					hook_name << mdl->guid() << " | " << script_index_to_name[script_function_index] << " | "
-					          << (is_pre_hook ? mdl->m_data.m_pre_builtin_execute_callbacks.size() :
-					                            mdl->m_data.m_post_builtin_execute_callbacks.size());
+					          << (is_pre_hook ? mdl->m_data_ext.m_pre_builtin_execute_callbacks.size() :
+					                            mdl->m_data_ext.m_post_builtin_execute_callbacks.size());
 
 					LOG(INFO) << "hook_name: " << hook_name.str();
 
@@ -642,11 +643,11 @@ namespace lua::game_maker
 		{
 			if (res.m_is_game_script_func)
 			{
-				res.m_this_lua_module->m_data.m_pre_script_execute_callbacks[res.m_original_func_ptr].push_back(cb);
+				res.m_this_lua_module->m_data_ext.m_pre_script_execute_callbacks[res.m_original_func_ptr].push_back(cb);
 			}
 			else
 			{
-				res.m_this_lua_module->m_data.m_pre_builtin_execute_callbacks[res.m_original_func_ptr].push_back(cb);
+				res.m_this_lua_module->m_data_ext.m_pre_builtin_execute_callbacks[res.m_original_func_ptr].push_back(cb);
 			}
 		}
 	}
@@ -664,11 +665,11 @@ namespace lua::game_maker
 		{
 			if (res.m_is_game_script_func)
 			{
-				res.m_this_lua_module->m_data.m_post_script_execute_callbacks[res.m_original_func_ptr].push_back(cb);
+				res.m_this_lua_module->m_data_ext.m_post_script_execute_callbacks[res.m_original_func_ptr].push_back(cb);
 			}
 			else
 			{
-				res.m_this_lua_module->m_data.m_post_builtin_execute_callbacks[res.m_original_func_ptr].push_back(cb);
+				res.m_this_lua_module->m_data_ext.m_post_builtin_execute_callbacks[res.m_original_func_ptr].push_back(cb);
 			}
 		}
 	}
@@ -723,7 +724,7 @@ namespace lua::game_maker
 		return out_res.yy_object_base;
 	}
 
-	void bind(sol::state& state)
+	void bind(sol::table& state)
 	{
 		auto ns = state["gm"].get_or_create<sol::table>();
 
@@ -1593,7 +1594,7 @@ namespace lua::game_maker
 
 		ns["struct_create"] = lua_struct_create;
 
-		auto meta_gm = state.create_table();
+		auto meta_gm = state.create();
 		// Wrapper so that users can do gm.room_goto(new_room) for example instead of gm.call("room_goto", new_room)
 		meta_gm.set_function(sol::meta_function::index,
 		                     [](sol::this_state this_state_, sol::table self, std::string key) -> sol::reference

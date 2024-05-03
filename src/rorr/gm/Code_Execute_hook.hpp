@@ -2,7 +2,7 @@
 #include "Code_Execute_trace.hpp"
 #include "Code_Function_GET_the_function.hpp"
 
-#include <lua/lua_manager.hpp>
+#include <lua/lua_manager_extension.hpp>
 #include <string/string.hpp>
 
 namespace gm
@@ -15,7 +15,7 @@ namespace gm
 		bool no_error = true;
 		if (big::g_lua_manager)
 		{
-			const auto call_orig_if_true = big::g_lua_manager->pre_code_execute(self, other, code, result, flags);
+			const auto call_orig_if_true = big::lua_manager_extension::pre_code_execute(self, other, code, result, flags);
 
 			if (call_orig_if_true)
 			{
@@ -29,7 +29,7 @@ namespace gm
 				}
 			}
 
-			big::g_lua_manager->post_code_execute(self, other, code, result, flags);
+			big::lua_manager_extension::post_code_execute(self, other, code, result, flags);
 		}
 		else
 		{

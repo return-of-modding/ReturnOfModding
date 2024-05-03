@@ -42,7 +42,6 @@ namespace big
 	private:
 		void toggle_mouse();
 
-		static inline constexpr auto m_file_name = "ReturnOfModding-ReturnOfModding-GUI.cfg";
 		std::filesystem::path m_file_path;
 		toml::table m_table;
 		void init_pref();

@@ -3,13 +3,17 @@
 #include "hooks/hooking.hpp"
 #include "logger/exception_handler.hpp"
 #include "lua/lua_manager.hpp"
+#include "lua/lua_manager_extension.hpp"
 #include "memory/byte_patch_manager.hpp"
 #include "paths/paths.hpp"
 #include "pointers.hpp"
 #include "rorr/gm/pin_map.hpp"
+#include "rorr/rorr_hooks.hpp"
 #include "threads/thread_pool.hpp"
 #include "threads/util.hpp"
 #include "version.hpp"
+
+#include <lua/lua_module_ext.hpp>
 
 //#include "debug/debug.hpp"
 
@@ -26,7 +30,9 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 	if (reason == DLL_PROCESS_ATTACH)
 	{
-		// Purposely leak it, we are not unloading ReturnOfModding in any case.
+		rom::init("ReturnOfModding", "Risk of Rain Returns.exe", "");
+
+		// Purposely leak it, we are not unloading this module in any case.
 		auto exception_handling = new exception_handler();
 
 		DisableThreadLibraryCalls(hmod);
@@ -62,11 +68,11 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    paths::init_dump_file_path();
 
 			    constexpr auto is_console_enabled = true;
-			    auto logger_instance = std::make_unique<logger>(g_project_name, g_file_manager.get_project_file("./LogOutput.log"), is_console_enabled);
+			    auto logger_instance = std::make_unique<logger>(rom::g_project_name, g_file_manager.get_project_file("./LogOutput.log"), is_console_enabled);
 
 			    std::srand(std::chrono::system_clock::now().time_since_epoch().count());
 
-			    LOG(INFO) << g_project_name;
+			    LOG(INFO) << rom::g_project_name;
 			    LOGF(INFO, "Build (GIT SHA1): {}", version::GIT_SHA1);
 
 #ifdef FINAL
@@ -84,6 +90,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 			    auto byte_patch_manager_instance = std::make_unique<byte_patch_manager>();
 			    LOG(INFO) << "Byte Patch Manager initialized.";
+
+			    rorr::init_hooks();
 
 			    auto hooking_instance = std::make_unique<hooking>();
 			    LOG(INFO) << "Hooking initialized.";
@@ -114,10 +122,19 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 			    g_running = true;
 
+			    auto L = luaL_newstate();
 			    auto lua_manager_instance =
-			        std::make_unique<lua_manager>(g_file_manager.get_project_folder("config"),
+			        std::make_unique<lua_manager>(L,
+			                                      g_file_manager.get_project_folder("config"),
 			                                      g_file_manager.get_project_folder("plugins_data"),
-			                                      g_file_manager.get_project_folder("plugins"));
+			                                      g_file_manager.get_project_folder("plugins"),
+			                                      [](sol::state_view& state, sol::table& lua_ext)
+			                                      {
+				                                      lua_manager_extension::init_lua_api(state, lua_ext);
+			                                      });
+			    sol::state_view sol_state_view(L);
+			    lua_manager_extension::init_lua_base(sol_state_view);
+			    lua_manager_instance->init<lua_module_ext>();
 			    LOG(INFO) << "Lua manager initialized.";
 
 			    if (g_abort)

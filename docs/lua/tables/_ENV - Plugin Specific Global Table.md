@@ -14,14 +14,42 @@ You can access other mods helpers through the `mods[OTHER_MOD_GUID]` table.
 **Example Usage:**
 
 ```lua
-print(_ENV["!guid"])
+print(_ENV._PLUGIN.guid)
 
-for n in pairs(mods[_ENV["!guid"]]) do
+for n in pairs(mods[_ENV._PLUGIN.guid]) do
      log.info(n)
 end
 ```
 
-## Fields (5)
+## Fields (10)
+
+### `_PLUGIN.guid`
+
+Guid of the mod.
+
+- Type: `string`
+
+### `_PLUGIN.config_mod_folder_path`
+
+Path to the mod folder inside `config`
+
+- Type: `string`
+
+### `_PLUGIN.plugins_data_mod_folder_path`
+
+Path to the mod folder inside `plugins_data`
+
+- Type: `string`
+
+### `_PLUGIN.plugins_mod_folder_path`
+
+Path to the mod folder inside `plugins`
+
+- Type: `string`
+
+### `_PLUGIN.this`
+
+- Type: `lua_module*`
 
 ### `!guid`
 
