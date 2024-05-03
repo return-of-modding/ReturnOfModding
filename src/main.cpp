@@ -21,15 +21,20 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 {
 	using namespace big;
 
-	const auto steam_env_env_var          = _wgetenv(L"SteamEnv");
-	const std::wstring good_steam_env_var = L"1";
-	if (!steam_env_env_var || steam_env_env_var != good_steam_env_var)
-	{
-		return true;
-	}
-
 	if (reason == DLL_PROCESS_ATTACH)
 	{
+		const auto steam_env_env_var          = _wgetenv(L"SteamEnv");
+		const std::wstring good_steam_env_var = L"1";
+		if (!steam_env_env_var || steam_env_env_var != good_steam_env_var)
+		{
+			return true;
+		}
+
+		if (!rom::is_rom_enabled())
+		{
+			return true;
+		}
+
 		rom::init("ReturnOfModding", "Risk of Rain Returns.exe", "");
 
 		// Purposely leak it, we are not unloading this module in any case.
