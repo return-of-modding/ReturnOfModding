@@ -126,6 +126,8 @@ namespace big
 
 	void gui::dx_on_tick()
 	{
+		g_lua_manager->process_file_watcher_queue();
+
 		push_theme_colors();
 
 		g_lua_manager->always_draw_independent_gui();

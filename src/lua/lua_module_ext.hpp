@@ -26,8 +26,8 @@ namespace big
 			return env["_PLUGIN"].get_or_create<sol::table>();
 		}
 
-		lua_module_ext(const module_info& module_info, sol::state_view& state) :
-		    lua_module(module_info, state)
+	private:
+		void backcompat_init()
 		{
 			auto plugin_ns = get_PLUGIN_table(m_env);
 
@@ -59,6 +59,20 @@ namespace big
 			// Table: _ENV - Plugin Specific Global Table
 			// Field: !this: lua_module*
 			m_env["!this"] = this;
+		}
+
+	public:
+
+		lua_module_ext(const module_info& module_info, sol::environment& env) :
+		    lua_module(module_info, env)
+		{
+			backcompat_init();
+		}
+
+		lua_module_ext(const module_info& module_info, sol::state_view& state) :
+		    lua_module(module_info, state)
+		{
+			backcompat_init();
 		}
 
 		inline void cleanup() override
