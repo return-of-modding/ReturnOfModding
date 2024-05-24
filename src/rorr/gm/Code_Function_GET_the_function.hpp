@@ -45,7 +45,7 @@ namespace gm
 			}
 		}
 
-		LOG(FATAL) << exception_log.str();
+		LOG(ERROR) << exception_log.str();
 		Logger::FlushQueue();
 	}
 

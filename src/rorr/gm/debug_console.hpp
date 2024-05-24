@@ -61,7 +61,7 @@ namespace gm
 
 		if (big::string::starts_with("ERROR!!!", result.c_str()))
 		{
-			LOG(FATAL) << result;
+			LOG(ERROR) << result;
 			Logger::FlushQueue();
 		}
 		else

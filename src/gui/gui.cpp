@@ -37,7 +37,7 @@ namespace big
 		    [this]()
 		    {
 			    dx_init();
-			    g_renderer->rescale(g_gui->scale);
+			    //g_renderer->rescale(g_gui->scale);
 		    });
 
 		g_gui = this;
@@ -393,7 +393,7 @@ namespace big
 				editing_gui_keybind = false;
 			}
 
-			LOG(VERBOSE) << "Toggled Modding GUI to: " << (m_is_open ? "visible" : "hidden");
+			LOG(DEBUG) << "Toggled Modding GUI to: " << (m_is_open ? "visible" : "hidden");
 		}
 	}
 
@@ -437,7 +437,7 @@ namespace big
 				node = table.get(node_name);
 				if (node == nullptr)
 				{
-					LOG(FATAL) << "what";
+					LOG(ERROR) << "what";
 				}
 
 				if (node == nullptr || node->type() != toml::node_type::boolean)
@@ -448,7 +448,7 @@ namespace big
 					node = table.get(node_name);
 					if (node == nullptr)
 					{
-						LOG(FATAL) << "what2";
+						LOG(ERROR) << "what2";
 					}
 				}
 			};

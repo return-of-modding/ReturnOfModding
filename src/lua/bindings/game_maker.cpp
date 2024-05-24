@@ -121,7 +121,7 @@ namespace qstd
 				}
 				else
 				{
-					LOG(FATAL) << "Parameters wider than 64bits not supported";
+					LOG(ERROR) << "Parameters wider than 64bits not supported";
 					return 0;
 				}
 
@@ -161,7 +161,7 @@ namespace qstd
 				}
 				else
 				{
-					LOG(FATAL) << "Parameters wider than 64bits not supported";
+					LOG(ERROR) << "Parameters wider than 64bits not supported";
 					return 0;
 				}
 
@@ -584,7 +584,7 @@ namespace lua::game_maker
 				}
 				else
 				{
-					LOG(FATAL) << "Could not find a corresponding script function index (" << script_function_index << ")";
+					LOG(ERROR) << "Could not find a corresponding script function index (" << script_function_index << ")";
 				}
 			}
 			else
@@ -622,7 +622,7 @@ namespace lua::game_maker
 				}
 				else
 				{
-					LOG(FATAL) << "Could not find a corresponding builtin function index (" << script_function_index << ")";
+					LOG(ERROR) << "Could not find a corresponding builtin function index (" << script_function_index << ")";
 				}
 			}
 		}

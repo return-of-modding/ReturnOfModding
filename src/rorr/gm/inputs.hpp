@@ -8,7 +8,7 @@ namespace gm
 
 	inline void hook_IO_UpdateM()
 	{
-		if (!big::g_gui->is_open())
+		if (!big::g_gui || !big::g_gui->is_open())
 		{
 			big::g_hooking->get_original<hook_IO_UpdateM>()();
 		}

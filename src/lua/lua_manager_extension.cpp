@@ -45,7 +45,7 @@ namespace big::lua_manager_extension
 	{
 		return [function_name](sol::this_environment env, sol::variadic_args args)
 		{
-			LOG(FATAL) << big::lua_module::guid_from(env) << " tried calling a currently not supported lua function: " << function_name;
+			LOG(ERROR) << big::lua_module::guid_from(env) << " tried calling a currently not supported lua function: " << function_name;
 			Logger::FlushQueue();
 		};
 	}
@@ -141,7 +141,7 @@ namespace big::lua_manager_extension
 								const auto error_msg =
 								    !fresh_result.valid() ? fresh_result.get<sol::error>().what() : fresh_result.get<const char*>(1) /*LuaJIT*/;
 
-								LOG(FATAL) << "Failed require: " << error_msg;
+								LOG(ERROR) << "Failed require: " << error_msg;
 								Logger::FlushQueue();
 								break;
 							}
@@ -164,7 +164,7 @@ namespace big::lua_manager_extension
 
 						if (!found_the_other_module && is_non_local_require)
 						{
-							LOG(FATAL) << "You require'd a module called " << path << " but did not have a package manifest.json level dependency on it. Which lead to the owning package of that module to not be properly init yet. Expect unstable behaviors related to your dependencies.";
+							LOG(ERROR) << "You require'd a module called " << path << " but did not have a package manifest.json level dependency on it. Which lead to the owning package of that module to not be properly init yet. Expect unstable behaviors related to your dependencies.";
 						}
 
 						env.set_on(result);

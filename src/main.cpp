@@ -1,3 +1,4 @@
+#include "config/config.hpp"
 #include "gui/gui.hpp"
 #include "gui/renderer.hpp"
 #include "hooks/hooking.hpp"
@@ -72,6 +73,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    g_file_manager.init(root_folder);
 			    paths::init_dump_file_path();
 
+			    big::config::init_general();
+
 			    constexpr auto is_console_enabled = true;
 			    auto logger_instance = std::make_unique<logger>(rom::g_project_name, g_file_manager.get_project_file("./LogOutput.log"), is_console_enabled);
 
@@ -101,16 +104,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 			    auto hooking_instance = std::make_unique<hooking>();
 			    LOG(INFO) << "Hooking initialized.";
 
-			    //big::threads::resume_all();
-
-			    HWND target_window{};
-			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
-			    {
-				    std::this_thread::sleep_for(5ms);
-			    }
-			    auto renderer_instance = std::make_unique<renderer>(target_window);
+			    auto renderer_instance = std::make_unique<renderer>();
 			    LOG(INFO) << "Renderer initialized.";
-			    auto gui_instance = std::make_unique<gui>();
 
 			    hotkey::init_hotkeys();
 
@@ -144,7 +139,7 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 			    if (g_abort)
 			    {
-				    LOG(FATAL) << "ReturnOfModding failed to init properly, exiting.";
+				    LOG(ERROR) << "ReturnOfModding failed to init properly, exiting.";
 				    g_running = false;
 			    }
 

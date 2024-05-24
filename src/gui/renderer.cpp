@@ -1,4 +1,4 @@
-#include "gui/renderer.hpp"
+#include "renderer.hpp"
 
 #include "file_manager/file_manager.hpp"
 #include "fonts/fonts.hpp"
@@ -11,13 +11,118 @@
 
 #pragma comment(lib, "d3d11.lib")
 
+IDXGIFactory* gDxgiFactory                        = nullptr;
+ID3D11Device* gPd3DDevice                         = nullptr;
+ID3D11DeviceContext* gPd3DDeviceContext           = nullptr;
+IDXGISwapChain* gPSwapChain                       = nullptr;
+ID3D11RenderTargetView* gMainRenderTargetResource = nullptr;
+
+static int get_correct_dxgi_format(int current_format)
+{
+	switch (current_format)
+	{
+	case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: return DXGI_FORMAT_R8G8B8A8_UNORM;
+	}
+
+	return current_format;
+}
+
+static void create_render_target(IDXGISwapChain* swapchain)
+{
+	ID3D11Texture2D* back_buffer{};
+	swapchain->GetBuffer(0, IID_PPV_ARGS(&back_buffer));
+	if (back_buffer)
+	{
+		DXGI_SWAP_CHAIN_DESC swapchain_desc;
+		swapchain->GetDesc(&swapchain_desc);
+
+		D3D11_RENDER_TARGET_VIEW_DESC desc = {};
+		desc.Format        = static_cast<DXGI_FORMAT>(get_correct_dxgi_format(swapchain_desc.BufferDesc.Format));
+		desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+
+		gPd3DDevice->CreateRenderTargetView(back_buffer, &desc, &gMainRenderTargetResource);
+		back_buffer->Release();
+	}
+}
+
+static void release_render_target_resources()
+{
+	if (gMainRenderTargetResource)
+	{
+		gMainRenderTargetResource->Release();
+		gMainRenderTargetResource = nullptr;
+	}
+}
+
+static HRESULT WINAPI hook_Present(IDXGISwapChain1* swapchain, UINT sync_interval, UINT flags)
+{
+	if (big::g_running && ((flags & (UINT)DXGI_PRESENT_TEST) != (UINT)DXGI_PRESENT_TEST))
+	{
+		big::g_renderer->render_imgui_d3d11(swapchain);
+	}
+
+	return big::g_hooking->get_original<hook_Present>()(swapchain, sync_interval, flags);
+}
+
+static HRESULT WINAPI hook_Present1(IDXGISwapChain1* swapchain, UINT sync_interval, UINT flags, const void* present_parameters)
+{
+	if (big::g_running && ((flags & (UINT)DXGI_PRESENT_TEST) != (UINT)DXGI_PRESENT_TEST))
+	{
+		big::g_renderer->render_imgui_d3d11(swapchain);
+	}
+
+	return big::g_hooking->get_original<hook_Present1>()(swapchain, sync_interval, flags, present_parameters);
+}
+
+static HRESULT WINAPI hook_ResizeBuffers(IDXGISwapChain1* swapchain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
+{
+	release_render_target_resources();
+
+	return big::g_hooking->get_original<hook_ResizeBuffers>()(swapchain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+}
+
+static HRESULT WINAPI hook_ResizeBuffers1(IDXGISwapChain1* swapchain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags, const UINT* pCreationNodeMask, IUnknown* const* ppPresentQueue)
+{
+	release_render_target_resources();
+
+	return big::g_hooking->get_original<hook_ResizeBuffers1>()(swapchain, BufferCount, Width, Height, NewFormat, SwapChainFlags, pCreationNodeMask, ppPresentQueue);
+}
+
+static HRESULT WINAPI hook_CreateSwapChain(IDXGIFactory* pFactory, IUnknown* pDevice, DXGI_SWAP_CHAIN_DESC* pDesc, IDXGISwapChain** pswapchain)
+{
+	release_render_target_resources();
+
+	return big::g_hooking->get_original<hook_CreateSwapChain>()(pFactory, pDevice, pDesc, pswapchain);
+}
+
+static HRESULT WINAPI hook_CreateSwapChainForHwnd(IDXGIFactory* pFactory, IUnknown* pDevice, HWND hWnd, const void* pDesc, const void* pFullscreenDesc, IDXGIOutput* pRestrictToOutput, void** pswapchain)
+{
+	release_render_target_resources();
+
+	return big::g_hooking->get_original<hook_CreateSwapChainForHwnd>()(pFactory, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, pswapchain);
+}
+
+static HRESULT WINAPI hook_CreateSwapChainForCoreWindow(IDXGIFactory* pFactory, IUnknown* pDevice, IUnknown* pWindow, const void* pDesc, IDXGIOutput* pRestrictToOutput, void** pswapchain)
+{
+	release_render_target_resources();
+
+	return big::g_hooking->get_original<hook_CreateSwapChainForCoreWindow>()(pFactory, pDevice, pWindow, pDesc, pRestrictToOutput, pswapchain);
+}
+
+static HRESULT WINAPI hook_CreateSwapChainForComposition(IDXGIFactory* pFactory, IUnknown* pDevice, const void* pDesc, IDXGIOutput* pRestrictToOutput, void** pswapchain)
+{
+	release_render_target_resources();
+
+	return big::g_hooking->get_original<hook_CreateSwapChainForComposition>()(pFactory, pDevice, pDesc, pRestrictToOutput, pswapchain);
+}
+
 IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace big
 {
 	static LRESULT static_wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	{
-		if (g_running)
+		if (big::g_running)
 		{
 			g_renderer->wndproc(hwnd, msg, wparam, lparam);
 		}
@@ -35,127 +140,7 @@ namespace big
 		ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
 	}
 
-	bool renderer::create_device_d3d11()
-	{
-		DXGI_SWAP_CHAIN_DESC sd;
-		ZeroMemory(&sd, sizeof(sd));
-		sd.BufferCount                        = 1;
-		sd.BufferDesc.Width                   = 640;
-		sd.BufferDesc.Height                  = 480;
-		sd.BufferDesc.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM;
-		sd.BufferDesc.RefreshRate.Numerator   = 60;
-		sd.BufferDesc.RefreshRate.Denominator = 1;
-		sd.BufferUsage                        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		sd.OutputWindow                       = m_window_handle;
-		sd.SampleDesc.Count                   = 1;
-		sd.SampleDesc.Quality                 = 0;
-		sd.Windowed                           = TRUE;
-
-		D3D_FEATURE_LEVEL FeatureLevelsRequested = D3D_FEATURE_LEVEL_11_0;
-		UINT numLevelsRequested                  = 1;
-		D3D_FEATURE_LEVEL FeatureLevelsSupported;
-
-		HRESULT res = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, &FeatureLevelsRequested, numLevelsRequested, D3D11_SDK_VERSION, &sd, &m_dxgi_swapchain, &m_d3d_device, &FeatureLevelsSupported, nullptr);
-		if (FAILED(res))
-		{
-			LOG(FATAL) << "D3D11CreateDeviceAndSwapChain() failed. [res: " << HEX_TO_UPPER(res) << "]";
-			return false;
-		}
-
-		return true;
-	}
-
-	static int get_correct_dxgi_format(int current_format)
-	{
-		switch (current_format)
-		{
-		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: return DXGI_FORMAT_R8G8B8A8_UNORM;
-		}
-
-		return current_format;
-	}
-
-	void renderer::create_render_target(IDXGISwapChain* swapchain)
-	{
-		ID3D11Texture2D* back_buffer{};
-		swapchain->GetBuffer(0, IID_PPV_ARGS(&back_buffer));
-		if (back_buffer)
-		{
-			DXGI_SWAP_CHAIN_DESC swapchain_desc;
-			swapchain->GetDesc(&swapchain_desc);
-
-			D3D11_RENDER_TARGET_VIEW_DESC desc = {};
-			desc.Format        = static_cast<DXGI_FORMAT>(get_correct_dxgi_format(swapchain_desc.BufferDesc.Format));
-			desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-
-			m_d3d_device->CreateRenderTargetView(back_buffer, &desc, &m_d3d_render_target);
-			back_buffer->Release();
-		}
-	}
-
-	static HRESULT WINAPI hook_Present(IDXGISwapChain* swapchain, UINT sync_interval, UINT flags)
-	{
-		if (g_running && ((flags & (UINT)DXGI_PRESENT_TEST) != (UINT)DXGI_PRESENT_TEST))
-		{
-			g_renderer->render_imgui_d3d11(swapchain);
-		}
-
-		return g_hooking->get_original<hook_Present>()(swapchain, sync_interval, flags);
-	}
-
-	static HRESULT WINAPI hook_Present1(IDXGISwapChain* swapchain, UINT sync_interval, UINT flags, const void* present_parameters)
-	{
-		if (g_running && ((flags & (UINT)DXGI_PRESENT_TEST) != (UINT)DXGI_PRESENT_TEST))
-		{
-			g_renderer->render_imgui_d3d11(swapchain);
-		}
-
-		return g_hooking->get_original<hook_Present1>()(swapchain, sync_interval, flags, present_parameters);
-	}
-
-	static HRESULT WINAPI hook_ResizeBuffers(IDXGISwapChain* swapchain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
-	{
-		g_renderer->cleanup_render_target();
-
-		return g_hooking->get_original<hook_ResizeBuffers>()(swapchain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
-	}
-
-	static HRESULT WINAPI hook_ResizeBuffers1(IDXGISwapChain* swapchain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags, const UINT* pCreationNodeMask, IUnknown* const* ppPresentQueue)
-	{
-		g_renderer->cleanup_render_target();
-
-		return g_hooking->get_original<hook_ResizeBuffers1>()(swapchain, BufferCount, Width, Height, NewFormat, SwapChainFlags, pCreationNodeMask, ppPresentQueue);
-	}
-
-	static HRESULT WINAPI hook_CreateSwapChain(IDXGIFactory* pFactory, IUnknown* pDevice, DXGI_SWAP_CHAIN_DESC* pDesc, IDXGISwapChain** pswapchain)
-	{
-		g_renderer->cleanup_render_target();
-
-		return g_hooking->get_original<hook_CreateSwapChain>()(pFactory, pDevice, pDesc, pswapchain);
-	}
-
-	static HRESULT WINAPI hook_CreateSwapChainForHwnd(IDXGIFactory* pFactory, IUnknown* pDevice, HWND hWnd, const void* pDesc, const void* pFullscreenDesc, IDXGIOutput* pRestrictToOutput, void** pswapchain)
-	{
-		g_renderer->cleanup_render_target();
-
-		return g_hooking->get_original<hook_CreateSwapChainForHwnd>()(pFactory, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, pswapchain);
-	}
-
-	static HRESULT WINAPI hook_CreateSwapChainForCoreWindow(IDXGIFactory* pFactory, IUnknown* pDevice, IUnknown* pWindow, const void* pDesc, IDXGIOutput* pRestrictToOutput, void** pswapchain)
-	{
-		g_renderer->cleanup_render_target();
-
-		return g_hooking->get_original<hook_CreateSwapChainForCoreWindow>()(pFactory, pDevice, pWindow, pDesc, pRestrictToOutput, pswapchain);
-	}
-
-	static HRESULT WINAPI hook_CreateSwapChainForComposition(IDXGIFactory* pFactory, IUnknown* pDevice, const void* pDesc, IDXGIOutput* pRestrictToOutput, void** pswapchain)
-	{
-		g_renderer->cleanup_render_target();
-
-		return g_hooking->get_original<hook_CreateSwapChainForComposition>()(pFactory, pDevice, pDesc, pRestrictToOutput, pswapchain);
-	}
-
-	void renderer::init_imgui_context(HWND window_handle)
+	void init_imgui_context(HWND window_handle)
 	{
 		if (ImGui::GetCurrentContext())
 		{
@@ -166,143 +151,238 @@ namespace big
 		ImGui_ImplWin32_Init(window_handle);
 	}
 
-	void renderer::hook(HWND window_handle)
+	bool renderer::hook()
 	{
-		m_window_handle = window_handle;
-		if (!create_device_d3d11())
+		IDXGISwapChain1* swap_chain1{nullptr};
+		IDXGISwapChain1* swap_chain{nullptr};
+		ID3D11Device* device{};
+
+		D3D_FEATURE_LEVEL feature_level = D3D_FEATURE_LEVEL_11_0;
+		DXGI_SWAP_CHAIN_DESC1 swap_chain_desc1;
+
+		ZeroMemory(&swap_chain_desc1, sizeof(swap_chain_desc1));
+
+		swap_chain_desc1.Format           = DXGI_FORMAT_B8G8R8A8_UNORM;
+		swap_chain_desc1.BufferUsage      = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swap_chain_desc1.SwapEffect       = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+		swap_chain_desc1.BufferCount      = 2;
+		swap_chain_desc1.SampleDesc.Count = 1;
+		swap_chain_desc1.AlphaMode        = DXGI_ALPHA_MODE_PREMULTIPLIED;
+		swap_chain_desc1.Width            = 1;
+		swap_chain_desc1.Height           = 1;
+
+		// User may be running Windows 7
+		const auto d3d11_module = LoadLibraryA("d3d11.dll");
+		if (d3d11_module == nullptr)
 		{
-			LOG(FATAL) << "create_device_d3d11 failed.";
-			return;
+			LOG(ERROR) << "Failed to load d3d11.dll";
+			return false;
 		}
 
-		if (m_d3d_device)
+		auto d3d11_create_device = (decltype(D3D11CreateDevice)*)GetProcAddress(d3d11_module, "D3D11CreateDevice");
+		if (d3d11_create_device == nullptr)
 		{
-			init_imgui_context(window_handle);
+			LOG(ERROR) << "Failed to get D3D11CreateDevice export";
+			return false;
+		}
 
-			IDXGIDevice* dxgi_device{};
-			m_d3d_device->QueryInterface(IID_PPV_ARGS(&dxgi_device));
+		LOG(INFO) << "Creating dummy device";
 
-			IDXGIAdapter* dxgi_adapter{};
-			dxgi_device->GetAdapter(&dxgi_adapter);
+		if (FAILED(d3d11_create_device(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, &feature_level, 1, D3D11_SDK_VERSION, &device, nullptr, nullptr)))
+		{
+			LOG(ERROR) << "Failed to create D3D11 Dummy device";
+			return false;
+		}
 
-			IDXGIFactory* dxgi_factory{};
-			dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory));
+		LOG(INFO) << "Dummy device: " << HEX_TO_UPPER(device);
 
-			if (!dxgi_factory)
+		// Manually get CreateDXGIFactory export because the user may be running Windows 7
+		const auto dxgi_module = LoadLibraryA("dxgi.dll");
+		if (dxgi_module == nullptr)
+		{
+			LOG(ERROR) << "Failed to load dxgi.dll";
+			return false;
+		}
+
+		auto create_dxgi_factory = (decltype(CreateDXGIFactory)*)GetProcAddress(dxgi_module, "CreateDXGIFactory");
+
+		if (create_dxgi_factory == nullptr)
+		{
+			LOG(ERROR) << "Failed to get CreateDXGIFactory export";
+			return false;
+		}
+
+		LOG(INFO) << "Creating dummy DXGI factory";
+
+		IDXGIFactory2* factory{nullptr};
+		if (FAILED(create_dxgi_factory(IID_PPV_ARGS(&factory))))
+		{
+			LOG(ERROR) << "Failed to create D3D11 Dummy DXGI Factory";
+			return false;
+		}
+
+		LOG(INFO) << "Creating dummy swapchain";
+
+		// used in CreateSwapChainForHwnd fallback
+		HWND hwnd = 0;
+		WNDCLASSEX wc{};
+
+		auto init_dummy_window = [&]()
+		{
+			// fallback to CreateSwapChainForHwnd
+			wc.cbSize        = sizeof(WNDCLASSEX);
+			wc.style         = CS_HREDRAW | CS_VREDRAW;
+			wc.lpfnWndProc   = DefWindowProc;
+			wc.cbClsExtra    = 0;
+			wc.cbWndExtra    = 0;
+			wc.hInstance     = GetModuleHandle(NULL);
+			wc.hIcon         = NULL;
+			wc.hCursor       = NULL;
+			wc.hbrBackground = NULL;
+			wc.lpszMenuName  = NULL;
+			wc.lpszClassName = TEXT("ROM_DX11_DUMMY");
+			wc.hIconSm       = NULL;
+
+			::RegisterClassEx(&wc);
+
+			hwnd = ::CreateWindow(wc.lpszClassName, TEXT("ROM Dummy Window"), WS_OVERLAPPEDWINDOW, 0, 0, 100, 100, NULL, NULL, wc.hInstance, NULL);
+
+			swap_chain_desc1.BufferCount        = 3;
+			swap_chain_desc1.Width              = 0;
+			swap_chain_desc1.Height             = 0;
+			swap_chain_desc1.Format             = DXGI_FORMAT_R8G8B8A8_UNORM;
+			swap_chain_desc1.Flags              = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
+			swap_chain_desc1.BufferUsage        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+			swap_chain_desc1.SampleDesc.Count   = 1;
+			swap_chain_desc1.SampleDesc.Quality = 0;
+			swap_chain_desc1.SwapEffect         = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+			swap_chain_desc1.AlphaMode          = DXGI_ALPHA_MODE_UNSPECIFIED;
+			swap_chain_desc1.Scaling            = DXGI_SCALING_STRETCH;
+			swap_chain_desc1.Stereo             = FALSE;
+		};
+
+		std::vector<std::function<bool()>> swapchain_attempts{
+		    // we call CreateSwapChainForComposition instead of CreateSwapChainForHwnd
+		    // because some overlays will have hooks on CreateSwapChainForHwnd
+		    // and all we're doing is creating a dummy swapchain
+		    // we don't want to screw up the overlay
+		    [&]()
+		    {
+			    return !FAILED(factory->CreateSwapChainForComposition(device, &swap_chain_desc1, nullptr, &swap_chain1));
+		    },
+		    [&]()
+		    {
+			    init_dummy_window();
+
+			    return !FAILED(factory->CreateSwapChainForHwnd(device, hwnd, &swap_chain_desc1, nullptr, nullptr, &swap_chain1));
+		    },
+		    [&]()
+		    {
+			    return !FAILED(factory->CreateSwapChainForHwnd(device, GetDesktopWindow(), &swap_chain_desc1, nullptr, nullptr, &swap_chain1));
+		    },
+		};
+
+		bool any_succeed = false;
+
+		for (auto i = 0; i < swapchain_attempts.size(); i++)
+		{
+			auto& attempt = swapchain_attempts[i];
+
+			try
 			{
-				LOG(FATAL) << "dxgi_factory is null";
-				return;
-			}
+				LOG(INFO) << "Trying swapchain attempt " << i;
 
-			dxgi_factory->Release();
-			dxgi_adapter->Release();
-			dxgi_device->Release();
-
-			void** swapchain_vtable    = *reinterpret_cast<void***>(m_dxgi_swapchain);
-			void** dxgi_factory_vtable = *reinterpret_cast<void***>(dxgi_factory);
-
-			cleanup_d3d11_device();
-
-			hooking::detour_hook_helper::add<hook_CreateSwapChain>("CSC", dxgi_factory_vtable[10]);
-			hooking::detour_hook_helper::add<hook_CreateSwapChainForHwnd>("CSCFH", dxgi_factory_vtable[15]);
-			hooking::detour_hook_helper::add<hook_CreateSwapChainForCoreWindow>("CSCFCW", dxgi_factory_vtable[16]);
-			hooking::detour_hook_helper::add<hook_CreateSwapChainForComposition>("CSCFC", dxgi_factory_vtable[24]);
-
-			hooking::detour_hook_helper::add<hook_Present>("P", swapchain_vtable[8]);
-			hooking::detour_hook_helper::add<hook_Present1>("P1", swapchain_vtable[22]);
-
-			hooking::detour_hook_helper::add<hook_ResizeBuffers>("RB", swapchain_vtable[13]);
-			hooking::detour_hook_helper::add<hook_ResizeBuffers1>("RB1", swapchain_vtable[39]);
-		}
-	}
-
-	void renderer::cleanup()
-	{
-		SetWindowLongPtrW(m_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_og_wndproc));
-
-		if (ImGui::GetCurrentContext())
-		{
-			if (ImGui::GetIO().BackendRendererUserData)
-			{
-				ImGui_ImplDX11_Shutdown();
-			}
-
-			if (ImGui::GetIO().BackendPlatformUserData)
-			{
-				ImGui_ImplWin32_Shutdown();
-			}
-
-			ImGui::DestroyContext();
-		}
-
-		cleanup_d3d11_device();
-	}
-
-	void renderer::cleanup_render_target()
-	{
-		if (m_d3d_render_target)
-		{
-			m_d3d_render_target->Release();
-			m_d3d_render_target = nullptr;
-		}
-	}
-
-	void renderer::cleanup_d3d11_device()
-	{
-		cleanup_render_target();
-
-		if (m_dxgi_swapchain)
-		{
-			m_dxgi_swapchain->Release();
-			m_dxgi_swapchain = nullptr;
-		}
-		if (m_d3d_device)
-		{
-			m_d3d_device->Release();
-			m_d3d_device = nullptr;
-		}
-		if (m_d3d_device_context)
-		{
-			m_d3d_device_context->Release();
-			m_d3d_device_context = nullptr;
-		}
-	}
-
-	void renderer::render_imgui_d3d11(IDXGISwapChain* swapchain)
-	{
-		if (!ImGui::GetIO().BackendRendererUserData)
-		{
-			if (SUCCEEDED(swapchain->GetDevice(IID_PPV_ARGS(&m_d3d_device))))
-			{
-				m_d3d_device->GetImmediateContext(&m_d3d_device_context);
-				ImGui_ImplDX11_Init(m_d3d_device, m_d3d_device_context);
-			}
-		}
-
-		if (g_running)
-		{
-			if (!m_d3d_render_target)
-			{
-				create_render_target(swapchain);
-			}
-
-			if (ImGui::GetCurrentContext() && m_d3d_render_target)
-			{
-				ImGui_ImplDX11_NewFrame();
-				ImGui_ImplWin32_NewFrame();
-				ImGui::NewFrame();
-
-				for (const auto& cb : m_dx_callbacks)
+				if (attempt())
 				{
-					cb.m_callback();
+					LOG(INFO) << "Created dummy swapchain on attempt " << i;
+					any_succeed = true;
+					break;
 				}
-
-				ImGui::Render();
-
-				m_d3d_device_context->OMSetRenderTargets(1, &m_d3d_render_target, nullptr);
-				ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 			}
+			catch (std::exception& e)
+			{
+				LOG(ERROR) << "Failed to create dummy swapchain on attempt " << i << " " << e.what();
+			}
+			catch (...)
+			{
+				LOG(ERROR) << "Failed to create dummy swapchain on attempt " << i;
+			}
+
+			LOG(ERROR) << "Attempt failed " << i;
 		}
+
+		if (!any_succeed)
+		{
+			LOG(ERROR) << "Failed to create D3D11 Dummy Swap Chain";
+
+			if (hwnd)
+			{
+				::DestroyWindow(hwnd);
+			}
+
+			if (wc.lpszClassName != nullptr)
+			{
+				::UnregisterClass(wc.lpszClassName, wc.hInstance);
+			}
+
+			return false;
+		}
+
+		LOG(INFO) << "Querying dummy swapchain";
+
+		if (FAILED(swap_chain1->QueryInterface(IID_PPV_ARGS(&swap_chain))))
+		{
+			LOG(ERROR) << "Failed to retrieve D3D11 DXGI SwapChain";
+			return false;
+		}
+
+		try
+		{
+			const auto& ti = typeid(swap_chain1);
+
+			const std::string swapchain_classname = ti.name() ? ti.name() : "";
+
+			LOG(INFO) << "swapchain classname: " << swapchain_classname;
+		}
+		catch (const std::exception& e)
+		{
+			LOG(ERROR) << "Failed to get type info: " << e.what();
+		}
+		catch (...)
+		{
+			LOG(ERROR) << "Failed to get type info: unknown exception";
+		}
+
+		void** swapchain_vtable    = *reinterpret_cast<void***>(swap_chain);
+		void** dxgi_factory_vtable = *reinterpret_cast<void***>(factory);
+
+		device->Release();
+		factory->Release();
+		swap_chain1->Release();
+		swap_chain->Release();
+
+		if (hwnd)
+		{
+			::DestroyWindow(hwnd);
+		}
+
+		if (wc.lpszClassName != nullptr)
+		{
+			::UnregisterClass(wc.lpszClassName, wc.hInstance);
+		}
+
+		hooking::detour_hook_helper::add<hook_CreateSwapChain>("CSC", dxgi_factory_vtable[10]);
+		hooking::detour_hook_helper::add<hook_CreateSwapChainForHwnd>("CSCFH", dxgi_factory_vtable[15]);
+		hooking::detour_hook_helper::add<hook_CreateSwapChainForCoreWindow>("CSCFCW", dxgi_factory_vtable[16]);
+		hooking::detour_hook_helper::add<hook_CreateSwapChainForComposition>("CSCFC", dxgi_factory_vtable[24]);
+
+		hooking::detour_hook_helper::add<hook_Present>("P", swapchain_vtable[8]);
+		hooking::detour_hook_helper::add<hook_Present1>("P1", swapchain_vtable[22]);
+
+		hooking::detour_hook_helper::add<hook_ResizeBuffers>("RB", swapchain_vtable[13]);
+		hooking::detour_hook_helper::add<hook_ResizeBuffers1>("RB1", swapchain_vtable[39]);
+
+		return true;
 	}
 
 	void renderer::init_fonts()
@@ -314,13 +394,20 @@ namespace big
 		{
 			font_file_path = windows_fonts.get_file("./msyh.ttf");
 		}
-		auto font_file            = std::ifstream(font_file_path.get_path(), std::ios::binary | std::ios::ate);
-		const auto font_data_size = static_cast<int>(font_file.tellg());
-		const auto font_data      = std::make_unique<uint8_t[]>(font_data_size);
 
-		font_file.seekg(0);
-		font_file.read(reinterpret_cast<char*>(font_data.get()), font_data_size);
-		font_file.close();
+		const auto got_valid_windows_font = std::filesystem::exists(font_file_path.get_path());
+		auto font_file                    = std::ifstream(font_file_path.get_path(), std::ios::binary | std::ios::ate);
+
+		const auto font_data_size = got_valid_windows_font ? static_cast<int>(font_file.tellg()) : 0;
+
+		const auto font_data = std::make_unique<uint8_t[]>(font_data_size);
+
+		if (got_valid_windows_font)
+		{
+			font_file.seekg(0);
+			font_file.read(reinterpret_cast<char*>(font_data.get()), font_data_size);
+			font_file.close();
+		}
 
 		auto& io = ImGui::GetIO();
 
@@ -338,8 +425,13 @@ namespace big
 			                               &fnt_cfg,
 			                               io.Fonts->GetGlyphRangesDefault());
 			fnt_cfg.MergeMode = true;
-			io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 20.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon());
-			io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 20.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
+
+			if (got_valid_windows_font)
+			{
+				io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 20.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon());
+				io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 20.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
+			}
+
 			io.Fonts->Build();
 		}
 
@@ -350,8 +442,13 @@ namespace big
 
 			font_title = io.Fonts->AddFontFromMemoryTTF(const_cast<uint8_t*>(font_storopia), sizeof(font_storopia), 28.f, &fnt_cfg);
 			fnt_cfg.MergeMode = true;
-			io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 28.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon());
-			io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 28.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
+
+			if (got_valid_windows_font)
+			{
+				io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 28.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon());
+				io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 28.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
+			}
+
 			io.Fonts->Build();
 		}
 
@@ -362,8 +459,13 @@ namespace big
 
 			font_sub_title = io.Fonts->AddFontFromMemoryTTF(const_cast<uint8_t*>(font_storopia), sizeof(font_storopia), 24.f, &fnt_cfg);
 			fnt_cfg.MergeMode = true;
-			io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 24.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon());
-			io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 24.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
+
+			if (got_valid_windows_font)
+			{
+				io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 24.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon());
+				io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 24.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
+			}
+
 			io.Fonts->Build();
 		}
 
@@ -374,8 +476,13 @@ namespace big
 
 			font_small = io.Fonts->AddFontFromMemoryTTF(const_cast<uint8_t*>(font_storopia), sizeof(font_storopia), 18.f, &fnt_cfg);
 			fnt_cfg.MergeMode = true;
-			io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 18.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon());
-			io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 18.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
+
+			if (got_valid_windows_font)
+			{
+				io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 18.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon());
+				io.Fonts->AddFontFromMemoryTTF(font_data.get(), font_data_size, 18.f, &fnt_cfg, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
+			}
+
 			io.Fonts->Build();
 		}
 
@@ -387,40 +494,20 @@ namespace big
 		}
 	}
 
-	void renderer::init(HWND window_handle)
+	void renderer::init()
 	{
-		hook(window_handle);
-
-		init_imgui_context(window_handle);
-
-		auto file_path                             = g_file_manager.get_project_file("./imgui.ini").get_path();
-		static std::string path                    = file_path.make_preferred().string();
-		ImGui::GetCurrentContext()->IO.IniFilename = path.c_str();
-
-		init_fonts();
-
-		for (const auto& init_cb : m_init_callbacks)
-		{
-			if (init_cb)
-			{
-				init_cb();
-			}
-		}
-
-		m_og_wndproc = WNDPROC(SetWindowLongPtrW(window_handle, GWLP_WNDPROC, LONG_PTR(&static_wndproc)));
+		hook();
 	}
 
-	renderer::renderer(HWND window_handle)
+	renderer::renderer()
 	{
-		init(window_handle);
-
 		g_renderer = this;
+
+		init();
 	}
 
 	renderer::~renderer()
 	{
-		cleanup();
-
 		g_renderer = nullptr;
 	}
 
@@ -459,28 +546,66 @@ namespace big
 		return m_wndproc_callbacks.size() - 1;
 	}
 
-	void renderer::rescale(float rel_size)
+	void renderer::render_imgui_d3d11(IDXGISwapChain1* pSwapChain)
 	{
-		pre_reset();
-		g_gui->restore_default_style();
-
-		if (rel_size != 1.0f)
+		static bool init = true;
+		if (init)
 		{
-			ImGui::GetStyle().ScaleAllSizes(rel_size);
+			init = false;
+
+			pSwapChain->GetHwnd(&g_renderer->m_window_handle);
+			init_imgui_context(g_renderer->m_window_handle);
+
+			auto file_path                             = g_file_manager.get_project_file("./imgui.ini").get_path();
+			static std::string path                    = (char*)file_path.u8string().c_str();
+			ImGui::GetCurrentContext()->IO.IniFilename = path.c_str();
+
+			g_renderer->init_fonts();
+
+			static gui g_gui{};
+
+			for (const auto& init_cb : g_renderer->m_init_callbacks)
+			{
+				if (init_cb)
+				{
+					init_cb();
+				}
+			}
+
+			g_renderer->m_og_wndproc = WNDPROC(SetWindowLongPtrW(g_renderer->m_window_handle, GWLP_WNDPROC, LONG_PTR(&static_wndproc)));
+
+			LOG(INFO) << "made it";
 		}
 
-		ImGui::GetStyle().MouseCursorScale = 1.0f;
-		ImGui::GetIO().FontGlobalScale     = rel_size;
-		post_reset();
-	}
+		if (!ImGui::GetIO().BackendRendererUserData)
+		{
+			if (SUCCEEDED(pSwapChain->GetDevice(IID_PPV_ARGS(&gPd3DDevice))))
+			{
+				gPd3DDevice->GetImmediateContext(&gPd3DDeviceContext);
+				ImGui_ImplDX11_Init(gPd3DDevice, gPd3DDeviceContext);
+			}
+		}
 
-	void renderer::pre_reset()
-	{
-		ImGui_ImplDX11_InvalidateDeviceObjects();
-	}
+		if (!gMainRenderTargetResource)
+		{
+			create_render_target(pSwapChain);
+		}
 
-	void renderer::post_reset()
-	{
-		ImGui_ImplDX11_CreateDeviceObjects();
+		if (ImGui::GetCurrentContext() && gMainRenderTargetResource && gPd3DDeviceContext)
+		{
+			ImGui_ImplDX11_NewFrame();
+			ImGui_ImplWin32_NewFrame();
+			ImGui::NewFrame();
+
+			for (const auto& cb : m_dx_callbacks)
+			{
+				cb.m_callback();
+			}
+
+			ImGui::Render();
+
+			gPd3DDeviceContext->OMSetRenderTargets(1, &gMainRenderTargetResource, nullptr);
+			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+		}
 	}
 } // namespace big

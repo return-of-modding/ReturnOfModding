@@ -195,7 +195,7 @@ RValue RValue::operator-()
 	case REAL:   ret.value = -value; break;
 	case _INT32: ret.i32 = -i32; break;
 	case _INT64: ret.i64 = -i64; break;
-	default:     LOG(FATAL) << "unhandled";
+	default:     LOG(ERROR) << "unhandled";
 	}
 
 	return ret;
@@ -295,7 +295,7 @@ RValue& RValue::operator++()
 	case _INT32: ++i32; break;
 	case _INT64: ++i64; break;
 	case PTR:    ptr = reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) + 1); break;
-	default:     LOG(FATAL) << "unhandled";
+	default:     LOG(ERROR) << "unhandled";
 	}
 	return *this;
 }
@@ -316,7 +316,7 @@ RValue& RValue::operator--()
 	case _INT32: --i32; break;
 	case _INT64: --i64; break;
 	case PTR:    ptr = reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) - 1); break;
-	default:     LOG(FATAL) << "unhandled";
+	default:     LOG(ERROR) << "unhandled";
 	}
 	return *this;
 }
@@ -352,7 +352,7 @@ bool RValue::operator==(const RValue& rhs) const
 	case PTR:       rhsD = static_cast<double>(reinterpret_cast<uintptr_t>(ptr)); break;
 	case UNSET:
 	case UNDEFINED: rhsD = std::nan(""); break;
-	default:        LOG(FATAL) << "unhandled";
+	default:        LOG(ERROR) << "unhandled";
 	}
 
 	return lhsD == rhsD;
@@ -371,7 +371,7 @@ RValue* RValue::DoArrayIndex(const int _index)
 	}
 	else
 	{
-		LOG(FATAL) << "unhandled";
+		LOG(ERROR) << "unhandled";
 	}
 
 	return nullptr;
@@ -472,7 +472,7 @@ double RValue::asReal() const
 		{
 		}
 	}
-	default: LOG(FATAL) << "unhandled " << (type & MASK_TYPE_RVALUE);
+	default: LOG(ERROR) << "unhandled " << (type & MASK_TYPE_RVALUE);
 	}
 
 	return std::nan("");
@@ -503,7 +503,7 @@ int RValue::asInt32() const
 		{
 		}
 	}
-	default: LOG(FATAL) << "unhandled " << (type & MASK_TYPE_RVALUE);
+	default: LOG(ERROR) << "unhandled " << (type & MASK_TYPE_RVALUE);
 	}
 
 	return 0;
@@ -537,13 +537,13 @@ bool RValue::asBoolean() const
 			{
 				return false;
 			}
-			LOG(FATAL) << "unhandled";
+			LOG(ERROR) << "unhandled";
 		}
 		catch (...)
 		{
 		}
 	}
-	default: LOG(FATAL) << "unhandled " << (type & MASK_TYPE_RVALUE);
+	default: LOG(ERROR) << "unhandled " << (type & MASK_TYPE_RVALUE);
 	}
 
 	return false;
@@ -570,7 +570,7 @@ long long RValue::asInt64() const
 		{
 		}
 	}
-	default: LOG(FATAL) << "unhandled " << (type & MASK_TYPE_RVALUE);
+	default: LOG(ERROR) << "unhandled " << (type & MASK_TYPE_RVALUE);
 	}
 
 	return 0;
@@ -632,7 +632,7 @@ void* RValue::asPointer() const
 	case VEC4:
 	case MATRIX:
 	case PTR:    return ptr;
-	default:     LOG(FATAL) << "unhandled";
+	default:     LOG(ERROR) << "unhandled";
 	}
 
 	return nullptr;
