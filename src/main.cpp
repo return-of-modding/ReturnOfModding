@@ -75,8 +75,14 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 			    big::config::init_general();
 
-			    constexpr auto is_console_enabled = true;
-			    auto logger_instance = std::make_unique<logger>(rom::g_project_name, g_file_manager.get_project_file("./LogOutput.log"), is_console_enabled);
+			    auto logger_instance = std::make_unique<logger>(rom::g_project_name, g_file_manager.get_project_file("./LogOutput.log"));
+			    static struct logger_cleanup
+			    {
+				    ~logger_cleanup()
+				    {
+					    Logger::Destroy();
+				    }
+			    } g_logger_cleanup;
 
 			    std::srand(std::chrono::system_clock::now().time_since_epoch().count());
 
