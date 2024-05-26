@@ -1,0 +1,1 @@
+clear && msvc-x64-cmake --build ./build --config Release --target ReturnOfModding -- && cp ~/code/ReturnOfModding/build/version.dll ~/.local/share/Steam/steamapps/common/Risk\ of\ Rain\ Returns/ && steam steam://rungameid/1337520
