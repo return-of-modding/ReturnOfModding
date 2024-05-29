@@ -25,6 +25,21 @@ namespace big::lua_manager_extension
 		plugins_search_path.pop_back();
 
 		state["package"]["path"] = plugins_search_path;
+
+		std::string plugins_search_cpath = g_lua_manager->m_plugins_folder.get_path().string() + "/?.dll;";
+
+		for (const auto& entry : std::filesystem::recursive_directory_iterator(g_lua_manager->m_plugins_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
+		{
+			if (!entry.is_directory())
+			{
+				continue;
+			}
+
+			plugins_search_cpath += entry.path().string() + "/?.dll;";
+		}
+		// Remove final ';'
+		plugins_search_cpath.pop_back();
+		state["package"]["cpath"] = plugins_search_cpath;
 	}
 
 	static void sandbox_lua_os_library(sol::state_view& state)
@@ -55,20 +70,18 @@ namespace big::lua_manager_extension
 		return state["_rom_loadfile"];
 	}
 
+	static auto get_loadlib_function(sol::state_view& state)
+	{
+		return state["_rom_loadlib"];
+	}
+
 	static void sandbox_lua_loads(sol::state_view& state)
 	{
 		// That's from lua base lib, luaB
 		get_loadfile_function(state) = state["loadfile"];
 
-		// That's from lua package lib.
-		// We only allow dependencies between .lua files, no DLLs.
-		state["package"]["loadlib"] = not_supported_lua_function("package.loadlib");
-		state["package"]["cpath"]   = "";
-
-		// 1                   2               3            4
-		// {searcher_preload, searcher_Lua, searcher_C, searcher_Croot, NULL};
-		state["package"]["searchers"][3] = not_supported_lua_function("package.searcher C");
-		state["package"]["searchers"][4] = not_supported_lua_function("package.searcher Croot");
+		// That's from lua package loadlib.c
+		get_loadlib_function(state) = state["package"]["loadlib"];
 
 		// Custom require for setting environment on required modules, the setenv is based on
 		// which folder (and so ultimately package/mod) contains the required module file.
@@ -174,6 +187,58 @@ namespace big::lua_manager_extension
 						const auto res = result(args);
 
 						//LOG(INFO) << "type: " << (int)res.get_type();
+
+						return res;
+					}
+				}
+				else if (entry.path().extension() == ".dll")
+				{
+					if (entry.path().stem() == path_stem)
+					{
+						const auto full_path_ = entry.path().u8string();
+						const auto full_path  = (char*)full_path_.c_str();
+
+						static std::unordered_map<std::string, sol::protected_function> required_module_cache;
+
+						if (!required_module_cache.contains(full_path))
+						{
+							sol::state_view state = this_env.env.value().lua_state();
+
+							sol::protected_function_result fresh_result;
+							std::string path_stem_str = (char*)path_stem.u8string().c_str();
+							const auto lua_igmark     = path_stem_str.find_first_of('-');
+							if (lua_igmark != std::string::npos)
+							{
+								auto func_name = std::string("luaopen_").append(path_stem_str.substr(lua_igmark + 1));
+
+								fresh_result = get_loadlib_function(state)(full_path, func_name);
+							}
+							else
+							{
+								auto func_name = std::string("luaopen_").append(path_stem_str);
+
+								fresh_result = get_loadlib_function(state)(full_path, func_name);
+							}
+
+							if (!fresh_result.valid() || fresh_result.get_type() == sol::type::nil /*LuaJIT*/)
+							{
+								const auto error_msg =
+								    !fresh_result.valid() ? fresh_result.get<sol::error>().what() : fresh_result.get<const char*>(1) /*LuaJIT*/;
+
+								LOG(ERROR) << "Failed require: " << error_msg;
+								Logger::FlushQueue();
+								break;
+							}
+							required_module_cache[full_path] = fresh_result.get<sol::protected_function>();
+						}
+
+						auto& result = required_module_cache[full_path];
+
+						LOG(INFO) << "Calling require on " << full_path;
+
+						const auto res = result(args);
+
+						LOG(INFO) << "type: " << (int)res.get_type();
 
 						return res;
 					}
