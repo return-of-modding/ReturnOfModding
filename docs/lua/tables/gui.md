@@ -1,6 +1,6 @@
 # Table: gui
 
-## Functions (4)
+## Functions (6)
 
 ### `add_to_menu_bar(imgui_rendering)`
 
@@ -71,6 +71,25 @@ end)
 **Example Usage:**
 ```lua
 gui.add_imgui(imgui_rendering)
+```
+
+### `is_open()`
+
+- **Returns:**
+  - `bool`: Returns true if the GUI is open.
+
+**Example Usage:**
+```lua
+bool = gui.is_open()
+```
+
+### `toggle()`
+
+Opens or closes the GUI.
+
+**Example Usage:**
+```lua
+gui.toggle()
 ```
 
 ### `is_open()`

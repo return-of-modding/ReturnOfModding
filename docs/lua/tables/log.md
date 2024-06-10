@@ -2,7 +2,7 @@
 
 Table containing functions for printing to console / log file.
 
-## Functions (4)
+## Functions (5)
 
 ### `info(args)`
 
@@ -40,16 +40,26 @@ Logs a debug message.
 log.debug(args)
 ```
 
-### `error(args)`
+### `error(arg, level)`
 
-Logs an error message.
+Logs an error message. This is a mirror of lua classic `error` function.
 
 - **Parameters:**
-  - `args` (any)
+  - `arg` (any)
+  - `level` (integer)
 
 **Example Usage:**
 ```lua
-log.error(args)
+log.error(arg, level)
+```
+
+### `refresh_filters()`
+
+Refresh the log filters (Console and File) from the config file.
+
+**Example Usage:**
+```lua
+log.refresh_filters()
 ```
 
 
