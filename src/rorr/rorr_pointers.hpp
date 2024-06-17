@@ -7,6 +7,7 @@
 #include "gm/GetSaveFileName_t.hpp"
 #include "gm/inputs.hpp"
 #include "gm/RVariableRoutine.hpp"
+#include "gm/save_file_serialize_t.hpp"
 #include "gm/Script_Data.hpp"
 #include "gm/StructCreate.hpp"
 
@@ -51,6 +52,8 @@ namespace big
 		gm::StructCreate_t m_struct_create;
 
 		gm::GetSaveFileName_t m_get_save_file_name;
+
+		gm::save_file_serialize_t m_save_file_serialize;
 	};
 
 #pragma pack(pop)

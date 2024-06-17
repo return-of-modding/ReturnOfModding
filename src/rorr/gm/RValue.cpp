@@ -264,6 +264,10 @@ RValue& RValue::operator=(bool v)
 RValue& RValue::operator=(const char* v)
 {
 	__localFree();
+
+	flags = 0;
+	big::g_pointers->m_rorr.m_yysetstring(this, v);
+
 	return *this;
 }
 

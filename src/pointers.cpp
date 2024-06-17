@@ -166,6 +166,15 @@ namespace big
             {
 				g_pointers->m_rorr.m_get_save_file_name = ptr.sub(0x18A).as<gm::GetSaveFileName_t>();
             }
+        },
+        // save_file_serialize
+        {
+            "SFS",
+            "4C 89 44 24 18 48 89 54 24 10 55 53 56 57 41 54 41 55 41 56 41 57 48 8D AC 24 48 FD",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_save_file_serialize = ptr.as<gm::save_file_serialize_t>();
+            }
         }
         >(); // don't leave a trailing comma at the end
 		// clang-format on
