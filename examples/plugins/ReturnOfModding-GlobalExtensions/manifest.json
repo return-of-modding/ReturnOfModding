@@ -1,0 +1,9 @@
+﻿{
+	"name": "GlobalExtensions",
+	"version_number": "1.0.0",
+	"website_url": "https://github.com/return-of-modding/ReturnOfModding",
+	"description": "Default extensions to the lua API",
+	"dependencies": [
+		"ReturnOfModding-ReturnOfModding-1.0.0"
+	]
+}
