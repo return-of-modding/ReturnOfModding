@@ -25,5 +25,7 @@ namespace big::rorr
 		hooking::detour_hook_helper::add<gm::hook_GetSaveFileName>("GSFN", g_pointers->m_rorr.m_get_save_file_name);
 
 		hooking::detour_hook_helper::add<gm::hook_save_file_serialize>("SFS", g_pointers->m_rorr.m_save_file_serialize);
+		hooking::detour_hook_helper::add<gm::hook_save_file_deserialize>("SFD", g_pointers->m_rorr.m_save_file_deserialize);
+		hooking::detour_hook_helper::add<gm::hook_json_parse>("JP", g_pointers->m_rorr.m_json_parse);
 	}
 } // namespace big::rorr

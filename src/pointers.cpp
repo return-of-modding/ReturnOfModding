@@ -175,6 +175,24 @@ namespace big
             {
 				g_pointers->m_rorr.m_save_file_serialize = ptr.as<gm::save_file_serialize_t>();
             }
+        },
+        // save_file_deserialize
+        {
+            "SFD",
+            "4C 8B DC 4D 89 43 18 49 89 53 10 49 89 4B 08 53 56 57 41 54 41 55 41 56 41 57 48 81 EC 10",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_save_file_deserialize = ptr.as<gm::save_file_deserialize_t>();
+            }
+        },
+        // json_parse
+        {
+            "JP",
+            "40 57 48 83 EC 20 48 8B F9 48 8B 4C 24",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_json_parse = ptr.as<gm::json_parse_t>();
+            }
         }
         >(); // don't leave a trailing comma at the end
 		// clang-format on
