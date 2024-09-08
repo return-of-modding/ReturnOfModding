@@ -25504,8 +25504,9 @@ return {
 			
 			-- Unlock
 			{ name = [=[achievement_id]=], description = [=[The achievement which unlocks this]=] },
-			
-			{ name = [=[_SURVIVOR_MILESTONE_FIELDS]=] },
+			{ name = [=[milestone_kills_1]=], description = [=[Achievement id unlocked by enemies killed]=]},
+			{ name = [=[milestone_items_1]=], description = [=[Achievement id unlocked by items collected]=]},
+			{ name = [=[milestone_stages_1]=], description = [=[Achievement id unlocked by stages cleared]=]},
 			
 			-- Callbacks
 			{ name = [=[on_init]=], description = [=[Called when the survivor is set (player, initial set?)]=] },
