@@ -24,11 +24,24 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 	if (reason == DLL_PROCESS_ATTACH)
 	{
-		const auto steam_env_env_var          = _wgetenv(L"SteamEnv");
-		const std::wstring good_steam_env_var = L"1";
-		if (!steam_env_env_var || steam_env_env_var != good_steam_env_var)
+		bool use_steam = true;
+		wchar_t exe_path[MAX_PATH * 2];
+		if (GetModuleFileNameW(nullptr, exe_path, sizeof(exe_path)) > 0)
 		{
-			return true;
+			std::filesystem::path steam_appid_file_path(exe_path);
+			steam_appid_file_path  = steam_appid_file_path.parent_path();
+			steam_appid_file_path /= "steam_appid.txt";
+			use_steam              = !std::filesystem::exists(steam_appid_file_path);
+		}
+
+		if (use_steam)
+		{
+			const auto steam_env_env_var          = _wgetenv(L"SteamEnv");
+			const std::wstring good_steam_env_var = L"1";
+			if (!steam_env_env_var || steam_env_env_var != good_steam_env_var)
+			{
+				return true;
+			}
 		}
 
 		if (!rom::is_rom_enabled())
