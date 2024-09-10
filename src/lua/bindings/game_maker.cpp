@@ -249,19 +249,15 @@ namespace qstd
 		stdcall, fastcall, or cdecl (cdecl is default on x86). On x64 those map to the same thing.*/
 		uintptr_t make_jit_func(const std::string& return_type, const std::vector<std::string>& param_types, const asmjit::Arch arch, const user_callback_t callback, const uintptr_t original_func_ptr, std::string call_convention = "")
 		{
-			asmjit::FuncSignature sig = {};
+			// TODO: port to latest
+
+			asmjit::FuncSignature sig(get_call_convention(call_convention), asmjit::FuncSignature::kNoVarArgs, get_type_id(return_type));
 
 			std::vector<asmjit::TypeId> args;
 			for (const std::string& s : param_types)
 			{
 				args.push_back(get_type_id(s));
 			}
-
-			sig.init(get_call_convention(call_convention),
-			         asmjit::FuncSignature::kNoVarArgs,
-			         get_type_id(return_type),
-			         args.data(),
-			         (uint32_t)args.size());
 
 			return make_jit_func(sig, arch, callback, original_func_ptr);
 		}
