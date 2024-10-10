@@ -90,8 +90,6 @@ namespace big::lua_manager_extension
 		// TODO: sub folders are not supported currently.
 		state["require"] = [](std::string path, sol::variadic_args args, sol::this_environment this_env) -> sol::object
 		{
-			sol::environment& env = this_env;
-
 			// Example of a non local require (mod is requiring a file from another mod/package):
 			// require "ReturnOfModding-DebugToolkit/lib_debug"
 			const auto is_non_local_require = !path.starts_with("./") && path.contains('-') && path.contains('/');
@@ -99,24 +97,24 @@ namespace big::lua_manager_extension
 			if (is_non_local_require)
 			{
 				LOG(INFO) << "Non Local require: " << path;
+
 				required_module_guid = string::split(path, '/')[0];
-				if (std::ranges::count(path, '/') > 1)
-				{
-					LOG(WARNING) << "Require with sub folders are currently not supported";
-				}
 			}
 			else
 			{
 				LOG(INFO) << "Local require: " << path;
+
 				if (path.starts_with("./"))
 				{
 					path.erase(0, 2);
 				}
-				if (path.contains('/'))
-				{
-					LOG(WARNING) << "Require with sub folders are currently not supported";
-				}
+
 				required_module_guid = lua_module::guid_from(this_env);
+			}
+
+			if (std::ranges::count(path, '/') > 1)
+			{
+				LOG(WARNING) << "Require with sub folders are currently not supported";
 			}
 
 			const auto path_stem = std::filesystem::path(path).stem();
@@ -143,7 +141,7 @@ namespace big::lua_manager_extension
 							break;
 						}
 
-						static std::unordered_map<std::string, sol::protected_function> required_module_cache;
+						static std::unordered_map<std::string, sol::object> required_module_cache;
 
 						if (!required_module_cache.contains(full_path))
 						{
@@ -158,17 +156,15 @@ namespace big::lua_manager_extension
 								Logger::FlushQueue();
 								break;
 							}
-							required_module_cache[full_path] = fresh_result.get<sol::protected_function>();
-						}
 
-						auto& result = required_module_cache[full_path];
+							required_module_cache[full_path] = fresh_result.get<sol::protected_function>()(args);
+						}
 
 						bool found_the_other_module = false;
 						for (const auto& mod : g_lua_manager->m_modules)
 						{
 							if (guid_from_path.value().m_guid == mod->guid())
 							{
-								env                    = mod->env();
 								found_the_other_module = true;
 
 								break;
@@ -180,15 +176,7 @@ namespace big::lua_manager_extension
 							LOG(ERROR) << "You require'd a module called " << path << " but did not have a package manifest.json level dependency on it. Which lead to the owning package of that module to not be properly init yet. Expect unstable behaviors related to your dependencies.";
 						}
 
-						env.set_on(result);
-
-						//LOG(INFO) << "Calling require on " << full_path;
-
-						const auto res = result(args);
-
-						//LOG(INFO) << "type: " << (int)res.get_type();
-
-						return res;
+						return required_module_cache[full_path];
 					}
 				}
 				else if (entry.path().extension() == ".dll")
@@ -198,7 +186,7 @@ namespace big::lua_manager_extension
 						const auto full_path_ = entry.path().u8string();
 						const auto full_path  = (char*)full_path_.c_str();
 
-						static std::unordered_map<std::string, sol::protected_function> required_module_cache;
+						static std::unordered_map<std::string, sol::object> required_module_cache;
 
 						if (!required_module_cache.contains(full_path))
 						{
@@ -229,18 +217,11 @@ namespace big::lua_manager_extension
 								Logger::FlushQueue();
 								break;
 							}
-							required_module_cache[full_path] = fresh_result.get<sol::protected_function>();
+
+							required_module_cache[full_path] = fresh_result.get<sol::protected_function>()(args);
 						}
 
-						auto& result = required_module_cache[full_path];
-
-						LOG(INFO) << "Calling require on " << full_path;
-
-						const auto res = result(args);
-
-						LOG(INFO) << "type: " << (int)res.get_type();
-
-						return res;
+						return required_module_cache[full_path];
 					}
 				}
 			}
