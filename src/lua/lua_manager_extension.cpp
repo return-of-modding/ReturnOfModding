@@ -157,7 +157,11 @@ namespace big::lua_manager_extension
 								break;
 							}
 
-							required_module_cache[full_path] = fresh_result.get<sol::protected_function>()(args);
+							auto res = fresh_result.get<sol::protected_function>();
+
+							this_env.env.value().set_on(res);
+
+							required_module_cache[full_path] = res(args);
 						}
 
 						bool found_the_other_module = false;
