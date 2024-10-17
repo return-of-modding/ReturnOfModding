@@ -851,6 +851,33 @@ namespace lua::game_maker
 					    return RValue_to_lua(res, this_state_);
 				    }
 			    },
+			    sol::meta_function::call,
+			    [](sol::this_state this_state_, YYObjectBase* self, sol::variadic_args args_) -> sol::reference
+			    {
+				    if (self->type != YYObjectBaseType::SCRIPTREF)
+				    {
+					    LOG(WARNING) << "Attempted to call a YYObjectBase which was not a scriptref.";
+					    return sol::nil;
+				    }
+
+				    if (args_.size() < 2)
+				    {
+					    LOG(WARNING)
+					        << "Attempted to call a YYObjectBase without atleast 2 args 'self' and 'other' game "
+					           "maker instances / structs. lua nil can also be passed if needed.";
+					    return sol::nil;
+				    }
+
+				    const auto scriptref = (CScriptRef*)self;
+
+				    auto args = parse_variadic_args(args_);
+
+				    const auto scriptref_index = scriptref->m_call_script->m_script_name;
+
+				    const auto res = gm::call(scriptref_index, (CInstance*)args[0].yy_object_base, (CInstance*)args[1].yy_object_base, &args[2], args.size() - 2);
+
+				    return RValue_to_lua(res, this_state_);
+			    },
 			    sol::meta_function::new_index,
 			    [](sol::object self, sol::stack_object key, sol::stack_object value)
 			    {
