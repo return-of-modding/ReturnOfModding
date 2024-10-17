@@ -379,9 +379,15 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 	case REF: return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
 	case PTR: return sol::make_object<uintptr_t>(this_state_, (uintptr_t)res.ptr);
 	case OBJECT:
-		return res.yy_object_base->type == YYObjectBaseType::CINSTANCE ?
-		           sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr) :
-		           sol::make_object<YYObjectBase*>(this_state_, res.yy_object_base);
+		if (res.yy_object_base->type == YYObjectBaseType::CINSTANCE)
+		{
+			return sol::make_object<CInstance*>(this_state_, (CInstance*)res.ptr);
+		}
+		if (res.yy_object_base->type == YYObjectBaseType::SCRIPTREF)
+		{
+			return sol::make_object<CScriptRef*>(this_state_, (CScriptRef*)res.ptr);
+		}
+		return sol::make_object<YYObjectBase*>(this_state_, res.yy_object_base);
 	case UNDEFINED:
 	case UNSET:     return sol::lua_nil;
 	default:        return sol::make_object<RValue>(this_state_, res);
@@ -405,6 +411,10 @@ static RValue parse_sol_object(sol::object arg)
 	else if (arg.is<RefDynamicArrayOfRValue*>())
 	{
 		return RValue(arg.as<RefDynamicArrayOfRValue*>());
+	}
+	else if (arg.is<CScriptRef*>())
+	{
+		return RValue(arg.as<YYObjectBase*>());
 	}
 	else if (arg.is<CInstance*>())
 	{
@@ -850,33 +860,6 @@ namespace lua::game_maker
 
 					    return RValue_to_lua(res, this_state_);
 				    }
-			    },
-			    sol::meta_function::call,
-			    [](sol::this_state this_state_, YYObjectBase* self, sol::variadic_args args_) -> sol::reference
-			    {
-				    if (self->type != YYObjectBaseType::SCRIPTREF)
-				    {
-					    LOG(WARNING) << "Attempted to call a YYObjectBase which was not a scriptref.";
-					    return sol::nil;
-				    }
-
-				    if (args_.size() < 2)
-				    {
-					    LOG(WARNING)
-					        << "Attempted to call a YYObjectBase without atleast 2 args 'self' and 'other' game "
-					           "maker instances / structs. lua nil can also be passed if needed.";
-					    return sol::nil;
-				    }
-
-				    const auto scriptref = (CScriptRef*)self;
-
-				    auto args = parse_variadic_args(args_);
-
-				    const auto scriptref_index = scriptref->m_call_script->m_script_name;
-
-				    const auto res = gm::call(scriptref_index, (CInstance*)args[0].yy_object_base, (CInstance*)args[1].yy_object_base, &args[2], args.size() - 2);
-
-				    return RValue_to_lua(res, this_state_);
 			    },
 			    sol::meta_function::new_index,
 			    [](sol::object self, sol::stack_object key, sol::stack_object value)
@@ -1378,6 +1361,47 @@ namespace lua::game_maker
 			// Table: gm.CInstance
 			// Field: instance_id_to_CInstance: table of all game maker object instances ids to their corresponding CInstance
 			CInstance_table["instance_id_to_CInstance"] = std::ref(gm::CInstance_id_to_CInstance);
+		}
+
+		// Lua API: Class
+		// Name: CScriptRef
+		// Class representing a game maker script reference.
+		//
+		// Can be called by having an instance and doing `someScriptRefInstance(self, other, someExtraArg)`.
+		//
+		// Atleast 2 args 'self' and 'other' game maker instances / structs need to be passed when calling the script.
+		//
+		// lua nil can also be passed if needed for those two args.
+		{
+			sol::usertype<CScriptRef> type = state.new_usertype<CScriptRef>(
+			    "CScriptRef",
+			    sol::base_classes,
+			    sol::bases<YYObjectBase>(),
+			    sol::meta_function::call,
+			    [](sol::this_state this_state_, CScriptRef* self, sol::variadic_args args_) -> sol::reference
+			    {
+				    if (self->type != YYObjectBaseType::SCRIPTREF)
+				    {
+					    LOG(WARNING) << "Attempted to call a YYObjectBase which was not a script reference.";
+					    return sol::nil;
+				    }
+
+				    if (args_.size() < 2)
+				    {
+					    LOG(WARNING)
+					        << "Attempted to call a script reference without atleast 2 args 'self' and 'other' game "
+					           "maker instances / structs. lua nil can also be passed if needed.";
+					    return sol::nil;
+				    }
+
+				    auto args = parse_variadic_args(args_);
+
+				    const auto scriptref_index = self->m_call_script->m_script_name;
+
+				    const auto res = gm::call(scriptref_index, (CInstance*)args[0].yy_object_base, (CInstance*)args[1].yy_object_base, &args[2], args.size() - 2);
+
+				    return RValue_to_lua(res, this_state_);
+			    });
 		}
 
 		// Lua API: Class
