@@ -56,6 +56,8 @@ namespace big
 		gm::save_file_serialize_t m_save_file_serialize;
 		gm::save_file_deserialize_t m_save_file_deserialize;
 		gm::json_parse_t m_json_parse;
+
+		YYGMLFuncs* m_GMLFuncs;
 	};
 
 #pragma pack(pop)

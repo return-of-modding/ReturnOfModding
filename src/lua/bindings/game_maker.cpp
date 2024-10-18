@@ -448,34 +448,6 @@ static std::vector<RValue> parse_variadic_args(sol::variadic_args args)
 
 namespace lua::game_maker
 {
-	// Lua API: Function
-	// Table: gm
-	// Name: pre_code_execute
-	// Param: callback: function: callback that match signature function, return value can be True if the original method we are hooking should be called, false if it should be skipped ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) )
-	// Registers a callback that will be called right before any object function is called.
-	static void pre_code_execute(sol::protected_function cb, sol::this_environment env)
-	{
-		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
-		if (mdl)
-		{
-			mdl->m_data_ext.m_pre_code_execute_callbacks.push_back(cb);
-		}
-	}
-
-	// Lua API: Function
-	// Table: gm
-	// Name: post_code_execute
-	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) )
-	// Registers a callback that will be called right after any object function is called.
-	static void post_code_execute(sol::protected_function cb, sol::this_environment env)
-	{
-		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
-		if (mdl)
-		{
-			mdl->m_data_ext.m_post_code_execute_callbacks.push_back(cb);
-		}
-	}
-
 	struct runtime_hook_info
 	{
 		std::unique_ptr<qstd::runtime_func> m_runtime_func;
@@ -540,6 +512,21 @@ namespace lua::game_maker
 		big::lua_manager_extension::post_script_execute((void*)original_func_ptr, self, other, result, arg_count, args);
 
 		ret_val->m_return_value = (uintptr_t)result;
+	}
+
+	static void object_function_callback(const qstd::runtime_func::parameters_t* p, const uint8_t count, qstd::runtime_func::return_value_t* ret_val, const uintptr_t original_func_ptr)
+	{
+		const auto self  = p->get<CInstance*>(0);
+		const auto other = p->get<CInstance*>(1);
+
+		const auto call_orig_if_true = big::lua_manager_extension::pre_code_execute_fast((void*)original_func_ptr, self, other);
+
+		if (call_orig_if_true)
+		{
+			hooks_original_func_ptr_to_info[original_func_ptr].m_detour->get_original<PFUNC_YYGML>()(self, other);
+		}
+
+		big::lua_manager_extension::post_code_execute_fast((void*)original_func_ptr, self, other);
 	}
 
 	struct make_central_script_result
@@ -633,12 +620,134 @@ namespace lua::game_maker
 		return {};
 	}
 
+	static make_central_script_result make_central_object_function_hook(const std::string& function_name, sol::this_environment& env, bool is_pre_hook)
+	{
+		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
+		if (!mdl)
+		{
+			return {};
+		}
+
+		static auto lazy_init_gml_func_cache = []()
+		{
+			std::unordered_map<std::string, uintptr_t> gml_func_cache;
+
+			auto gml_funcs = big::g_pointers->m_rorr.m_GMLFuncs;
+
+			const auto game_base_address = (uintptr_t)GetModuleHandleA(0);
+
+			while (true)
+			{
+				if (gml_funcs->m_name &&
+				    //stupid bound check, better check would be to check if function ptr is inside module .text range begin / end
+				    ((uintptr_t)gml_funcs->m_script_function - game_base_address) < 0xF'F0'00'00'00)
+				{
+					gml_func_cache[gml_funcs->m_name] = (uintptr_t)gml_funcs->m_script_function;
+
+					gml_funcs++;
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			return gml_func_cache;
+		}();
+
+		const auto original_function_ptr_it = lazy_init_gml_func_cache.find(function_name);
+		if (original_function_ptr_it == lazy_init_gml_func_cache.end())
+		{
+			LOG(ERROR) << "Could not find a corresponding object function pointer (" << function_name << ")";
+			return {};
+		}
+
+		std::stringstream hook_name;
+		hook_name << mdl->guid() << " | " << function_name << " | "
+		          << (is_pre_hook ? mdl->m_data_ext.m_pre_code_execute_fast_callbacks.size() :
+		                            mdl->m_data_ext.m_post_code_execute_fast_callbacks.size());
+
+		LOG(INFO) << "hook_name: " << hook_name.str();
+
+		const auto original_func_ptr = original_function_ptr_it->second;
+
+		if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
+		{
+			std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
+			uintptr_t JIT;
+			if (function_name.starts_with("gml_Object"))
+			{
+				JIT = runtime_func->make_jit_func("void", {"CInstance*", "CInstance*"}, asmjit::Arch::kHost, &object_function_callback, original_func_ptr);
+			}
+			else
+			{
+				JIT = runtime_func->make_jit_func("RValue*", {"CInstance*", "CInstance*", "RValue*", "int", "RValue**"}, asmjit::Arch::kHost, &script_callback, original_func_ptr);
+			}
+
+			hooks_original_func_ptr_to_info.emplace(
+			    original_func_ptr,
+			    runtime_hook_info{std::move(runtime_func), std::make_unique<big::detour_hook>(hook_name.str(), (void*)original_func_ptr, (void*)JIT)});
+
+			hooks_original_func_ptr_to_info[original_func_ptr].m_detour->enable();
+		}
+
+		return {mdl, (void*)original_func_ptr, true};
+	}
+
+	// Lua API: Function
+	// Table: gm
+	// Name: pre_code_execute
+	// Param: function_name: string (optional): Function name to hook. If you pass a valid name, the hook will be a lot faster to execute. Example valid function name: `gml_Object_oStartMenu_Step_2`
+	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance) ) for **fast** overload and ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) ) for **non fast** overload.
+	// Registers a callback that will be called right before any object function is called. Note: for script functions, use pre_script_hook / post_script_hook
+	static void pre_code_execute_fast(const std::string& function_name, sol::protected_function cb, sol::this_environment env)
+	{
+		const auto res = make_central_object_function_hook(function_name, env, true);
+		if (res.m_this_lua_module && res.m_original_func_ptr)
+		{
+			res.m_this_lua_module->m_data_ext.m_pre_code_execute_fast_callbacks[res.m_original_func_ptr].push_back(cb);
+		}
+	}
+
+	static void pre_code_execute(sol::protected_function cb, sol::this_environment env)
+	{
+		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
+		if (mdl)
+		{
+			mdl->m_data_ext.m_pre_code_execute_callbacks.push_back(cb);
+		}
+	}
+
+	// Lua API: Function
+	// Table: gm
+	// Name: post_code_execute
+	// Param: function_name: string (optional): Function name to hook. If you pass a valid name, the hook will be a lot faster to execute. Example valid function name: `gml_Object_oStartMenu_Step_2`
+	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance) ) for **fast** overload and ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) ) for **non fast** overload.
+	// Registers a callback that will be called right after any object function is called. Note: for script functions, use pre_script_hook / post_script_hook
+	static void post_code_execute_fast(const std::string& function_name, sol::protected_function cb, sol::this_environment env)
+	{
+		const auto res = make_central_object_function_hook(function_name, env, true);
+		if (res.m_this_lua_module && res.m_original_func_ptr)
+		{
+			res.m_this_lua_module->m_data_ext.m_post_code_execute_fast_callbacks[res.m_original_func_ptr].push_back(cb);
+		}
+	}
+
+	static void post_code_execute(sol::protected_function cb, sol::this_environment env)
+	{
+		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
+		if (mdl)
+		{
+			mdl->m_data_ext.m_post_code_execute_callbacks.push_back(cb);
+		}
+	}
+
 	// Lua API: Function
 	// Table: gm
 	// Name: pre_script_hook
 	// Param: function_index: number: index of the game script / builtin game maker function to hook, for example `gm.constants.callback_execute`
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), args (RValue array) ) -> Return true or false depending on if you want the orig method to be called.
-	// Registers a callback that will be called right before any game script function is called.
+	// Registers a callback that will be called right before any script function is called. Note: for object functions, use pre_code_execute / post_code_execute
 	static void pre_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
 	{
 		const auto res = make_central_script_hook(script_function_index_double, env, true);
@@ -660,7 +769,7 @@ namespace lua::game_maker
 	// Name: post_script_hook
 	// Param: function_index: number: index of the game script / builtin game maker function to hook, for example `gm.constants.callback_execute`
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), args (RValue array) )
-	// Registers a callback that will be called right after any game script function is called.
+	// Registers a callback that will be called right after any script function is called. Note: for object functions, use pre_code_execute / post_code_execute
 	static void post_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
 	{
 		const auto res = make_central_script_hook(script_function_index_double, env, false);
@@ -1625,8 +1734,8 @@ namespace lua::game_maker
 			ns["_returnofmodding_constants_internal_"].get_or_create<sol::table>()["update_room_cache"] = room_loop_over;
 		}
 
-		ns["pre_code_execute"]  = pre_code_execute;
-		ns["post_code_execute"] = post_code_execute;
+		ns["pre_code_execute"]  = sol::overload(pre_code_execute, pre_code_execute_fast);
+		ns["post_code_execute"] = sol::overload(post_code_execute, post_code_execute_fast);
 
 		ns["pre_script_hook"]  = pre_script_hook;
 		ns["post_script_hook"] = post_script_hook;

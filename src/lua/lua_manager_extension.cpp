@@ -290,6 +290,43 @@ namespace big::lua_manager_extension
 		return call_orig_if_true;
 	}
 
+	bool pre_code_execute_fast(void* original_func_ptr, CInstance* self, CInstance* other)
+	{
+		std::lock_guard guard(g_lua_manager->m_module_lock);
+
+		bool call_orig_if_true = true;
+
+		for (const auto& module_ : g_lua_manager->m_modules)
+		{
+			auto mod = (lua_module_ext*)module_.get();
+			for (const auto& cb : mod->m_data_ext.m_pre_code_execute_fast_callbacks[original_func_ptr])
+			{
+				const auto new_call_orig_if_true = cb(self, other);
+				if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
+				    && new_call_orig_if_true.get<bool>() == false)
+				{
+					call_orig_if_true = false;
+				}
+			}
+		}
+
+		return call_orig_if_true;
+	}
+
+	void post_code_execute_fast(void* original_func_ptr, CInstance* self, CInstance* other)
+	{
+		std::lock_guard guard(g_lua_manager->m_module_lock);
+
+		for (const auto& module_ : g_lua_manager->m_modules)
+		{
+			auto mod = (lua_module_ext*)module_.get();
+			for (const auto& cb : mod->m_data_ext.m_post_code_execute_fast_callbacks[original_func_ptr])
+			{
+				cb(self, other);
+			}
+		}
+	}
+
 	void post_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags)
 	{
 		std::lock_guard guard(g_lua_manager->m_module_lock);

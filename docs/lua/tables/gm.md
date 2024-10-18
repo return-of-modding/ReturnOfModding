@@ -18,33 +18,35 @@ Table containing helpers for interacting with the game maker engine.
 
 ## Functions (8)
 
-### `pre_code_execute(callback)`
+### `pre_code_execute(function_name, callback)`
 
-Registers a callback that will be called right before any object function is called.
+Registers a callback that will be called right before any object function is called. Note: for script functions, use pre_script_hook / post_script_hook
 
 - **Parameters:**
-  - `callback` (function): callback that match signature function, return value can be True if the original method we are hooking should be called, false if it should be skipped ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) )
+  - `function_name` (string (optional)): Function name to hook. If you pass a valid name, the hook will be a lot faster to execute. Example valid function name: `gml_Object_oStartMenu_Step_2`
+  - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance) ) for **fast** overload and ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) ) for **non fast** overload.
 
 **Example Usage:**
 ```lua
-gm.pre_code_execute(callback)
+gm.pre_code_execute(function_name, callback)
 ```
 
-### `post_code_execute(callback)`
+### `post_code_execute(function_name, callback)`
 
-Registers a callback that will be called right after any object function is called.
+Registers a callback that will be called right after any object function is called. Note: for script functions, use pre_script_hook / post_script_hook
 
 - **Parameters:**
-  - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) )
+  - `function_name` (string (optional)): Function name to hook. If you pass a valid name, the hook will be a lot faster to execute. Example valid function name: `gml_Object_oStartMenu_Step_2`
+  - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance) ) for **fast** overload and ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) ) for **non fast** overload.
 
 **Example Usage:**
 ```lua
-gm.post_code_execute(callback)
+gm.post_code_execute(function_name, callback)
 ```
 
 ### `pre_script_hook(function_index, callback)`
 
-Registers a callback that will be called right before any game script function is called.
+Registers a callback that will be called right before any script function is called. Note: for object functions, use pre_code_execute / post_code_execute
 
 - **Parameters:**
   - `function_index` (number): index of the game script / builtin game maker function to hook, for example `gm.constants.callback_execute`
@@ -57,7 +59,7 @@ gm.pre_script_hook(function_index, callback)
 
 ### `post_script_hook(function_index, callback)`
 
-Registers a callback that will be called right after any game script function is called.
+Registers a callback that will be called right after any script function is called. Note: for object functions, use pre_code_execute / post_code_execute
 
 - **Parameters:**
   - `function_index` (number): index of the game script / builtin game maker function to hook, for example `gm.constants.callback_execute`

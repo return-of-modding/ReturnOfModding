@@ -193,6 +193,15 @@ namespace big
             {
 				g_pointers->m_rorr.m_json_parse = ptr.as<gm::json_parse_t>();
             }
+        },
+        // struct YYGMLFuncs near * g_GMLFuncs
+        {
+            "GMLF",
+            "E8 ? ? ? ? 48 8B 0D ? ? ? ? 8B 41 14",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_GMLFuncs = ptr.add(1).rip().add(0x31).rip().as<YYGMLFuncs*>();
+            }
         }
         >(); // don't leave a trailing comma at the end
 		// clang-format on

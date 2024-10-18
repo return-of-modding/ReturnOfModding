@@ -13,6 +13,9 @@ namespace big::lua_manager_extension
 	bool pre_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags);
 	void post_code_execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags);
 
+	bool pre_code_execute_fast(void* original_func_ptr, CInstance* self, CInstance* other);
+	void post_code_execute_fast(void* original_func_ptr, CInstance* self, CInstance* other);
+
 	bool pre_builtin_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue* args);
 	void post_builtin_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue* args);
 

@@ -243,6 +243,25 @@ namespace gm
 
 	inline void print_all_code_functions()
 	{
+		auto gml_funcs = big::g_pointers->m_rorr.m_GMLFuncs;
+
+		const auto game_base_address = (uintptr_t)GetModuleHandleA(0);
+
+		while (true)
+		{
+			if (gml_funcs->m_name && ((uintptr_t)gml_funcs->m_script_function - game_base_address) < 0xF'F0'00'00'00 /* stupid bound check */)
+			{
+				LOG(INFO) << gml_funcs->m_name;
+				LOG(INFO) << HEX_TO_UPPER_OFFSET(gml_funcs->m_script_function);
+
+				gml_funcs++;
+			}
+			else
+			{
+				break;
+			}
+		}
+
 		for (int i = 0; i < *big::g_pointers->m_rorr.m_code_function_GET_the_function_function_count; i++)
 		{
 			const char* function_name = nullptr;
