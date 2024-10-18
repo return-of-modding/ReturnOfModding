@@ -709,11 +709,18 @@ namespace lua::game_maker
 		}
 	}
 
+	static constexpr auto slow_code_execute_warning =
+	    "without passing a function name is deprecated and not recommended for use "
+	    "because of its slowness. You can still use it for debugging / development as it can be "
+	    "still useful for observing what the game code is doing.";
+
 	static void pre_code_execute(sol::protected_function cb, sol::this_environment env)
 	{
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (mdl)
 		{
+			LOG(WARNING) << "pre_code_execute " << slow_code_execute_warning;
+
 			mdl->m_data_ext.m_pre_code_execute_callbacks.push_back(cb);
 		}
 	}
@@ -738,6 +745,8 @@ namespace lua::game_maker
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (mdl)
 		{
+			LOG(WARNING) << "post_code_execute " << slow_code_execute_warning;
+
 			mdl->m_data_ext.m_post_code_execute_callbacks.push_back(cb);
 		}
 	}
