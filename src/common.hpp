@@ -71,10 +71,6 @@ namespace big
 	inline std::atomic_bool g_abort{false};
 	inline std::atomic_bool g_running{false};
 
-	inline std::mutex g_gml_safe_mutex;
-	inline std::condition_variable g_gml_safe_notifier;
-	inline bool g_gml_safe{false};
-
 	inline constexpr auto g_target_window_class_name = "YYGameMakerYY";
 } // namespace big
 

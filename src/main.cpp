@@ -65,7 +65,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 		big::config::init_general();
 
-		static auto logger_instance = std::make_unique<logger>(rom::g_project_name, g_file_manager.get_project_file("./LogOutput.log"));
+		// Purposely leak it, we are not unloading this module in any case.
+		auto logger_instance = new logger(rom::g_project_name, g_file_manager.get_project_file("./LogOutput.log"));
 
 		static struct logger_cleanup
 		{
@@ -84,21 +85,25 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		LOG(INFO) << "This is a final build";
 #endif
 
-		static auto thread_pool_instance = std::make_unique<thread_pool>();
+		// Purposely leak it, we are not unloading this module in any case.
+		auto thread_pool_instance = new thread_pool();
 		LOG(INFO) << "Thread pool initialized.";
 
-		static auto pointers_instance = std::make_unique<pointers>();
+		// Purposely leak it, we are not unloading this module in any case.
+		auto pointers_instance = new pointers();
 		LOG(INFO) << "Pointers initialized.";
 
 		LOG(INFO) << "GameMaker Major Version: " << *g_pointers->m_rorr.m_gamemaker_version_major << " (Found at offset "
 		          << HEX_TO_UPPER_OFFSET(g_pointers->m_rorr.m_gamemaker_version_major) << ")";
 
-		static auto byte_patch_manager_instance = std::make_unique<byte_patch_manager>();
+		// Purposely leak it, we are not unloading this module in any case.
+		auto byte_patch_manager_instance = new byte_patch_manager();
 		LOG(INFO) << "Byte Patch Manager initialized.";
 
 		rorr::init_hooks();
 
-		static auto hooking_instance = std::make_unique<hooking>();
+		// Purposely leak it, we are not unloading this module in any case.
+		auto hooking_instance = new hooking();
 		LOG(INFO) << "Hooking initialized.";
 
 		hotkey::init_hotkeys();
@@ -113,97 +118,10 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		    0,
 		    [](PVOID) -> DWORD
 		    {
-			    /*HWND target_window{};
-			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
-			    {
-				    std::this_thread::sleep_for(5ms);
-			    }*/
-
-			    //std::this_thread::sleep_for(2000ms);
-
-			    //threads::suspend_all_but_one();
-			    //debug::wait_until_debugger();
-
-			    /*while (!IsDebuggerPresent())
-			    {
-				    Sleep(1000);
-			    }*/
-
-			    HWND target_window{};
-			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
-			    {
-				    std::this_thread::sleep_for(5ms);
-			    }
-			    static auto renderer_instance = std::make_unique<renderer>();
-			    LOG(INFO) << "Renderer initialized.";
-
-			    if (!g_abort)
-			    {
-				    std::unique_lock gml_lock(g_gml_safe_mutex);
-				    g_gml_safe_notifier.wait_for(gml_lock, 20s);
-
-				    YYObjectPinMap::init_pin_map();
-			    }
-
-			    g_running = true;
-
-			    auto L = luaL_newstate();
-			    auto lua_manager_instance =
-			        std::make_unique<lua_manager>(L,
-			                                      g_file_manager.get_project_folder("config"),
-			                                      g_file_manager.get_project_folder("plugins_data"),
-			                                      g_file_manager.get_project_folder("plugins"),
-			                                      [](sol::state_view& state, sol::table& lua_ext)
-			                                      {
-				                                      lua_manager_extension::init_lua_api(state, lua_ext);
-			                                      });
-			    sol::state_view sol_state_view(L);
-			    lua_manager_extension::init_lua_base(sol_state_view);
-			    lua_manager_instance->init<lua_module_ext>();
-			    LOG(INFO) << "Lua manager initialized.";
-
-			    if (g_abort)
-			    {
-				    LOG(ERROR) << "ReturnOfModding failed to init properly, exiting.";
-				    g_running = false;
-			    }
-
 			    while (g_running)
 			    {
 				    std::this_thread::sleep_for(500ms);
 			    }
-
-			    lua_manager_instance.reset();
-			    LOG(INFO) << "Lua manager uninitialized.";
-
-			    g_hooking->disable();
-			    LOG(INFO) << "Hooking disabled.";
-
-			    // Make sure that all threads created don't have any blocking loops
-			    // otherwise make sure that they have stopped executing
-			    /*	    thread_pool_instance->destroy();
-			    LOG(INFO) << "Destroyed thread pool.";
-
-			    YYObjectPinMap::cleanup_pin_map();
-
-			    hooking_instance.reset();
-			    LOG(INFO) << "Hooking uninitialized.";
-
-			    renderer_instance.reset();
-			    LOG(INFO) << "Renderer uninitialized.";
-
-			    byte_patch_manager_instance.reset();
-			    LOG(INFO) << "Byte Patch Manager uninitialized.";
-
-			    pointers_instance.reset();
-			    LOG(INFO) << "Pointers uninitialized.";
-
-			    thread_pool_instance.reset();
-			    LOG(INFO) << "Thread pool uninitialized.";
-
-			    LOG(INFO) << "Farewell!";
-			    logger_instance->destroy();
-			    logger_instance.reset();*/
 
 			    CloseHandle(g_main_thread);
 			    FreeLibraryAndExitThread(g_hmodule, 0);

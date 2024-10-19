@@ -66,5 +66,7 @@ namespace big
 		HWND m_window_handle;
 	};
 
+	__int64 hook_init_renderer_on_CreateSwapChain(HWND a1, int a2, int a3, int a4);
+
 	inline renderer* g_renderer{};
 } // namespace big

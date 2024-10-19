@@ -7,6 +7,40 @@
 
 namespace gm
 {
+	inline bool g_is_gml_safe_to_init = false;
+
+	inline void init_lua_manager()
+	{
+		if (!big::g_abort)
+		{
+			YYObjectPinMap::init_pin_map();
+		}
+
+		big::g_running = true;
+
+		auto L = luaL_newstate();
+
+		// Purposely leak it, we are not unloading this module in any case.
+		auto lua_manager_instance = new big::lua_manager(L,
+		                                                 big::g_file_manager.get_project_folder("config"),
+		                                                 big::g_file_manager.get_project_folder("plugins_data"),
+		                                                 big::g_file_manager.get_project_folder("plugins"),
+		                                                 [](sol::state_view& state, sol::table& lua_ext)
+		                                                 {
+			                                                 big::lua_manager_extension::init_lua_api(state, lua_ext);
+		                                                 });
+		sol::state_view sol_state_view(L);
+		big::lua_manager_extension::init_lua_base(sol_state_view);
+		lua_manager_instance->init<big::lua_module_ext>();
+		LOG(INFO) << "Lua manager initialized.";
+
+		if (big::g_abort)
+		{
+			LOG(ERROR) << "ReturnOfModding failed to init properly, exiting.";
+			big::g_running = false;
+		}
+	}
+
 	inline bool hook_Code_Execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags)
 	{
 		is_inside_code_execute = true;
@@ -43,11 +77,11 @@ namespace gm
 			}
 		}
 
-		if (!big::g_gml_safe && big::string::starts_with("gml_Object_oInit_Alarm_", code->name))
+		if (!g_is_gml_safe_to_init && big::string::starts_with("gml_Object_oInit_Alarm_", code->name))
 		{
-			std::lock_guard lk(big::g_gml_safe_mutex);
-			big::g_gml_safe_notifier.notify_all();
-			big::g_gml_safe = true;
+			g_is_gml_safe_to_init = true;
+
+			init_lua_manager();
 		}
 
 		is_inside_code_execute = false;

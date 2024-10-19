@@ -202,6 +202,15 @@ namespace big
             {
 				g_pointers->m_rorr.m_GMLFuncs = ptr.add(1).rip().add(0x31).rip().as<YYGMLFuncs*>();
             }
+        },
+        // CreateSwapChain
+        {
+            "CSC",
+            "E8 ? ? ? ? 80 3D ? ? ? ? ? 74 70",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_CreateSwapChain = ptr.add(1).rip().as<void*>();
+            }
         }
         >(); // don't leave a trailing comma at the end
 		// clang-format on

@@ -10,6 +10,8 @@ namespace big::rorr
 {
 	inline void init_hooks()
 	{
+		hooking::detour_hook_helper::add<big::hook_init_renderer_on_CreateSwapChain>("CSC2", g_pointers->m_rorr.m_CreateSwapChain);
+
 		hooking::detour_hook_helper::add<gm::hook_debug_console_output>("DCO", g_pointers->m_rorr.m_debug_console_output);
 
 		hooking::detour_hook_helper::add<gm::hook_Code_Execute>("CE", g_pointers->m_rorr.m_code_execute);

@@ -608,4 +608,24 @@ namespace big
 			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 		}
 	}
+
+	__int64 hook_init_renderer_on_CreateSwapChain(HWND a1, int a2, int a3, int a4)
+	{
+		const auto res = big::g_hooking->get_original<hook_init_renderer_on_CreateSwapChain>()(a1, a2, a3, a4);
+
+		static bool init_once = true;
+		if (init_once)
+		{
+			init_once = false;
+
+			LOG(INFO) << "Renderer is safe to init.";
+			Logger::FlushQueue();
+
+			// Purposely leak it, we are not unloading this module in any case.
+			auto renderer_instance = new big::renderer();
+			LOG(INFO) << "Renderer initialized.";
+		}
+
+		return res;
+	}
 } // namespace big

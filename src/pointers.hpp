@@ -99,7 +99,7 @@ namespace big
 		template<cstxpr_str batch_name, size_t N>
 		void run_batch(const memory::batch<N>& batch, const memory::module& mem_region)
 		{
-			if (!memory::batch_runner::run(batch, mem_region))
+			if (!memory::batch_runner::run_sync(batch, mem_region))
 			{
 				LOG(ERROR) << "Failed to find some patterns for " << batch_name.str;
 			}

@@ -58,6 +58,8 @@ namespace big
 		gm::json_parse_t m_json_parse;
 
 		YYGMLFuncs* m_GMLFuncs;
+
+		void* m_CreateSwapChain;
 	};
 
 #pragma pack(pop)
