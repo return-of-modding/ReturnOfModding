@@ -27,9 +27,9 @@ namespace gm
 		// get a stacktrace when this happen, the game triggers a debugbreak on this.
 		if (!strcmp("Why are we reallocing a block that we didn't alloc?!\n", fmt))
 		{
-			va_start(args, fmt);
+			/*va_start(args, fmt);
 			big::g_hooking->get_original<hook_debug_console_output>()(this_, fmt, args);
-			va_end(args);
+			va_end(args);*/
 
 			log_stacktrace_and_abort();
 
@@ -39,9 +39,9 @@ namespace gm
 		// bandaid fix cause current debug gui code trigger it through getting layer names
 		if (!strcmp("layer_get_all_elements() - can't find specified layer\n", fmt))
 		{
-			va_start(args, fmt);
+			/*va_start(args, fmt);
 			big::g_hooking->get_original<hook_debug_console_output>()(this_, fmt, args);
-			va_end(args);
+			va_end(args);*/
 			return;
 		}
 
@@ -69,8 +69,8 @@ namespace gm
 			LOG(INFO) << result;
 		}
 
-		va_start(args, fmt);
+		/*va_start(args, fmt);
 		big::g_hooking->get_original<hook_debug_console_output>()(this_, fmt, args);
-		va_end(args);
+		va_end(args);*/
 	}
 } // namespace gm

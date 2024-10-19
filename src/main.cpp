@@ -54,6 +54,58 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		// Purposely leak it, we are not unloading this module in any case.
 		auto exception_handling = new exception_handler();
 
+		// https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/setlocale-wsetlocale?view=msvc-170#utf-8-support
+		setlocale(LC_ALL, ".utf8");
+		// This also change things like stringstream outputs and add comma to numbers and things like that, we don't want that, so just set locale on the C apis instead.
+		//std::locale::global(std::locale(".utf8"));
+
+		std::filesystem::path root_folder = paths::get_project_root_folder();
+		g_file_manager.init(root_folder);
+		paths::init_dump_file_path();
+
+		big::config::init_general();
+
+		static auto logger_instance = std::make_unique<logger>(rom::g_project_name, g_file_manager.get_project_file("./LogOutput.log"));
+
+		static struct logger_cleanup
+		{
+			~logger_cleanup()
+			{
+				Logger::Destroy();
+			}
+		} g_logger_cleanup;
+
+		std::srand(std::chrono::system_clock::now().time_since_epoch().count());
+
+		LOG(INFO) << rom::g_project_name;
+		LOGF(INFO, "Build (GIT SHA1): {}", version::GIT_SHA1);
+
+#ifdef FINAL
+		LOG(INFO) << "This is a final build";
+#endif
+
+		static auto thread_pool_instance = std::make_unique<thread_pool>();
+		LOG(INFO) << "Thread pool initialized.";
+
+		static auto pointers_instance = std::make_unique<pointers>();
+		LOG(INFO) << "Pointers initialized.";
+
+		LOG(INFO) << "GameMaker Major Version: " << *g_pointers->m_rorr.m_gamemaker_version_major << " (Found at offset "
+		          << HEX_TO_UPPER_OFFSET(g_pointers->m_rorr.m_gamemaker_version_major) << ")";
+
+		static auto byte_patch_manager_instance = std::make_unique<byte_patch_manager>();
+		LOG(INFO) << "Byte Patch Manager initialized.";
+
+		rorr::init_hooks();
+
+		static auto hooking_instance = std::make_unique<hooking>();
+		LOG(INFO) << "Hooking initialized.";
+
+		hotkey::init_hotkeys();
+
+		g_hooking->enable();
+		LOG(INFO) << "Hooking enabled.";
+
 		DisableThreadLibraryCalls(hmod);
 		g_hmodule     = hmod;
 		g_main_thread = CreateThread(
@@ -77,62 +129,16 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 				    Sleep(1000);
 			    }*/
 
-			    // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/setlocale-wsetlocale?view=msvc-170#utf-8-support
-			    setlocale(LC_ALL, ".utf8");
-			    // This also change things like stringstream outputs and add comma to numbers and things like that, we don't want that, so just set locale on the C apis instead.
-			    //std::locale::global(std::locale(".utf8"));
-
-			    std::filesystem::path root_folder = paths::get_project_root_folder();
-			    g_file_manager.init(root_folder);
-			    paths::init_dump_file_path();
-
-			    big::config::init_general();
-
-			    auto logger_instance = std::make_unique<logger>(rom::g_project_name, g_file_manager.get_project_file("./LogOutput.log"));
-			    static struct logger_cleanup
+			    HWND target_window{};
+			    while (target_window = FindWindow(g_target_window_class_name, nullptr), !target_window)
 			    {
-				    ~logger_cleanup()
-				    {
-					    Logger::Destroy();
-				    }
-			    } g_logger_cleanup;
-
-			    std::srand(std::chrono::system_clock::now().time_since_epoch().count());
-
-			    LOG(INFO) << rom::g_project_name;
-			    LOGF(INFO, "Build (GIT SHA1): {}", version::GIT_SHA1);
-
-#ifdef FINAL
-			    LOG(INFO) << "This is a final build";
-#endif
-
-			    auto thread_pool_instance = std::make_unique<thread_pool>();
-			    LOG(INFO) << "Thread pool initialized.";
-
-			    auto pointers_instance = std::make_unique<pointers>();
-			    LOG(INFO) << "Pointers initialized.";
-
-			    LOG(INFO) << "GameMaker Major Version: " << *g_pointers->m_rorr.m_gamemaker_version_major << " (Found at offset "
-			              << HEX_TO_UPPER_OFFSET(g_pointers->m_rorr.m_gamemaker_version_major) << ")";
-
-			    auto byte_patch_manager_instance = std::make_unique<byte_patch_manager>();
-			    LOG(INFO) << "Byte Patch Manager initialized.";
-
-			    rorr::init_hooks();
-
-			    auto hooking_instance = std::make_unique<hooking>();
-			    LOG(INFO) << "Hooking initialized.";
-
-			    auto renderer_instance = std::make_unique<renderer>();
+				    std::this_thread::sleep_for(5ms);
+			    }
+			    static auto renderer_instance = std::make_unique<renderer>();
 			    LOG(INFO) << "Renderer initialized.";
-
-			    hotkey::init_hotkeys();
 
 			    if (!g_abort)
 			    {
-				    g_hooking->enable();
-				    LOG(INFO) << "Hooking enabled.";
-
 				    std::unique_lock gml_lock(g_gml_safe_mutex);
 				    g_gml_safe_notifier.wait_for(gml_lock, 20s);
 
@@ -175,7 +181,7 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 			    // Make sure that all threads created don't have any blocking loops
 			    // otherwise make sure that they have stopped executing
-			    thread_pool_instance->destroy();
+			    /*	    thread_pool_instance->destroy();
 			    LOG(INFO) << "Destroyed thread pool.";
 
 			    YYObjectPinMap::cleanup_pin_map();
@@ -197,7 +203,7 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 			    LOG(INFO) << "Farewell!";
 			    logger_instance->destroy();
-			    logger_instance.reset();
+			    logger_instance.reset();*/
 
 			    CloseHandle(g_main_thread);
 			    FreeLibraryAndExitThread(g_hmodule, 0);
