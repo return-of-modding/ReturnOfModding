@@ -10,6 +10,7 @@
 #include "gm/save_file_serialize_t.hpp"
 #include "gm/Script_Data.hpp"
 #include "gm/StructCreate.hpp"
+#include "gm/YYSetScriptRef.hpp"
 
 #include <memory/handle.hpp>
 
@@ -58,6 +59,8 @@ namespace big
 		gm::json_parse_t m_json_parse;
 
 		YYGMLFuncs* m_GMLFuncs;
+
+		YYSetScriptRef_t m_YYSetScriptRef;
 
 		void* m_CreateSwapChain;
 	};

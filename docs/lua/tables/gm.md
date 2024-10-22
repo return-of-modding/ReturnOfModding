@@ -16,7 +16,7 @@ Table containing helpers for interacting with the game maker engine.
 
 - Type: `constants_type_sorted[type_name][i] = constant_name`
 
-## Functions (8)
+## Functions (9)
 
 ### `pre_code_execute(function_name, callback)`
 
@@ -118,6 +118,36 @@ value = gm.call(name, self, other, args)
 **Example Usage:**
 ```lua
 YYObjectBase* = gm.struct_create()
+```
+
+### `get_script_ref(function_index)`
+
+**Example Usage**
+```lua
+callable_ref = nil
+gm.pre_script_hook(gm.constants.callable_call, function(self, other, result, args)
+     if callable_ref then
+         if args[1].value == callable_ref then
+             print("GenericCallable ran")
+         end
+     end
+end)
+
+gm.post_code_execute("gml_Object_pAttack_Create_0", function(self, other)
+     gm.instance_callback_set(self.on_hit, gm.get_script_ref(gm.constants.function_dummy))
+     callable_ref = self.on_hit.callables[#self.on_hit.callables]
+end)
+```
+
+- **Parameters:**
+  - `function_index` (number): index of the game script / builtin game maker function to make a CScriptRef with.
+
+- **Returns:**
+  - `CScriptRef*`: The script reference from the passed function index.
+
+**Example Usage:**
+```lua
+CScriptRef* = gm.get_script_ref(function_index)
 ```
 
 

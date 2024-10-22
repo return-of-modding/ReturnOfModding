@@ -538,83 +538,128 @@ namespace lua::game_maker
 
 	static std::unordered_map<int, std::string> script_index_to_name;
 
-	static make_central_script_result make_central_script_hook(const double script_function_index_double, sol::this_environment& env, bool is_pre_hook)
+	struct builtin_or_script_function_info
 	{
-		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
-		if (mdl)
+		uintptr_t function_ptr;
+		bool is_builtin;
+	};
+
+	static builtin_or_script_function_info get_builtin_or_script_function_from_index(const int function_index)
+	{
+		if (function_index >= 100'000)
 		{
-			const int script_function_index = script_function_index_double;
-			if (script_function_index >= 100'000)
+			const auto cscript = big::g_pointers->m_rorr.m_script_data(function_index - 100'000);
+			if (cscript)
 			{
-				const auto cscript = big::g_pointers->m_rorr.m_script_data(script_function_index - 100'000);
-				if (cscript)
-				{
-					std::stringstream hook_name;
-					hook_name << mdl->guid() << " | " << script_index_to_name[script_function_index] << " | "
-					          << (is_pre_hook ? mdl->m_data_ext.m_pre_script_execute_callbacks.size() :
-					                            mdl->m_data_ext.m_post_script_execute_callbacks.size());
-
-					LOG(INFO) << "hook_name: " << hook_name.str();
-
-					const auto original_func_ptr = (uintptr_t)cscript->m_funcs->m_script_function;
-
-					if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
-					{
-						std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
-						const auto JIT = runtime_func->make_jit_func("RValue*", {"CInstance*", "CInstance*", "RValue*", "int", "RValue**"}, asmjit::Arch::kHost, &script_callback, original_func_ptr);
-
-						hooks_original_func_ptr_to_info.emplace(
-						    original_func_ptr,
-						    runtime_hook_info{std::move(runtime_func), std::make_unique<big::detour_hook>(hook_name.str(), (void*)original_func_ptr, (void*)JIT)});
-
-						hooks_original_func_ptr_to_info[original_func_ptr].m_detour->enable();
-					}
-
-					return {mdl, (void*)original_func_ptr, true};
-				}
-				else
-				{
-					LOG(ERROR) << "Could not find a corresponding script function index (" << script_function_index << ")";
-				}
+				return {.function_ptr = (uintptr_t)cscript->m_funcs->m_script_function, .is_builtin = false};
 			}
 			else
 			{
-				gm::code_function_info result{};
-				big::g_pointers->m_rorr.m_code_function_GET_the_function(script_function_index,
-				                                                         &result.function_name,
-				                                                         &result.function_ptr,
-				                                                         &result.function_arg_count);
-
-				if (result.function_ptr)
-				{
-					std::stringstream hook_name;
-					hook_name << mdl->guid() << " | " << script_index_to_name[script_function_index] << " | "
-					          << (is_pre_hook ? mdl->m_data_ext.m_pre_builtin_execute_callbacks.size() :
-					                            mdl->m_data_ext.m_post_builtin_execute_callbacks.size());
-
-					LOG(INFO) << "hook_name: " << hook_name.str();
-
-					const auto original_func_ptr = (uintptr_t)result.function_ptr;
-
-					if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
-					{
-						std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
-						const auto JIT = runtime_func->make_jit_func("void", {"RValue*", "CInstance*", "CInstance*", "int", "RValue*"}, asmjit::Arch::kHost, &builtin_script_callback, original_func_ptr);
-
-						hooks_original_func_ptr_to_info.emplace(
-						    original_func_ptr,
-						    runtime_hook_info{std::move(runtime_func), std::make_unique<big::detour_hook>(hook_name.str(), (void*)original_func_ptr, (void*)JIT)});
-
-						hooks_original_func_ptr_to_info[original_func_ptr].m_detour->enable();
-					}
-
-					return {mdl, result.function_ptr, false};
-				}
-				else
-				{
-					LOG(ERROR) << "Could not find a corresponding builtin function index (" << script_function_index << ")";
-				}
+				LOG(ERROR) << "Could not find a corresponding script function index (" << function_index << ")";
 			}
+		}
+		else
+		{
+			gm::code_function_info result{};
+			big::g_pointers->m_rorr.m_code_function_GET_the_function(function_index,
+			                                                         &result.function_name,
+			                                                         &result.function_ptr,
+			                                                         &result.function_arg_count);
+
+			if (result.function_ptr)
+			{
+				return {.function_ptr = (uintptr_t)result.function_ptr, .is_builtin = true};
+			}
+			else
+			{
+				LOG(ERROR) << "Could not find a corresponding builtin function index (" << function_index << ")";
+			}
+		}
+
+		return {.function_ptr = 0};
+	}
+
+	static make_central_script_result make_central_script_hook(const double script_function_index_double, sol::this_environment& env, bool is_pre_hook)
+	{
+		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
+		if (!mdl)
+		{
+			return {};
+		}
+
+		const int function_index = script_function_index_double;
+		const auto func_info     = get_builtin_or_script_function_from_index(function_index);
+		if (!func_info.function_ptr)
+		{
+			return {};
+		}
+
+		if (!func_info.is_builtin)
+		{
+			std::stringstream hook_name;
+			hook_name << mdl->guid() << " | " << script_index_to_name[function_index] << " | "
+			          << (is_pre_hook ? mdl->m_data_ext.m_pre_script_execute_callbacks.size() :
+			                            mdl->m_data_ext.m_post_script_execute_callbacks.size());
+
+			LOG(INFO) << "hook_name: " << hook_name.str();
+
+			const auto original_func_ptr = func_info.function_ptr;
+
+			if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
+			{
+				std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
+
+				// clang-format off
+				const auto JIT = runtime_func->make_jit_func(
+					"RValue*",
+					{"CInstance*", "CInstance*", "RValue*", "int", "RValue**"},
+					asmjit::Arch::kHost,
+					&script_callback,
+					original_func_ptr);
+				// clang-format on
+
+
+				hooks_original_func_ptr_to_info.emplace(
+				    original_func_ptr,
+				    runtime_hook_info{std::move(runtime_func), std::make_unique<big::detour_hook>(hook_name.str(), (void*)original_func_ptr, (void*)JIT)});
+
+				hooks_original_func_ptr_to_info[original_func_ptr].m_detour->enable();
+			}
+
+			return {mdl, (void*)original_func_ptr, true};
+		}
+		else
+		{
+			std::stringstream hook_name;
+			hook_name << mdl->guid() << " | " << script_index_to_name[function_index] << " | "
+			          << (is_pre_hook ? mdl->m_data_ext.m_pre_builtin_execute_callbacks.size() :
+			                            mdl->m_data_ext.m_post_builtin_execute_callbacks.size());
+
+			LOG(INFO) << "hook_name: " << hook_name.str();
+
+			const auto original_func_ptr = func_info.function_ptr;
+
+			if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
+			{
+				std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
+
+				// clang-format off
+				const auto JIT = runtime_func->make_jit_func(
+					"void",
+					{"RValue*", "CInstance*", "CInstance*", "int", "RValue*"},
+					asmjit::Arch::kHost,
+					&builtin_script_callback,
+					original_func_ptr);
+				// clang-format on
+
+				hooks_original_func_ptr_to_info.emplace(
+				    original_func_ptr,
+				    runtime_hook_info{std::move(runtime_func), std::make_unique<big::detour_hook>(hook_name.str(), (void*)original_func_ptr, (void*)JIT)});
+
+				hooks_original_func_ptr_to_info[original_func_ptr].m_detour->enable();
+			}
+
+			return {mdl, (void*)original_func_ptr, false};
 		}
 
 		return {};
@@ -677,11 +722,25 @@ namespace lua::game_maker
 			uintptr_t JIT;
 			if (function_name.starts_with("gml_Object"))
 			{
-				JIT = runtime_func->make_jit_func("void", {"CInstance*", "CInstance*"}, asmjit::Arch::kHost, &object_function_callback, original_func_ptr);
+				// clang-format off
+				JIT = runtime_func->make_jit_func(
+					"void",
+					{"CInstance*", "CInstance*"},
+					asmjit::Arch::kHost,
+					&object_function_callback,
+					original_func_ptr);
+				// clang-format on
 			}
 			else
 			{
-				JIT = runtime_func->make_jit_func("RValue*", {"CInstance*", "CInstance*", "RValue*", "int", "RValue**"}, asmjit::Arch::kHost, &script_callback, original_func_ptr);
+				// clang-format off
+				JIT = runtime_func->make_jit_func(
+					"RValue*",
+					{"CInstance*", "CInstance*", "RValue*", "int", "RValue**"},
+					asmjit::Arch::kHost,
+					&script_callback,
+					original_func_ptr);
+				// clang-format on
 			}
 
 			hooks_original_func_ptr_to_info.emplace(
@@ -1751,6 +1810,41 @@ namespace lua::game_maker
 
 		ns["call"] = sol::overload(lua_gm_call, lua_gm_call_global);
 
+		// Lua API: Function
+		// Table: gm
+		// Name: get_script_ref
+		// Param: function_index: number: index of the game script / builtin game maker function to make a CScriptRef with.
+		// Returns: CScriptRef*: The script reference from the passed function index.
+		// **Example Usage**
+		// ```lua
+		// callable_ref = nil
+		// gm.pre_script_hook(gm.constants.callable_call, function(self, other, result, args)
+		//     if callable_ref then
+		//         if args[1].value == callable_ref then
+		//             print("GenericCallable ran")
+		//         end
+		//     end
+		// end)
+		//
+		// gm.post_code_execute("gml_Object_pAttack_Create_0", function(self, other)
+		//     gm.instance_callback_set(self.on_hit, gm.get_script_ref(gm.constants.function_dummy))
+		//     callable_ref = self.on_hit.callables[#self.on_hit.callables]
+		// end)
+		// ```
+		ns["get_script_ref"] = [](double function_index, sol::this_state this_state_) -> sol::object
+		{
+			const auto function_info = get_builtin_or_script_function_from_index(function_index);
+			if (!function_info.function_ptr)
+			{
+				return sol::lua_nil;
+			}
+
+			RValue res;
+			big::g_pointers->m_rorr.m_YYSetScriptRef(&res, (void*)function_info.function_ptr, nullptr);
+
+			return RValue_to_lua(res, this_state_);
+		};
+
 		ns["variable_global_get"] = lua_gm_variable_global_get;
 		ns["variable_global_set"] = lua_gm_variable_global_set;
 
@@ -1774,6 +1868,7 @@ namespace lua::game_maker
 				                     }
 
 				                     self.raw_set(key,
+				                                  // TODO: Both of these wrapper should ideally early return nil if the function name doesn't exist.
 				                                  sol::overload(
 				                                      [key, this_state_](sol::variadic_args args)
 				                                      {

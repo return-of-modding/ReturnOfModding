@@ -203,6 +203,15 @@ namespace big
 				g_pointers->m_rorr.m_GMLFuncs = ptr.add(1).rip().add(0x31).rip().as<YYGMLFuncs*>();
             }
         },
+        // YYSetScriptRef
+        {
+            "YYSSR",
+            "E8 ? ? ? ? 90 48 8D 55 17",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_YYSetScriptRef = ptr.add(1).rip().as<YYSetScriptRef_t>();
+            }
+        },
         // CreateSwapChain
         {
             "CSC",
