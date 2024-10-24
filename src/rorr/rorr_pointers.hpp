@@ -54,6 +54,8 @@ namespace big
 
 		gm::GetSaveFileName_t m_get_save_file_name;
 
+		gm::gml_Script_host_commit_lobby_options_t m_gml_script_host_commit_lobby_options;
+
 		gm::save_file_serialize_t m_save_file_serialize;
 		gm::save_file_deserialize_t m_save_file_deserialize;
 		gm::json_parse_t m_json_parse;
