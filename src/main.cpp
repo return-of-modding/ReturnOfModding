@@ -52,7 +52,13 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		rom::init("ReturnOfModding", "Risk of Rain Returns.exe", "");
 
 		// Purposely leak it, we are not unloading this module in any case.
-		auto exception_handling = new exception_handler();
+		{
+			auto exception_handling = new exception_handler(true, gm::triple_exception_handler);
+
+			// SetUnhandledExceptionFilter is not working correctly it seems,
+			// sometimes it's straight up not called even on unhandled exceptions.
+			AddVectoredContinueHandler(true, gm::triple_exception_handler);
+		}
 
 		// https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/setlocale-wsetlocale?view=msvc-170#utf-8-support
 		setlocale(LC_ALL, ".utf8");

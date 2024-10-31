@@ -1,5 +1,7 @@
 #pragma once
+#include "Code_Execute_trace.hpp"
 #include "CScript.hpp"
+#include "lua/lua_manager.hpp"
 #include "YYGMLException.hpp"
 #include "YYGMLFuncs.hpp"
 
@@ -127,23 +129,94 @@ namespace gm
 		return false;
 	}
 
+	inline void lua_print_traceback()
+	{
+		const auto lua_manager = big::g_lua_manager;
+		if (lua_manager && lua_manager->get_module_count())
+		{
+			sol::state_view(lua_manager->lua_state()).script("log.warning(debug.traceback())");
+		}
+	}
+
+	inline LONG double_exception_handler(EXCEPTION_POINTERS* exception_info)
+	{
+		big::big_exception_handler(exception_info);
+
+		if (g_last_call)
+		{
+			LOG(ERROR) << "last gm.call: " << g_last_call;
+		}
+		if (g_last_code_execute)
+		{
+			LOG(ERROR) << "last code_execute: " << g_last_code_execute;
+		}
+
+		constexpr auto msvc_exception_code = 0xE0'6D'73'63;
+		if (exception_info->ExceptionRecord->ExceptionCode == msvc_exception_code && exception_info->ExceptionRecord->NumberParameters > 2)
+		{
+			struct _ThrowInfo
+			{
+				int attributes;
+				int pmfnUnwind;
+				int pForwardCompat;
+				int pCatchableTypeArray;
+			};
+
+			constexpr auto yygml_exception_code = 0x1'E1'80'28;
+			const auto yygmlexception_id        = (_ThrowInfo*)exception_info->ExceptionRecord->ExceptionInformation[2];
+			if (yygmlexception_id && yygmlexception_id->pCatchableTypeArray == yygml_exception_code)
+			{
+				gml_exception_handler(((YYGMLException*)exception_info->ExceptionRecord->ExceptionInformation[1])->GetExceptionObject());
+			}
+		}
+
+		return EXCEPTION_CONTINUE_SEARCH;
+	}
+
+	inline LONG triple_exception_handler(EXCEPTION_POINTERS* exception_info)
+	{
+		double_exception_handler(exception_info);
+
+		lua_print_traceback();
+
+		return EXCEPTION_CONTINUE_SEARCH;
+	}
+
+	inline void safe_code_call(gm::TRoutine func, RValue* res, CInstance* self, CInstance* other, RValue* args, size_t arg_count)
+	{
+		__try
+		{
+			func(res, self, other, arg_count, args);
+		}
+		__except (triple_exception_handler(GetExceptionInformation()), EXCEPTION_EXECUTE_HANDLER)
+		{
+		}
+	}
+
+	inline void safe_script_call(PFUNC_YYGMLScript func, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args)
+	{
+		__try
+		{
+			func(self, other, result, arg_count, args);
+		}
+		__except (triple_exception_handler(GetExceptionInformation()), EXCEPTION_EXECUTE_HANDLER)
+		{
+		}
+	}
+
 	inline RValue call(std::string_view name, CInstance* self, CInstance* other, RValue* args = nullptr, size_t arg_count = 0)
 	{
+		g_last_call = name.data();
+
 		const auto& func_info = get_code_function(name);
 
 		RValue res{};
 
 		if (func_info.function_ptr)
 		{
-			try
-			{
-				func_info.function_ptr(&res, self, other, arg_count, args);
-			}
-			catch (const YYGMLException& e)
-			{
-				gml_exception_handler(e.GetExceptionObject());
-			}
+			safe_code_call(func_info.function_ptr, &res, self, other, args, arg_count);
 
+			g_last_call = nullptr;
 			return res;
 		}
 		// Script Execute
@@ -160,9 +233,10 @@ namespace gm
 						arranged_args[i] = &args[i];
 					}
 
-					cscript->m_funcs->m_script_function(self, other, &res, arg_count, arranged_args);
+					safe_script_call(cscript->m_funcs->m_script_function, self, other, &res, arg_count, arranged_args);
 				}
 
+				g_last_call = nullptr;
 				return res;
 			}
 			else
@@ -186,9 +260,10 @@ namespace gm
 							arranged_args[i] = &args[i];
 						}
 
-						cscript->m_funcs->m_script_function(self, other, &res, arg_count, arranged_args);
+						safe_script_call(cscript->m_funcs->m_script_function, self, other, &res, arg_count, arranged_args);
 					}
 
+					g_last_call = nullptr;
 					return res;
 				}
 			}
@@ -196,6 +271,7 @@ namespace gm
 
 		LOG(WARNING) << name << " function not found!";
 
+		g_last_call = nullptr;
 		return {};
 	}
 

@@ -2,6 +2,7 @@
 
 namespace gm
 {
-	inline bool is_inside_code_execute    = false;
-	inline const char* last_executed_code = nullptr;
+	inline const char* g_last_code_execute = nullptr;
+
+	inline const char* g_last_call = nullptr;
 } // namespace gm

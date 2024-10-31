@@ -43,8 +43,7 @@ namespace gm
 
 	inline bool hook_Code_Execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags)
 	{
-		is_inside_code_execute = true;
-		last_executed_code     = code->name;
+		g_last_code_execute = code->name;
 
 		bool no_error = true;
 		if (big::g_lua_manager)
@@ -53,13 +52,12 @@ namespace gm
 
 			if (call_orig_if_true)
 			{
-				try
+				__try
 				{
 					no_error = big::g_hooking->get_original<hook_Code_Execute>()(self, other, code, result, flags);
 				}
-				catch (const YYGMLException& e)
+				__except (triple_exception_handler(GetExceptionInformation()), EXCEPTION_EXECUTE_HANDLER)
 				{
-					gml_exception_handler(e.GetExceptionObject());
 				}
 			}
 
@@ -67,13 +65,12 @@ namespace gm
 		}
 		else
 		{
-			try
+			__try
 			{
 				no_error = big::g_hooking->get_original<hook_Code_Execute>()(self, other, code, result, flags);
 			}
-			catch (const YYGMLException& e)
+			__except (double_exception_handler(GetExceptionInformation()), EXCEPTION_EXECUTE_HANDLER)
 			{
-				gml_exception_handler(e.GetExceptionObject());
 			}
 		}
 
@@ -84,7 +81,7 @@ namespace gm
 			init_lua_manager();
 		}
 
-		is_inside_code_execute = false;
+		g_last_code_execute = nullptr;
 		return no_error;
 	}
 } // namespace gm

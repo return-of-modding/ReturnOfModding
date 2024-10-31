@@ -13,7 +13,7 @@ namespace gm
 		{
 			*(int*)0 = 0;
 		}
-		__except (big::vectored_exception_handler(GetExceptionInformation()), EXCEPTION_EXECUTE_HANDLER)
+		__except (big::big_exception_handler(GetExceptionInformation()), EXCEPTION_EXECUTE_HANDLER)
 		{
 			Logger::FlushQueue();
 			big::debug::wait_until_debugger();
