@@ -143,7 +143,7 @@ namespace big::lua_manager_extension
 
 						static std::unordered_map<std::string, sol::object> required_module_cache;
 
-						if (!required_module_cache.contains(full_path))
+						if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
 						{
 							sol::state_view state = this_env.env.value().lua_state();
 							auto fresh_result     = get_loadfile_function(state)(full_path);
@@ -192,7 +192,7 @@ namespace big::lua_manager_extension
 
 						static std::unordered_map<std::string, sol::object> required_module_cache;
 
-						if (!required_module_cache.contains(full_path))
+						if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
 						{
 							sol::state_view state = this_env.env.value().lua_state();
 
