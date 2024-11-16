@@ -17,6 +17,8 @@ namespace big
 
 		std::unordered_map<void*, std::vector<sol::protected_function>> m_pre_script_execute_callbacks;
 		std::unordered_map<void*, std::vector<sol::protected_function>> m_post_script_execute_callbacks;
+
+		std::unordered_map<uintptr_t, std::vector<sol::protected_function>> m_dynamic_hook_mid_callbacks;
 	};
 
 	class lua_module_ext : public lua_module

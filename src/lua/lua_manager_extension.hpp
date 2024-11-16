@@ -21,4 +21,6 @@ namespace big::lua_manager_extension
 
 	bool pre_script_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args);
 	void post_script_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args);
+
+	bool dynamic_hook_mid_callbacks(const uintptr_t target_func_ptr, sol::table args);
 } // namespace big::lua_manager_extension

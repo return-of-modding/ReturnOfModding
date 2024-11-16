@@ -1,5 +1,6 @@
 #include "game_maker.hpp"
 
+#include "lua/bindings/memory.hpp"
 #include "lua/lua_manager_extension.hpp"
 #include "lua/lua_module_ext.hpp"
 #include "rorr/gm/Code_Function_GET_the_function.hpp"
@@ -36,6 +37,8 @@ namespace qstd
 	class runtime_func : public PLH::MemAccessor
 	{
 	public:
+		std::unique_ptr<big::detour_hook> m_detour;
+
 		struct parameters_t
 		{
 			template<typename T>
@@ -54,7 +57,6 @@ namespace qstd
 			// we the runtime_func allocates stack space that is set to point here (check asmjit::compiler.newStack calls)
 			volatile uintptr_t m_arguments;
 
-		private:
 			// must be char* for aliasing rules to work when reading back out
 			char* get_arg_ptr(const uint8_t idx) const
 			{
@@ -71,6 +73,7 @@ namespace qstd
 
 		runtime_func()
 		{
+			m_detour = std::make_unique<big::detour_hook>();
 			m_jit_function_buffer.clear();
 		}
 
@@ -259,6 +262,209 @@ namespace qstd
 			return make_jit_func(sig, arch, callback, original_func_ptr);
 		}
 
+		uintptr_t make_jit_midfunc(const std::vector<std::string>& param_types, const std::vector<std::string>& param_captures, const std::string& rsp_restore, const int stack_restore_offset, const std::vector<std::string>& restore_targets, const std::vector<std::string>& restore_sources, const asmjit::Arch arch, bool (*mid_callback)(const parameters_t* params, const uint8_t param_count, const uintptr_t target_func_ptr), const uintptr_t target_func_ptr)
+		{
+			asmjit::CodeHolder code;
+			auto env = asmjit::Environment::host();
+			env.setArch(arch);
+			code.init(env);
+			// initialize function
+			asmjit::x86::Compiler cc(&code);
+
+			asmjit::StringLogger log;
+			// clang-format off
+			const auto format_flags =
+				asmjit::FormatFlags::kMachineCode | asmjit::FormatFlags::kExplainImms | asmjit::FormatFlags::kRegCasts |
+				asmjit::FormatFlags::kHexImms     | asmjit::FormatFlags::kHexOffsets  | asmjit::FormatFlags::kPositions;
+			// clang-format on
+
+			log.addFlags(format_flags);
+			code.setLogger(&log);
+
+			asmjit::Label skip_original_invoke_label = cc.newLabel();
+
+			asmjit::x86::Gp rsp_restore_gp;
+
+			// save caller-saved registers
+			cc.push(asmjit::x86::rax);
+			cc.push(asmjit::x86::rcx);
+			cc.push(asmjit::x86::rdx);
+			cc.push(asmjit::x86::r8);
+			cc.push(asmjit::x86::r9);
+			cc.push(asmjit::x86::r10);
+			cc.push(asmjit::x86::r11);
+
+			// setup the stack structure to hold arguments for user callback
+			uint8_t stack_size = sizeof(uintptr_t) * param_types.size();
+			if (stack_size % 16 != 0)
+			{
+				stack_size += 16 - (stack_size % 16);
+			}
+
+			// stack alignment
+			if (get_Gp_from_name(rsp_restore, rsp_restore_gp))
+			{
+				cc.push(rsp_restore_gp);
+				cc.mov(rsp_restore_gp, asmjit::x86::rsp);
+				cc.sub(asmjit::x86::rsp, 8);
+				cc.and_(asmjit::x86::rsp, 0xFF'FF'FF'F0);
+			}
+			else
+			{
+				int offset  = std::stoi(rsp_restore, nullptr, 10);
+				stack_size += offset;
+			}
+			cc.sub(asmjit::x86::rsp, stack_size);
+
+			// capture registers to the stack
+			for (uint8_t argIdx = 0; argIdx < param_types.size(); argIdx++)
+			{
+				auto argType    = get_type_id(param_types.at(argIdx));
+				auto argCapture = param_captures.at(argIdx);
+				if (argCapture.at(0) == '[')
+				{
+					if (is_general_register(argType))
+					{
+						asmjit::x86::Gp temp = cc.newUIntPtr();
+						cc.mov(temp, get_addr_from_name(argCapture, stack_size));
+						cc.mov(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), temp);
+					}
+					else if (is_XMM_register(argType))
+					{
+						asmjit::x86::Xmm temp = cc.newXmm();
+						cc.movq(temp, get_addr_from_name(argCapture, stack_size));
+						cc.movq(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), temp);
+					}
+					else
+					{
+						LOG(ERROR) << "Parameters wider than 64bits not supported";
+						return 0;
+					}
+				}
+				else
+				{
+					if (is_general_register(argType))
+					{
+						asmjit::x86::Gp temp = cc.newUIntPtr();
+						get_Gp_from_name(argCapture, temp);
+						cc.mov(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), temp);
+					}
+					else if (is_XMM_register(argType))
+					{
+						asmjit::x86::Xmm temp;
+						get_Xmm_from_name(argCapture, temp);
+						cc.movq(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), temp);
+					}
+					else
+					{
+						LOG(ERROR) << "Parameters wider than 64bits not supported";
+						return 0;
+					}
+				}
+			}
+			// pass arguments to the function
+			cc.mov(asmjit::x86::rcx, asmjit::x86::rsp);
+			cc.mov(asmjit::x86::rdx, param_types.size());
+			//cc.mov(asmjit::x86::r8, asmjit::x86::ptr(asmjit::x86::rsp));
+			cc.mov(asmjit::x86::r8, (uintptr_t)target_func_ptr);
+
+			cc.sub(asmjit::x86::rsp, 32);
+			// invoke the mid callback
+			cc.call((uintptr_t)mid_callback);
+			cc.add(asmjit::x86::rsp, 32);
+			// stack cleanup
+			cc.add(asmjit::x86::rsp, stack_size);
+
+			if (get_Gp_from_name(rsp_restore, rsp_restore_gp))
+			{
+				cc.mov(asmjit::x86::rsp, rsp_restore_gp);
+				cc.pop(rsp_restore_gp);
+			}
+
+			// if the callback return value is zero, skip orig.
+			cc.test(asmjit::x86::rax, asmjit::x86::rax);
+			cc.jz(skip_original_invoke_label);
+
+			// restore caller-saved registers
+			cc.pop(asmjit::x86::r11);
+			cc.pop(asmjit::x86::r10);
+			cc.pop(asmjit::x86::r9);
+			cc.pop(asmjit::x86::r8);
+			cc.pop(asmjit::x86::rdx);
+			cc.pop(asmjit::x86::rcx);
+			cc.pop(asmjit::x86::rax);
+
+			// jump to the original function
+			asmjit::x86::Gp original_ptr = cc.zbx();
+			cc.mov(original_ptr, m_detour->get_original_ptr());
+			cc.mov(original_ptr, asmjit::x86::ptr(original_ptr));
+			cc.jmp(original_ptr);
+
+			cc.bind(skip_original_invoke_label);
+			// restore callee-saved registers
+			for (int i = 0; i < restore_targets.size(); i++)
+			{
+				std::string target_name = restore_targets[i];
+				std::string source_name = restore_sources[i];
+				asmjit::x86::Gp target;
+				if (get_Gp_from_name(target_name, target))
+				{
+					if (source_name.at(0) == '[')
+					{
+						cc.mov(target, get_addr_from_name(source_name));
+					}
+					else
+					{
+						asmjit::x86::Gp temp = cc.newUIntPtr();
+						get_Gp_from_name(source_name, temp);
+						cc.mov(target, temp);
+					}
+				}
+				else
+				{
+					LOG(ERROR) << "Failed to get restore target";
+				}
+			}
+			if (stack_restore_offset != 0)
+			{
+				// stack cleanup
+				cc.sub(asmjit::x86::rsp, stack_restore_offset);
+			}
+			// write to buffer
+			cc.finalize();
+
+			// worst case, overestimates for case trampolines needed
+			code.flatten();
+			size_t size = code.codeSize();
+
+			// Allocate a virtual memory (executable).
+			m_jit_function_buffer.reserve(size);
+
+			DWORD old_protect;
+			VirtualProtect(m_jit_function_buffer.data(), size, PAGE_EXECUTE_READWRITE, &old_protect);
+
+			// if multiple sections, resolve linkage (1 atm)
+			if (code.hasUnresolvedLinks())
+			{
+				code.resolveUnresolvedLinks();
+			}
+
+			// Relocate to the base-address of the allocated memory.
+			code.relocateToBase((uintptr_t)m_jit_function_buffer.data());
+			code.copyFlattenedData(m_jit_function_buffer.data(), size);
+
+			LOG(DEBUG) << "JIT Stub: " << log.data();
+
+			return (uintptr_t)m_jit_function_buffer.data();
+		}
+
+		void create_and_enable_hook(const std::string& hook_name, uintptr_t target_func_ptr, uintptr_t jitted_func_ptr)
+		{
+			m_detour->set_instance(hook_name, (void*)target_func_ptr, (void*)jitted_func_ptr);
+
+			m_detour->enable();
+		}
+
 	private:
 		// does a given type fit in a general purpose register (i.e. is it integer type)
 		bool is_general_register(const asmjit::TypeId type_id) const
@@ -288,6 +494,169 @@ namespace qstd
 			case asmjit::TypeId::kFloat64: return true;
 			default:                       return false;
 			}
+		}
+
+		bool get_Gp_from_name(const std::string& name, asmjit::x86::Gp& res)
+		{
+			// clang-format off
+			static const std::unordered_map<std::string, asmjit::x86::Gp> reg_map = {
+			    // 64-bit registers
+			    {"rax", asmjit::x86::rax}, // RAX: 64-bit
+			    {"rbx", asmjit::x86::rbx}, // RBX: 64-bit
+			    {"rcx", asmjit::x86::rcx}, // RCX: 64-bit
+			    {"rdx", asmjit::x86::rdx}, // RDX: 64-bit
+			    {"rsi", asmjit::x86::rsi}, // RSI: 64-bit
+			    {"rdi", asmjit::x86::rdi}, // RDI: 64-bit
+			    {"rbp", asmjit::x86::rbp}, // RBP: 64-bit
+			    {"rsp", asmjit::x86::rsp}, // RSP: 64-bit
+			    {"r8", asmjit::x86::r8},   // R8: 64-bit
+			    {"r9", asmjit::x86::r9},   // R9: 64-bit
+			    {"r10", asmjit::x86::r10}, // R10: 64-bit
+			    {"r11", asmjit::x86::r11}, // R11: 64-bit
+			    {"r12", asmjit::x86::r12}, // R12: 64-bit
+			    {"r13", asmjit::x86::r13}, // R13: 64-bit
+			    {"r14", asmjit::x86::r14}, // R14: 64-bit
+			    {"r15", asmjit::x86::r15}, // R15: 64-bit
+
+			    // 32-bit registers (lower 32 bits of 64-bit registers)
+			    {"eax", asmjit::x86::eax}, // EAX: low 32-bits of RAX
+			    {"ebx", asmjit::x86::ebx}, // EBX: low 32-bits of RBX
+			    {"ecx", asmjit::x86::ecx}, // ECX: low 32-bits of RCX
+			    {"edx", asmjit::x86::edx}, // EDX: low 32-bits of RDX
+			    {"esi", asmjit::x86::esi}, // ESI: low 32-bits of RSI
+			    {"edi", asmjit::x86::edi}, // EDI: low 32-bits of RDI
+			    {"ebp", asmjit::x86::ebp}, // EBP: low 32-bits of RBP
+			    {"esp", asmjit::x86::esp}, // ESP: low 32-bits of RSP
+
+			    // 16-bit registers (lower 16 bits of 64-bit registers)
+			    {"ax", asmjit::x86::ax}, // AX: low 16-bits of RAX
+			    {"bx", asmjit::x86::bx}, // BX: low 16-bits of RBX
+			    {"cx", asmjit::x86::cx}, // CX: low 16-bits of RCX
+			    {"dx", asmjit::x86::dx}, // DX: low 16-bits of RDX
+			    {"si", asmjit::x86::si}, // SI: low 16-bits of RSI
+			    {"di", asmjit::x86::di}, // DI: low 16-bits of RDI
+			    {"bp", asmjit::x86::bp}, // BP: low 16-bits of RBP
+			    {"sp", asmjit::x86::sp}, // SP: low 16-bits of RSP
+
+			    // 8-bit registers (lower 8 bits of 64-bit registers)
+			    {"al", asmjit::x86::al},   // AL: low 8-bits of RAX
+			    {"ah", asmjit::x86::ah},   // AH: high 8-bits of RAX
+			    {"bl", asmjit::x86::bl},   // BL: low 8-bits of RBX
+			    {"bh", asmjit::x86::bh},   // BH: high 8-bits of RBX
+			    {"cl", asmjit::x86::cl},   // CL: low 8-bits of RCX
+			    {"ch", asmjit::x86::ch},   // CH: high 8-bits of RCX
+			    {"dl", asmjit::x86::dl},   // DL: low 8-bits of RDX
+			    {"dh", asmjit::x86::dh},   // DH: high 8-bits of RDX
+			    {"sil", asmjit::x86::sil}, // SIL: low 8-bits of RSI
+			    {"dil", asmjit::x86::dil}, // DIL: low 8-bits of RDI
+			    {"bpl", asmjit::x86::bpl}, // BPL: low 8-bits of RBP
+			    {"spl", asmjit::x86::spl}  // SPL: low 8-bits of RSP
+			};
+			// clang-format on
+			auto it = reg_map.find(name);
+			if (it != reg_map.end())
+			{
+				res = it->second;
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		bool get_Xmm_from_name(const std::string& name, asmjit::x86::Xmm& res)
+		{
+			// clang-format off
+			static const std::unordered_map<std::string, asmjit::x86::Xmm> reg_map = {
+				{"xmm0", asmjit::x86::xmm0},   {"xmm1", asmjit::x86::xmm1},   {"xmm2", asmjit::x86::xmm2},
+				{"xmm3", asmjit::x86::xmm3},   {"xmm4", asmjit::x86::xmm4},   {"xmm5", asmjit::x86::xmm5},
+				{"xmm6", asmjit::x86::xmm6},   {"xmm7", asmjit::x86::xmm7},   {"xmm8", asmjit::x86::xmm8},
+				{"xmm9", asmjit::x86::xmm9},   {"xmm10", asmjit::x86::xmm10}, {"xmm11", asmjit::x86::xmm11},
+				{"xmm12", asmjit::x86::xmm12}, {"xmm13", asmjit::x86::xmm13}, {"xmm14", asmjit::x86::xmm14},
+				{"xmm15", asmjit::x86::xmm15}
+			};
+			// clang-format on
+			auto it = reg_map.find(name);
+			if (it != reg_map.end())
+			{
+				res = it->second;
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		asmjit::x86::Mem get_addr_from_name(const std::string& name, const int64_t rsp_offset = 0)
+		{
+			auto get_base = [](std::string base) -> int
+			{
+				char ch = base[0];
+				if (ch == 'b')
+				{
+					return 2;
+				}
+				else if (ch == 'o')
+				{
+					return 8;
+				}
+				else if (ch == 'd')
+				{
+					return 10;
+				}
+				else if (ch == 'h')
+				{
+					return 16;
+				}
+				return 10;
+			};
+			auto get_shift = [](int num) -> int
+			{
+				int l = 0;
+				while (num)
+				{
+					num >>= 1;
+					l++;
+				}
+				return l;
+			};
+			std::regex pattern(R"(\[([a-z0-9]+)\+?([a-z]+[a-z0-9]*)\*?([1-8]?)([bodh]?)\+?([-+]?\d*)([bodh]?)\])");
+			std::smatch match;
+			if (std::regex_search(name, match, pattern))
+			{
+				std::string base_str  = match[1].str();
+				std::string index_str = match[2].str();
+				asmjit::x86::Gp base;
+				if (!get_Gp_from_name(base_str, base))
+				{
+					LOG(ERROR) << "Failed to get base reg";
+				}
+				int offset             = base == asmjit::x86::rsp ? rsp_offset : 0;
+				std::string offset_str = match[5].str();
+				if (!offset_str.empty())
+				{
+					std::string offset_str       = match[5].str();
+					std::string offset_base_str  = match[6].str().empty() ? "d" : match[6].str();
+					offset                      += std::stoi(offset_str, nullptr, get_base(offset_base_str));
+				}
+				asmjit::x86::Gp index;
+				if (get_Gp_from_name(index_str, index))
+				{
+					std::string shift_str      = match[3].str().empty() ? "1" : match[3].str();
+					std::string shift_base_str = match[4].str().empty() ? "d" : match[4].str();
+					int shift = std::stoi(shift_str, nullptr, get_base(shift_base_str));
+					shift     = get_shift(shift);
+					return asmjit::x86::ptr(base, index, shift, offset);
+				}
+				else
+				{
+					return asmjit::x86::ptr(base, offset);
+				}
+			}
+			LOG(ERROR) << "Parse address failed";
+			return asmjit::x86::ptr(0);
 		}
 
 		asmjit::CallConvId get_call_convention(const std::string& conv)
@@ -448,27 +817,70 @@ static std::vector<RValue> parse_variadic_args(sol::variadic_args args)
 
 namespace lua::game_maker
 {
-	struct runtime_hook_info
+	namespace type_info_utils
 	{
-		std::unique_ptr<qstd::runtime_func> m_runtime_func;
-		std::unique_ptr<big::detour_hook> m_detour;
-
-		runtime_hook_info() = default;
-
-		runtime_hook_info(std::unique_ptr<qstd::runtime_func>&& runtime_func, std::unique_ptr<big::detour_hook>&& detour) :
-		    m_runtime_func(std::move(runtime_func)),
-		    m_detour(std::move(detour))
+		enum class type_info_ : uint8_t
 		{
-		}
+			RValue_ptr_,
+			CInstance_ptr_,
+			YYObjectBase_ptr_,
+			RefDynamicArrayOfRValue_ptr_,
+			CScriptRef_ptr_
+		};
+		using type_info_ext = std::variant<type_info_, lua::memory::type_info_t>;
 
-		runtime_hook_info(runtime_hook_info&& other) noexcept :
-		    m_runtime_func(std::move(other.m_runtime_func)),
-		    m_detour(std::move(other.m_detour))
+		static type_info_ext get_type_info_ext_from_string(const std::string& s)
 		{
+			// clang-format off
+			static std::unordered_map<std::string, type_info_> type_map = {
+				{"RValue*", type_info_::RValue_ptr_},
+				{"CInstance*", type_info_::CInstance_ptr_},
+				{"YYObjectBase*", type_info_::YYObjectBase_ptr_},
+				{"RefDynamicArrayOfRValue*", type_info_::RefDynamicArrayOfRValue_ptr_},
+				{"CScriptRef*", type_info_::CScriptRef_ptr_}
+			};
+			// clang-format on
+			for (const auto& [key, value] : type_map)
+			{
+				if (s.contains(key))
+				{
+					return value;
+				}
+			}
+			auto get_type_info_t_from_string = [](const std::string& s)
+			{
+				if ((s.contains("const") && s.contains("char") && s.contains("*")) || s.contains("string"))
+				{
+					return lua::memory::type_info_t::string_;
+				}
+				else if (s.contains("bool"))
+				{
+					return lua::memory::type_info_t::boolean_;
+				}
+				else if (s.contains("ptr") || s.contains("pointer") || s.contains("*"))
+				{
+					// passing lua::memory::pointer
+					return lua::memory::type_info_t::ptr_;
+				}
+				else if (s.contains("float"))
+				{
+					return lua::memory::type_info_t::float_;
+				}
+				else if (s.contains("double"))
+				{
+					return lua::memory::type_info_t::double_;
+				}
+				else
+				{
+					return lua::memory::type_info_t::integer_;
+				}
+			};
+			return get_type_info_t_from_string(s);
 		}
-	};
+	} // namespace type_info_utils
 
-	static std::unordered_map<uintptr_t, runtime_hook_info> hooks_original_func_ptr_to_info;
+	static std::unordered_map<uintptr_t, std::unique_ptr<qstd::runtime_func>> hooks_original_func_ptr_to_info;
+	static std::unordered_map<uintptr_t, std::vector<type_info_utils::type_info_ext>> dynamic_hook_mid_ptr_to_param_types;
 
 	static void builtin_script_callback(const qstd::runtime_func::parameters_t* p, const uint8_t count, qstd::runtime_func::return_value_t* ret_val, const uintptr_t original_func_ptr)
 	{
@@ -482,7 +894,7 @@ namespace lua::game_maker
 
 		if (call_orig_if_true)
 		{
-			hooks_original_func_ptr_to_info[original_func_ptr].m_detour->get_original<gm::TRoutine>()(result, self, other, arg_count, args);
+			hooks_original_func_ptr_to_info[original_func_ptr]->m_detour->get_original<gm::TRoutine>()(result, self, other, arg_count, args);
 		}
 
 		big::lua_manager_extension::post_builtin_execute((void*)original_func_ptr, self, other, result, arg_count, args);
@@ -504,7 +916,7 @@ namespace lua::game_maker
 
 		if (call_orig_if_true)
 		{
-			hooks_original_func_ptr_to_info[original_func_ptr].m_detour->get_original<PFUNC_YYGMLScript>()(self, other, result, arg_count, args);
+			hooks_original_func_ptr_to_info[original_func_ptr]->m_detour->get_original<PFUNC_YYGMLScript>()(self, other, result, arg_count, args);
 		}
 
 		ret_val->m_return_value = (uintptr_t)result;
@@ -523,10 +935,56 @@ namespace lua::game_maker
 
 		if (call_orig_if_true)
 		{
-			hooks_original_func_ptr_to_info[original_func_ptr].m_detour->get_original<PFUNC_YYGML>()(self, other);
+			hooks_original_func_ptr_to_info[original_func_ptr]->m_detour->get_original<PFUNC_YYGML>()(self, other);
 		}
 
 		big::lua_manager_extension::post_code_execute_fast((void*)original_func_ptr, self, other);
+	}
+
+	static bool mid_callback(const qstd::runtime_func::parameters_t* params, const uint8_t param_count, const uintptr_t target_func_ptr)
+	{
+		sol::table args(big::g_lua_manager->lua_state(), sol::new_table(param_count));
+		for (uint8_t i = 0; i < param_count; i++)
+		{
+			std::visit(
+			    [&](type_info_utils::type_info_ext type_ext)
+			    {
+				    if (auto type = std::get_if<type_info_utils::type_info_>(&type_ext))
+				    {
+					    // clang-format off
+						switch (*type)
+						{
+						case type_info_utils::type_info_::RValue_ptr_: 
+							args[i + 1] = params->get<RValue*>(i); 
+							break;
+						case type_info_utils::type_info_::CInstance_ptr_:
+							args[i + 1] = params->get<CInstance*>(i);
+							break;
+						case type_info_utils::type_info_::YYObjectBase_ptr_:
+							args[i + 1] = params->get<YYObjectBase*>(i);
+							break;
+						case type_info_utils::type_info_::RefDynamicArrayOfRValue_ptr_:
+							args[i + 1] = params->get<RefDynamicArrayOfRValue*>(i);
+							break;
+						}
+					    // clang-format on
+				    }
+				    else if (auto type = std::get_if<lua::memory::type_info_t>(&type_ext))
+				    {
+					    if (*type == lua::memory::type_info_t::ptr_)
+					    {
+						    args[i + 1] = sol::make_object(big::g_lua_manager->lua_state(), lua::memory::pointer(params->get<uintptr_t>(i)));
+					    }
+					    else
+					    {
+						    args[i + 1] =
+						        sol::make_object(big::g_lua_manager->lua_state(), lua::memory::value_wrapper_t(params->get_arg_ptr(i), *type));
+					    }
+				    }
+			    },
+			    dynamic_hook_mid_ptr_to_param_types[target_func_ptr][i]);
+		}
+		return big::lua_manager_extension::dynamic_hook_mid_callbacks(target_func_ptr, args);
 	}
 
 	struct make_central_script_result
@@ -619,11 +1077,9 @@ namespace lua::game_maker
 				// clang-format on
 
 
-				hooks_original_func_ptr_to_info.emplace(
-				    original_func_ptr,
-				    runtime_hook_info{std::move(runtime_func), std::make_unique<big::detour_hook>(hook_name.str(), (void*)original_func_ptr, (void*)JIT)});
+				hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
 
-				hooks_original_func_ptr_to_info[original_func_ptr].m_detour->enable();
+				hooks_original_func_ptr_to_info[original_func_ptr]->create_and_enable_hook(hook_name.str(), original_func_ptr, JIT);
 			}
 
 			return {mdl, (void*)original_func_ptr, true};
@@ -652,11 +1108,9 @@ namespace lua::game_maker
 					original_func_ptr);
 				// clang-format on
 
-				hooks_original_func_ptr_to_info.emplace(
-				    original_func_ptr,
-				    runtime_hook_info{std::move(runtime_func), std::make_unique<big::detour_hook>(hook_name.str(), (void*)original_func_ptr, (void*)JIT)});
+				hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
 
-				hooks_original_func_ptr_to_info[original_func_ptr].m_detour->enable();
+				hooks_original_func_ptr_to_info[original_func_ptr]->create_and_enable_hook(hook_name.str(), original_func_ptr, JIT);
 			}
 
 			return {mdl, (void*)original_func_ptr, false};
@@ -743,11 +1197,9 @@ namespace lua::game_maker
 				// clang-format on
 			}
 
-			hooks_original_func_ptr_to_info.emplace(
-			    original_func_ptr,
-			    runtime_hook_info{std::move(runtime_func), std::make_unique<big::detour_hook>(hook_name.str(), (void*)original_func_ptr, (void*)JIT)});
+			hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
 
-			hooks_original_func_ptr_to_info[original_func_ptr].m_detour->enable();
+			hooks_original_func_ptr_to_info[original_func_ptr]->create_and_enable_hook(hook_name.str(), original_func_ptr, JIT);
 		}
 
 		return {mdl, (void*)original_func_ptr, true};
@@ -850,6 +1302,80 @@ namespace lua::game_maker
 			else
 			{
 				res.m_this_lua_module->m_data_ext.m_post_builtin_execute_callbacks[res.m_original_func_ptr].push_back(cb);
+			}
+		}
+	}
+
+	// Lua API: Function
+	// Table: gm
+	// Name: dynamic_hook_mid
+	// Param: hook_name: string: The name of the hook.
+	// Param: param_captures_targets: table<string>: Addresses of the parameters which you want to capture.
+	// Param: param_captures_types: table<string>: Types of the parameters which you want to capture.
+	// Param: rsp_restore: string: The name of reg which used to restore rsp pointer, or the stack alignment offset.
+	// Param: stack_restore_offset: int: An offset used to restore stack, only need when you want to interrupt the function.
+	// Param: param_restores: table<string, string>: Restore targets and restore sources used to restore function, only need when you want to interrupt the function.
+	// Param: target_func_ptr: memory.pointer: The pointer to the function to detour.
+	// Param: mid_callback: function: The function that will be called when the program reaches the position. The callback must match the following signature: ( arg1 (value_wrapper), arg2 (value_wrapper), ... ) -> Returns false (boolean) if you want to interrupt the function.
+	// **Example Usage:**
+	// ```lua
+	// local ptr = memory.scan_pattern("some ida sig")
+	// memory.dynamic_hook_mid("test_hook", {["rax"] = "int",["[rsp+8]"] = "int"},"8", 0, {}, ptr, function(arg1, arg2)
+	// 		log.info("arg1", arg1:get(), " ", arg2:get())
+	// end)
+	// ```
+
+	static void dynamic_hook_mid(const std::string& hook_name, sol::table param_captures_targets, sol::table param_captures_types, const std::string& rsp_restore, int stack_restore_offset, sol::table restores_table, lua::memory::pointer& target_func_ptr_obj, sol::protected_function lua_mid_callback, sol::this_environment env)
+	{
+		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
+		if (mdl)
+		{
+			const auto target_func_ptr = target_func_ptr_obj.get_address();
+			if (!hooks_original_func_ptr_to_info.contains(target_func_ptr))
+			{
+				auto parse_table_to_string = [](const sol::table& table, std::vector<std::string>& target_vector)
+				{
+					for (const auto& [k, v] : table)
+					{
+						if (v.is<const char*>())
+						{
+							target_vector.push_back(v.as<const char*>());
+						}
+					}
+				};
+				std::vector<std::string> param_captures;
+				parse_table_to_string(param_captures_targets, param_captures);
+				std::vector<std::string> param_types;
+				parse_table_to_string(param_captures_types, param_types);
+				for (const std::string& s : param_types)
+				{
+					dynamic_hook_mid_ptr_to_param_types[target_func_ptr].push_back(type_info_utils::get_type_info_ext_from_string(s));
+				}
+
+				std::vector<std::string> restore_targets;
+				std::vector<std::string> restore_sources;
+				for (const auto& [k, v] : restores_table)
+				{
+					if (k.is<const char*>())
+					{
+						restore_targets.push_back(k.as<const char*>());
+					}
+					if (v.is<const char*>())
+					{
+						restore_sources.push_back(v.as<const char*>());
+					}
+				}
+				std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
+
+				const auto JIT = runtime_func->make_jit_midfunc(param_types, param_captures, rsp_restore, stack_restore_offset, restore_targets, restore_sources, asmjit::Arch::kHost, mid_callback, target_func_ptr);
+
+				hooks_original_func_ptr_to_info.emplace(target_func_ptr, std::move(runtime_func));
+
+				hooks_original_func_ptr_to_info[target_func_ptr]->create_and_enable_hook(hook_name, target_func_ptr, JIT);
+			}
+			if (lua_mid_callback.valid())
+			{
+				mdl->m_data_ext.m_dynamic_hook_mid_callbacks[target_func_ptr].push_back(lua_mid_callback);
 			}
 		}
 	}
@@ -1565,9 +2091,9 @@ namespace lua::game_maker
 
 				    if (args_.size() < 2)
 				    {
-					    LOG(WARNING)
-					        << "Attempted to call a script reference without atleast 2 args 'self' and 'other' game "
-					           "maker instances / structs. lua nil can also be passed if needed.";
+					    LOG(WARNING) << "Attempted to call a script reference without atleast 2 args 'self' and "
+					                    "'other' game "
+					                    "maker instances / structs. lua nil can also be passed if needed.";
 					    return sol::nil;
 				    }
 
@@ -1807,6 +2333,8 @@ namespace lua::game_maker
 
 		ns["pre_script_hook"]  = pre_script_hook;
 		ns["post_script_hook"] = post_script_hook;
+
+		ns["dynamic_hook_mid"] = dynamic_hook_mid;
 
 		ns["call"] = sol::overload(lua_gm_call, lua_gm_call_global);
 
