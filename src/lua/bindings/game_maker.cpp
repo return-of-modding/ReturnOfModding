@@ -283,8 +283,6 @@ namespace qstd
 
 			asmjit::Label skip_original_invoke_label = cc.newLabel();
 
-			asmjit::x86::Gp rsp_restore_gp;
-
 			// save caller-saved registers
 			cc.push(asmjit::x86::rax);
 			cc.push(asmjit::x86::rcx);
@@ -302,10 +300,11 @@ namespace qstd
 			}
 
 			// stack alignment
-			if (get_Gp_from_name(rsp_restore, rsp_restore_gp))
+			auto rsp_restore_gp = get_Gp_from_name(rsp_restore);
+			if (rsp_restore_gp.has_value())
 			{
-				cc.push(rsp_restore_gp);
-				cc.mov(rsp_restore_gp, asmjit::x86::rsp);
+				cc.push(*rsp_restore_gp);
+				cc.mov(*rsp_restore_gp, asmjit::x86::rsp);
 				cc.sub(asmjit::x86::rsp, 8);
 				cc.and_(asmjit::x86::rsp, 0xFF'FF'FF'F0);
 			}
@@ -314,6 +313,7 @@ namespace qstd
 				int offset  = std::stoi(rsp_restore, nullptr, 10);
 				stack_size += offset;
 			}
+			// allocate space
 			cc.sub(asmjit::x86::rsp, stack_size);
 
 			// capture registers to the stack
@@ -323,16 +323,22 @@ namespace qstd
 				auto argCapture = param_captures.at(argIdx);
 				if (argCapture.at(0) == '[')
 				{
+					auto target_address = get_addr_from_name(argCapture, stack_size);
+					if (!target_address.has_value())
+					{
+						LOG(ERROR) << "Can't get address from the name";
+						return 0;
+					}
 					if (is_general_register(argType))
 					{
 						asmjit::x86::Gp temp = cc.newUIntPtr();
-						cc.mov(temp, get_addr_from_name(argCapture, stack_size));
+						cc.mov(temp, *target_address);
 						cc.mov(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), temp);
 					}
 					else if (is_XMM_register(argType))
 					{
 						asmjit::x86::Xmm temp = cc.newXmm();
-						cc.movq(temp, get_addr_from_name(argCapture, stack_size));
+						cc.movq(temp, *target_address);
 						cc.movq(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), temp);
 					}
 					else
@@ -345,15 +351,23 @@ namespace qstd
 				{
 					if (is_general_register(argType))
 					{
-						asmjit::x86::Gp temp = cc.newUIntPtr();
-						get_Gp_from_name(argCapture, temp);
-						cc.mov(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), temp);
+						auto target_reg = get_Gp_from_name(argCapture);
+						if (!target_reg.has_value())
+						{
+							LOG(ERROR) << "Can't get register from the name";
+							return 0;
+						}
+						cc.mov(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), *target_reg);
 					}
 					else if (is_XMM_register(argType))
 					{
-						asmjit::x86::Xmm temp;
-						get_Xmm_from_name(argCapture, temp);
-						cc.movq(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), temp);
+						auto target_reg = get_Xmm_from_name(argCapture);
+						if (!target_reg.has_value())
+						{
+							LOG(ERROR) << "Can't get register from the name";
+							return 0;
+						}
+						cc.movq(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), *target_reg);
 					}
 					else
 					{
@@ -365,20 +379,23 @@ namespace qstd
 			// pass arguments to the function
 			cc.mov(asmjit::x86::rcx, asmjit::x86::rsp);
 			cc.mov(asmjit::x86::rdx, param_types.size());
-			//cc.mov(asmjit::x86::r8, asmjit::x86::ptr(asmjit::x86::rsp));
 			cc.mov(asmjit::x86::r8, (uintptr_t)target_func_ptr);
 
+			// allocate prelogue space, may require a bigger space
 			cc.sub(asmjit::x86::rsp, 32);
+
 			// invoke the mid callback
 			cc.call((uintptr_t)mid_callback);
 			cc.add(asmjit::x86::rsp, 32);
+
 			// stack cleanup
 			cc.add(asmjit::x86::rsp, stack_size);
 
-			if (get_Gp_from_name(rsp_restore, rsp_restore_gp))
+			// restore rsp
+			if (rsp_restore_gp.has_value())
 			{
-				cc.mov(asmjit::x86::rsp, rsp_restore_gp);
-				cc.pop(rsp_restore_gp);
+				cc.mov(asmjit::x86::rsp, *rsp_restore_gp);
+				cc.pop(*rsp_restore_gp);
 			}
 
 			// if the callback return value is zero, skip orig.
@@ -406,30 +423,45 @@ namespace qstd
 			{
 				std::string target_name = restore_targets[i];
 				std::string source_name = restore_sources[i];
-				asmjit::x86::Gp target;
-				if (get_Gp_from_name(target_name, target))
+				auto target = get_Gp_from_name(target_name);
+				if (target.has_value())
 				{
 					if (source_name.at(0) == '[')
 					{
-						cc.mov(target, get_addr_from_name(source_name));
+						auto source_addr = get_addr_from_name(source_name);
+						if (source_addr.has_value()){
+							cc.mov(*target, *source_addr);
+						}
+						else{
+							LOG(ERROR) << "Failed to get source address";
+							return 0;
+						}
 					}
 					else
 					{
-						asmjit::x86::Gp temp = cc.newUIntPtr();
-						get_Gp_from_name(source_name, temp);
-						cc.mov(target, temp);
+						auto source = get_Gp_from_name(source_name);
+						if (source.has_value()){
+							cc.mov(*target, *source);
+						}
+						else{
+							LOG(ERROR) << "Failed to get source register";
+							return 0;
+						}
 					}
 				}
 				else
 				{
 					LOG(ERROR) << "Failed to get restore target";
+					return 0;
 				}
 			}
+
+			// stack cleanup
 			if (stack_restore_offset != 0)
 			{
-				// stack cleanup
 				cc.sub(asmjit::x86::rsp, stack_restore_offset);
 			}
+
 			// write to buffer
 			cc.finalize();
 
@@ -496,7 +528,7 @@ namespace qstd
 			}
 		}
 
-		bool get_Gp_from_name(const std::string& name, asmjit::x86::Gp& res)
+		std::optional<asmjit::x86::Gp> get_Gp_from_name(const std::string& name)
 		{
 			// clang-format off
 			static const std::unordered_map<std::string, asmjit::x86::Gp> reg_map = {
@@ -556,16 +588,15 @@ namespace qstd
 			auto it = reg_map.find(name);
 			if (it != reg_map.end())
 			{
-				res = it->second;
-				return true;
+				return it->second;
 			}
 			else
 			{
-				return false;
+				return std::nullopt;
 			}
 		}
 
-		bool get_Xmm_from_name(const std::string& name, asmjit::x86::Xmm& res)
+		std::optional<asmjit::x86::Xmm> get_Xmm_from_name(const std::string& name)
 		{
 			// clang-format off
 			static const std::unordered_map<std::string, asmjit::x86::Xmm> reg_map = {
@@ -580,16 +611,15 @@ namespace qstd
 			auto it = reg_map.find(name);
 			if (it != reg_map.end())
 			{
-				res = it->second;
-				return true;
+				return it->second;
 			}
 			else
 			{
-				return false;
+				return std::nullopt;
 			}
 		}
 
-		asmjit::x86::Mem get_addr_from_name(const std::string& name, const int64_t rsp_offset = 0)
+		std::optional<asmjit::x86::Mem> get_addr_from_name(const std::string& name, const int64_t rsp_offset = 0)
 		{
 			auto get_base = [](std::string base) -> int
 			{
@@ -622,41 +652,41 @@ namespace qstd
 				}
 				return l;
 			};
-			std::regex pattern(R"(\[([a-z0-9]+)\+?([a-z]+[a-z0-9]*)\*?([1-8]?)([bodh]?)\+?([-+]?\d*)([bodh]?)\])");
+			std::regex pattern(R"(\[([a-z0-9]+)\+?([a-z0-9]*)\*?([1-8]?)([bodh]?)\+?([-+]?\d*)([bodh]?)\])");
 			std::smatch match;
 			if (std::regex_search(name, match, pattern))
 			{
 				std::string base_str  = match[1].str();
 				std::string index_str = match[2].str();
-				asmjit::x86::Gp base;
-				if (!get_Gp_from_name(base_str, base))
+				auto base             = get_Gp_from_name(base_str);
+				if (!base.has_value())
 				{
 					LOG(ERROR) << "Failed to get base reg";
+					return std::nullopt;
 				}
-				int offset             = base == asmjit::x86::rsp ? rsp_offset : 0;
+				int offset             = *base == asmjit::x86::rsp ? rsp_offset : 0;
 				std::string offset_str = match[5].str();
 				if (!offset_str.empty())
 				{
-					std::string offset_str       = match[5].str();
 					std::string offset_base_str  = match[6].str().empty() ? "d" : match[6].str();
 					offset                      += std::stoi(offset_str, nullptr, get_base(offset_base_str));
 				}
-				asmjit::x86::Gp index;
-				if (get_Gp_from_name(index_str, index))
+				auto index = get_Gp_from_name(index_str);
+				if (index.has_value())
 				{
 					std::string shift_str      = match[3].str().empty() ? "1" : match[3].str();
 					std::string shift_base_str = match[4].str().empty() ? "d" : match[4].str();
-					int shift = std::stoi(shift_str, nullptr, get_base(shift_base_str));
-					shift     = get_shift(shift);
-					return asmjit::x86::ptr(base, index, shift, offset);
+					int shift                  = std::stoi(shift_str, nullptr, get_base(shift_base_str));
+					shift                      = get_shift(shift);
+					return asmjit::x86::ptr(*base, *index, shift, offset);
 				}
 				else
 				{
-					return asmjit::x86::ptr(base, offset);
+					return asmjit::x86::ptr(*base, offset);
 				}
 			}
 			LOG(ERROR) << "Parse address failed";
-			return asmjit::x86::ptr(0);
+			return std::nullopt;
 		}
 
 		asmjit::CallConvId get_call_convention(const std::string& conv)
@@ -1316,16 +1346,17 @@ namespace lua::game_maker
 	// Param: stack_restore_offset: int: An offset used to restore stack, only need when you want to interrupt the function.
 	// Param: param_restores: table<string, string>: Restore targets and restore sources used to restore function, only need when you want to interrupt the function.
 	// Param: target_func_ptr: memory.pointer: The pointer to the function to detour.
-	// Param: mid_callback: function: The function that will be called when the program reaches the position. The callback must match the following signature: ( arg1 (value_wrapper), arg2 (value_wrapper), ... ) -> Returns false (boolean) if you want to interrupt the function.
+	// Param: mid_callback: function: The function that will be called when the program reaches the position. The callback must match the following signature: ( args (If it's a GM struct, it will be a pointer, else will be a value_wrapper) ) -> Returns false (boolean) if you want to interrupt the function.
 	// **Example Usage:**
 	// ```lua
 	// local ptr = memory.scan_pattern("some ida sig")
-	// memory.dynamic_hook_mid("test_hook", {["rax"] = "int",["[rsp+8]"] = "int"},"8", 0, {}, ptr, function(arg1, arg2)
-	// 		log.info("arg1", arg1:get(), " ", arg2:get())
+	// gm.dynamic_hook_mid("test_hook", {"rax", "rcx", "[rcx+rdx*4+11]"}, {"int", "RValue*", "int"}, "8", 0, {}, ptr, function(args)
+	//     log.info("trigger", args[1]:get(), args[2].value, args[3]:set(1))
 	// end)
 	// ```
-
-	static void dynamic_hook_mid(const std::string& hook_name, sol::table param_captures_targets, sol::table param_captures_types, const std::string& rsp_restore, int stack_restore_offset, sol::table restores_table, lua::memory::pointer& target_func_ptr_obj, sol::protected_function lua_mid_callback, sol::this_environment env)
+	// But scan_pattern may be affected by the other hooks.
+	
+	static void dynamic_hook_mid(const std::string& hook_name_str, sol::table param_captures_targets, sol::table param_captures_types, const std::string& rsp_restore, int stack_restore_offset, sol::table restores_table, lua::memory::pointer& target_func_ptr_obj, sol::protected_function lua_mid_callback, sol::this_environment env)
 	{
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (mdl)
@@ -1365,13 +1396,17 @@ namespace lua::game_maker
 						restore_sources.push_back(v.as<const char*>());
 					}
 				}
+				std::stringstream hook_name;
+				hook_name << mdl->guid() << " | " << hook_name_str << " | " << target_func_ptr;
+				LOG(INFO) << "hook_name: " << hook_name.str();
+
 				std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
 
 				const auto JIT = runtime_func->make_jit_midfunc(param_types, param_captures, rsp_restore, stack_restore_offset, restore_targets, restore_sources, asmjit::Arch::kHost, mid_callback, target_func_ptr);
 
 				hooks_original_func_ptr_to_info.emplace(target_func_ptr, std::move(runtime_func));
 
-				hooks_original_func_ptr_to_info[target_func_ptr]->create_and_enable_hook(hook_name, target_func_ptr, JIT);
+				hooks_original_func_ptr_to_info[target_func_ptr]->create_and_enable_hook(hook_name.str(), target_func_ptr, JIT);
 			}
 			if (lua_mid_callback.valid())
 			{
