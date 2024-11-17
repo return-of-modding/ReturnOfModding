@@ -423,16 +423,18 @@ namespace qstd
 			{
 				std::string target_name = restore_targets[i];
 				std::string source_name = restore_sources[i];
-				auto target = get_Gp_from_name(target_name);
+				auto target             = get_Gp_from_name(target_name);
 				if (target.has_value())
 				{
 					if (source_name.at(0) == '[')
 					{
 						auto source_addr = get_addr_from_name(source_name);
-						if (source_addr.has_value()){
+						if (source_addr.has_value())
+						{
 							cc.mov(*target, *source_addr);
 						}
-						else{
+						else
+						{
 							LOG(ERROR) << "Failed to get source address";
 							return 0;
 						}
@@ -440,10 +442,12 @@ namespace qstd
 					else
 					{
 						auto source = get_Gp_from_name(source_name);
-						if (source.has_value()){
+						if (source.has_value())
+						{
 							cc.mov(*target, *source);
 						}
-						else{
+						else
+						{
 							LOG(ERROR) << "Failed to get source register";
 							return 0;
 						}
@@ -1355,62 +1359,66 @@ namespace lua::game_maker
 	// end)
 	// ```
 	// But scan_pattern may be affected by the other hooks.
-	
+
 	static void dynamic_hook_mid(const std::string& hook_name_str, sol::table param_captures_targets, sol::table param_captures_types, const std::string& rsp_restore, int stack_restore_offset, sol::table restores_table, lua::memory::pointer& target_func_ptr_obj, sol::protected_function lua_mid_callback, sol::this_environment env)
 	{
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (mdl)
 		{
-			const auto target_func_ptr = target_func_ptr_obj.get_address();
-			if (!hooks_original_func_ptr_to_info.contains(target_func_ptr))
-			{
-				auto parse_table_to_string = [](const sol::table& table, std::vector<std::string>& target_vector)
-				{
-					for (const auto& [k, v] : table)
-					{
-						if (v.is<const char*>())
-						{
-							target_vector.push_back(v.as<const char*>());
-						}
-					}
-				};
-				std::vector<std::string> param_captures;
-				parse_table_to_string(param_captures_targets, param_captures);
-				std::vector<std::string> param_types;
-				parse_table_to_string(param_captures_types, param_types);
-				for (const std::string& s : param_types)
-				{
-					dynamic_hook_mid_ptr_to_param_types[target_func_ptr].push_back(type_info_utils::get_type_info_ext_from_string(s));
-				}
-
-				std::vector<std::string> restore_targets;
-				std::vector<std::string> restore_sources;
-				for (const auto& [k, v] : restores_table)
-				{
-					if (k.is<const char*>())
-					{
-						restore_targets.push_back(k.as<const char*>());
-					}
-					if (v.is<const char*>())
-					{
-						restore_sources.push_back(v.as<const char*>());
-					}
-				}
-				std::stringstream hook_name;
-				hook_name << mdl->guid() << " | " << hook_name_str << " | " << target_func_ptr;
-				LOG(INFO) << "hook_name: " << hook_name.str();
-
-				std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
-
-				const auto JIT = runtime_func->make_jit_midfunc(param_types, param_captures, rsp_restore, stack_restore_offset, restore_targets, restore_sources, asmjit::Arch::kHost, mid_callback, target_func_ptr);
-
-				hooks_original_func_ptr_to_info.emplace(target_func_ptr, std::move(runtime_func));
-
-				hooks_original_func_ptr_to_info[target_func_ptr]->create_and_enable_hook(hook_name.str(), target_func_ptr, JIT);
-			}
 			if (lua_mid_callback.valid())
 			{
+				const auto target_func_ptr = target_func_ptr_obj.get_address();
+				if (!hooks_original_func_ptr_to_info.contains(target_func_ptr))
+				{
+					auto parse_table_to_string = [](const sol::table& table, std::vector<std::string>& target_vector)
+					{
+						for (const auto& [k, v] : table)
+						{
+							if (v.is<const char*>())
+							{
+								target_vector.push_back(v.as<const char*>());
+							}
+						}
+					};
+					std::vector<std::string> param_captures;
+					parse_table_to_string(param_captures_targets, param_captures);
+					std::vector<std::string> param_types;
+					parse_table_to_string(param_captures_types, param_types);
+					for (const std::string& s : param_types)
+					{
+						dynamic_hook_mid_ptr_to_param_types[target_func_ptr].push_back(type_info_utils::get_type_info_ext_from_string(s));
+					}
+
+					std::vector<std::string> restore_targets;
+					std::vector<std::string> restore_sources;
+					for (const auto& [k, v] : restores_table)
+					{
+						if (k.is<const char*>())
+						{
+							restore_targets.push_back(k.as<const char*>());
+						}
+						if (v.is<const char*>())
+						{
+							restore_sources.push_back(v.as<const char*>());
+						}
+					}
+					std::stringstream hook_name;
+					hook_name << mdl->guid() << " | " << hook_name_str << " | " << target_func_ptr;
+					LOG(INFO) << "hook_name: " << hook_name.str();
+
+					std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
+
+					const auto JIT = runtime_func->make_jit_midfunc(param_types, param_captures, rsp_restore, stack_restore_offset, restore_targets, restore_sources, asmjit::Arch::kHost, mid_callback, target_func_ptr);
+
+					hooks_original_func_ptr_to_info.emplace(target_func_ptr, std::move(runtime_func));
+
+					hooks_original_func_ptr_to_info[target_func_ptr]->create_and_enable_hook(hook_name.str(), target_func_ptr, JIT);
+				}
 				mdl->m_data_ext.m_dynamic_hook_mid_callbacks[target_func_ptr].push_back(lua_mid_callback);
+				mdl->m_data.m_pre_cleanup["dynamic_hook_pre_cleanup"] = [target_func_ptr](sol::state_view& state)
+				{
+					hooks_original_func_ptr_to_info[target_func_ptr]->m_detour->disable();
+				};
 			}
 		}
 	}
