@@ -1415,7 +1415,7 @@ namespace lua::game_maker
 					hooks_original_func_ptr_to_info[target_func_ptr]->create_and_enable_hook(hook_name.str(), target_func_ptr, JIT);
 				}
 				mdl->m_data_ext.m_dynamic_hook_mid_callbacks[target_func_ptr].push_back(lua_mid_callback);
-				mdl->m_data.m_pre_cleanup["dynamic_hook_pre_cleanup"] = [target_func_ptr](sol::state_view& state)
+				mdl->m_data.m_pre_cleanup["dynamic_hook_mid_pre_cleanup"] = [target_func_ptr](sol::state_view& state)
 				{
 					hooks_original_func_ptr_to_info[target_func_ptr]->m_detour->disable();
 				};
