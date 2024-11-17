@@ -1152,15 +1152,8 @@ namespace lua::game_maker
 
 		return {};
 	}
-
-	static make_central_script_result make_central_object_function_hook(const std::string& function_name, sol::this_environment& env, bool is_pre_hook)
+	static uintptr_t get_object_function_ptr (const std::string& function_name)
 	{
-		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
-		if (!mdl)
-		{
-			return {};
-		}
-
 		static auto lazy_init_gml_func_cache = []()
 		{
 			std::unordered_map<std::string, uintptr_t> gml_func_cache;
@@ -1187,9 +1180,24 @@ namespace lua::game_maker
 
 			return gml_func_cache;
 		}();
+		const auto ptr_it = lazy_init_gml_func_cache.find(function_name);
+		if (ptr_it == lazy_init_gml_func_cache.end())
+		{
+			LOG(ERROR) << "Could not find a corresponding object function pointer (" << function_name << ")";
+			return 0;
+		}
+		return ptr_it->second;
+	}
+	static make_central_script_result make_central_object_function_hook(const std::string& function_name, sol::this_environment& env, bool is_pre_hook)
+	{
+		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
+		if (!mdl)
+		{
+			return {};
+		}
 
-		const auto original_function_ptr_it = lazy_init_gml_func_cache.find(function_name);
-		if (original_function_ptr_it == lazy_init_gml_func_cache.end())
+		const auto original_func_ptr = get_object_function_ptr(function_name);
+		if (original_func_ptr == 0)
 		{
 			LOG(ERROR) << "Could not find a corresponding object function pointer (" << function_name << ")";
 			return {};
@@ -1201,8 +1209,6 @@ namespace lua::game_maker
 		                            mdl->m_data_ext.m_post_code_execute_fast_callbacks.size());
 
 		LOG(INFO) << "hook_name: " << hook_name.str();
-
-		const auto original_func_ptr = original_function_ptr_it->second;
 
 		if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
 		{
@@ -2414,6 +2420,44 @@ namespace lua::game_maker
 			big::g_pointers->m_rorr.m_YYSetScriptRef(&res, (void*)function_info.function_ptr, nullptr);
 
 			return RValue_to_lua(res, this_state_);
+		};
+
+		// Lua API: Function
+		// Table: gm
+		// Name: get_script_addr
+		// Param: function_index: number: index of the game script / builtin game maker function.
+		// Returns: pointer: A pointer to the found address.
+		// **Example Usage**
+		// ```lua
+		// pointer = gm.get_script_addr(gm.constants.actor_death)
+		// ```
+		ns["get_script_addr"] = [](double function_index, sol::this_state this_state_) -> sol::object
+		{
+			const auto function_info = get_builtin_or_script_function_from_index(function_index);
+			if (!function_info.function_ptr)
+			{
+				return sol::lua_nil;
+			}
+			return sol::make_object(big::g_lua_manager->lua_state(), lua::memory::pointer(function_info.function_ptr));
+		};
+
+		// Lua API: Function
+		// Table: gm
+		// Name: get_obj_func_addr
+		// Param: function_name: string: the name of target function.
+		// Returns: pointer: A pointer to the found address.
+		// **Example Usage**
+		// ```lua
+		// pointer = gm.get_obj_func_addr("gml_Object_oStartMenu_Step_2")
+		// ```
+		ns["get_obj_func_addr"] = [](const std::string& function_name, sol::this_state this_state_) -> sol::object
+		{
+			uintptr_t ptr = get_object_function_ptr(function_name);
+			if (ptr == 0)
+			{
+				return sol::lua_nil;
+			}
+			return sol::make_object(big::g_lua_manager->lua_state(), lua::memory::pointer(ptr));
 		};
 
 		ns["variable_global_get"] = lua_gm_variable_global_get;
