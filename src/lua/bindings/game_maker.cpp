@@ -282,7 +282,6 @@ namespace qstd
 			code.setLogger(&log);
 
 			asmjit::Label skip_original_invoke_label = cc.newLabel();
-			asmjit::Label original_invoke_label = cc.newLabel();
 
 			// save caller-saved registers
 			cc.push(asmjit::x86::rax);
@@ -398,7 +397,7 @@ namespace qstd
 			// if the callback return value is zero, skip orig.
 			cc.test(asmjit::x86::rax, asmjit::x86::rax);
 			cc.jz(skip_original_invoke_label);
-			
+
 			// apply change
 			for (const auto& pair : cap_Gps)
 			{
@@ -447,7 +446,7 @@ namespace qstd
 			cc.jmp(original_ptr);
 
 			cc.bind(skip_original_invoke_label);
-			cc.add(asmjit::x86::rsp, stack_size + 7*8);
+			cc.add(asmjit::x86::rsp, stack_size + 7 * 8);
 			// restore callee-saved registers
 			for (int i = 0; i < restore_targets.size(); i++)
 			{
@@ -585,38 +584,62 @@ namespace qstd
 			    {"r15", asmjit::x86::r15}, // R15: 64-bit
 
 			    // 32-bit registers (lower 32 bits of 64-bit registers)
-			    {"eax", asmjit::x86::eax}, // EAX: low 32-bits of RAX
-			    {"ebx", asmjit::x86::ebx}, // EBX: low 32-bits of RBX
-			    {"ecx", asmjit::x86::ecx}, // ECX: low 32-bits of RCX
-			    {"edx", asmjit::x86::edx}, // EDX: low 32-bits of RDX
-			    {"esi", asmjit::x86::esi}, // ESI: low 32-bits of RSI
-			    {"edi", asmjit::x86::edi}, // EDI: low 32-bits of RDI
-			    {"ebp", asmjit::x86::ebp}, // EBP: low 32-bits of RBP
-			    {"esp", asmjit::x86::esp}, // ESP: low 32-bits of RSP
+			    {"eax", asmjit::x86::eax},   // EAX: low 32-bits of RAX
+			    {"ebx", asmjit::x86::ebx},   // EBX: low 32-bits of RBX
+			    {"ecx", asmjit::x86::ecx},   // ECX: low 32-bits of RCX
+			    {"edx", asmjit::x86::edx},   // EDX: low 32-bits of RDX
+			    {"esi", asmjit::x86::esi},   // ESI: low 32-bits of RSI
+			    {"edi", asmjit::x86::edi},   // EDI: low 32-bits of RDI
+			    {"ebp", asmjit::x86::ebp},   // EBP: low 32-bits of RBP
+			    {"esp", asmjit::x86::esp},   // ESP: low 32-bits of RSP
+				{"r8d", asmjit::x86::r8d},   // R8D: low 32-bits of R8
+				{"r9d", asmjit::x86::r9d},   // R9D: low 32-bits of R9
+				{"r10d", asmjit::x86::r10d}, // R10D: low 32-bits of R10
+				{"r11d", asmjit::x86::r11d}, // R11D: low 32-bits of R11
+				{"r12d", asmjit::x86::r12d}, // R12D: low 32-bits of R12
+				{"r13d", asmjit::x86::r13d}, // R13D: low 32-bits of R13
+				{"r14d", asmjit::x86::r14d}, // R14D: low 32-bits of R14
+				{"r15d", asmjit::x86::r15d}, // R15D: low 32-bits of R15
 
 			    // 16-bit registers (lower 16 bits of 64-bit registers)
-			    {"ax", asmjit::x86::ax}, // AX: low 16-bits of RAX
-			    {"bx", asmjit::x86::bx}, // BX: low 16-bits of RBX
-			    {"cx", asmjit::x86::cx}, // CX: low 16-bits of RCX
-			    {"dx", asmjit::x86::dx}, // DX: low 16-bits of RDX
-			    {"si", asmjit::x86::si}, // SI: low 16-bits of RSI
-			    {"di", asmjit::x86::di}, // DI: low 16-bits of RDI
-			    {"bp", asmjit::x86::bp}, // BP: low 16-bits of RBP
-			    {"sp", asmjit::x86::sp}, // SP: low 16-bits of RSP
+			    {"ax", asmjit::x86::ax},     // AX: low 16-bits of RAX
+			    {"bx", asmjit::x86::bx},     // BX: low 16-bits of RBX
+			    {"cx", asmjit::x86::cx},     // CX: low 16-bits of RCX
+			    {"dx", asmjit::x86::dx},     // DX: low 16-bits of RDX
+			    {"si", asmjit::x86::si},     // SI: low 16-bits of RSI
+			    {"di", asmjit::x86::di},     // DI: low 16-bits of RDI
+			    {"bp", asmjit::x86::bp},     // BP: low 16-bits of RBP
+			    {"sp", asmjit::x86::sp},     // SP: low 16-bits of RSP
+				{"r8w", asmjit::x86::r8w},   // R8W: low 16-bits of R8
+				{"r9w", asmjit::x86::r9w},   // R9W: low 16-bits of R9
+				{"r10w", asmjit::x86::r10w}, // R10W: low 16-bits of R10
+				{"r11w", asmjit::x86::r11w}, // R11W: low 16-bits of R11
+				{"r12w", asmjit::x86::r12w}, // R12W: low 16-bits of R12
+				{"r13w", asmjit::x86::r13w}, // R13W: low 16-bits of R13
+				{"r14w", asmjit::x86::r14w}, // R14W: low 16-bits of R14
+				{"r15w", asmjit::x86::r15w}, // R15W: low 16-bits of R15
 
 			    // 8-bit registers (lower 8 bits of 64-bit registers)
-			    {"al", asmjit::x86::al},   // AL: low 8-bits of RAX
-			    {"ah", asmjit::x86::ah},   // AH: high 8-bits of RAX
-			    {"bl", asmjit::x86::bl},   // BL: low 8-bits of RBX
-			    {"bh", asmjit::x86::bh},   // BH: high 8-bits of RBX
-			    {"cl", asmjit::x86::cl},   // CL: low 8-bits of RCX
-			    {"ch", asmjit::x86::ch},   // CH: high 8-bits of RCX
-			    {"dl", asmjit::x86::dl},   // DL: low 8-bits of RDX
-			    {"dh", asmjit::x86::dh},   // DH: high 8-bits of RDX
-			    {"sil", asmjit::x86::sil}, // SIL: low 8-bits of RSI
-			    {"dil", asmjit::x86::dil}, // DIL: low 8-bits of RDI
-			    {"bpl", asmjit::x86::bpl}, // BPL: low 8-bits of RBP
-			    {"spl", asmjit::x86::spl}  // SPL: low 8-bits of RSP
+			    {"al", asmjit::x86::al},     // AL: low 8-bits of RAX
+			    {"ah", asmjit::x86::ah},     // AH: high 8-bits of RAX
+			    {"bl", asmjit::x86::bl},     // BL: low 8-bits of RBX
+			    {"bh", asmjit::x86::bh},     // BH: high 8-bits of RBX
+			    {"cl", asmjit::x86::cl},     // CL: low 8-bits of RCX
+			    {"ch", asmjit::x86::ch},     // CH: high 8-bits of RCX
+			    {"dl", asmjit::x86::dl},     // DL: low 8-bits of RDX
+			    {"dh", asmjit::x86::dh},     // DH: high 8-bits of RDX
+			    {"sil", asmjit::x86::sil},   // SIL: low 8-bits of RSI
+			    {"dil", asmjit::x86::dil},   // DIL: low 8-bits of RDI
+			    {"bpl", asmjit::x86::bpl},   // BPL: low 8-bits of RBP
+			    {"spl", asmjit::x86::spl},    // SPL: low 8-bits of RSP
+				{"r8b", asmjit::x86::r8b},   // R8B: low 8-bits of R8
+				{"r9b", asmjit::x86::r9b},   // R9B: low 8-bits of R9
+				{"r10b", asmjit::x86::r10b}, // R10B: low 8-bits of R10
+				{"r11b", asmjit::x86::r11b}, // R11B: low 8-bits of R11
+				{"r12b", asmjit::x86::r12b}, // R12B: low 8-bits of R12
+				{"r13b", asmjit::x86::r13b}, // R13B: low 8-bits of R13
+				{"r14b", asmjit::x86::r14b}, // R14B: low 8-bits of R14
+				{"r15b", asmjit::x86::r15b} // R15B: low 8-bits of R15
 			};
 			// clang-format on
 			auto it = reg_map.find(name);
@@ -1010,6 +1033,7 @@ namespace lua::game_maker
 
 	static std::unordered_map<uintptr_t, std::unique_ptr<qstd::runtime_func>> hooks_original_func_ptr_to_info;
 	static std::unordered_map<uintptr_t, std::vector<type_info_utils::type_info_ext>> dynamic_hook_mid_ptr_to_param_types;
+	static std::unordered_map<uintptr_t, sol::protected_function> m_dynamic_hook_mid_callbacks;
 
 	static void builtin_script_callback(const qstd::runtime_func::parameters_t* p, const uint8_t count, qstd::runtime_func::return_value_t* ret_val, const uintptr_t original_func_ptr)
 	{
@@ -1113,7 +1137,20 @@ namespace lua::game_maker
 			    },
 			    dynamic_hook_mid_ptr_to_param_types[target_func_ptr][i]);
 		}
-		return big::lua_manager_extension::dynamic_hook_mid_callbacks(target_func_ptr, args);
+		bool call_orig_if_true = true;
+
+		auto cb = m_dynamic_hook_mid_callbacks.find(target_func_ptr);
+		if (cb != m_dynamic_hook_mid_callbacks.end())
+		{
+			const auto new_call_orig_if_true = cb->second(args);
+
+			if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
+			    && new_call_orig_if_true.get<bool>() == false)
+			{
+				call_orig_if_true = false;
+			}
+		}
+		return call_orig_if_true;
 	}
 
 	struct make_central_script_result
@@ -1516,14 +1553,16 @@ namespace lua::game_maker
 					hooks_original_func_ptr_to_info.emplace(target_func_ptr, std::move(runtime_func));
 
 					hooks_original_func_ptr_to_info[target_func_ptr]->create_and_enable_hook(hook_name.str(), target_func_ptr, JIT);
+
+					m_dynamic_hook_mid_callbacks[target_func_ptr] = lua_mid_callback;
+					mdl->m_data.m_pre_cleanup.push_back(
+					    [target_func_ptr]()
+					    {
+							dynamic_hook_mid_ptr_to_param_types[target_func_ptr].clear();
+						    hooks_original_func_ptr_to_info[target_func_ptr]->m_detour->disable();
+						    hooks_original_func_ptr_to_info.erase(target_func_ptr);
+					    });
 				}
-				mdl->m_data_ext.m_dynamic_hook_mid_callbacks[target_func_ptr].push_back(lua_mid_callback);
-				mdl->m_data.m_pre_cleanup.push_back(
-				    [target_func_ptr]()
-				    {
-					    hooks_original_func_ptr_to_info[target_func_ptr]->m_detour->disable();
-					    hooks_original_func_ptr_to_info.erase(target_func_ptr);
-				    });
 			}
 		}
 	}

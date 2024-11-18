@@ -414,28 +414,4 @@ namespace big::lua_manager_extension
 			}
 		}
 	}
-
-	bool dynamic_hook_mid_callbacks(const uintptr_t target_func_ptr, sol::table args)
-	{
-		std::scoped_lock guard(g_lua_manager->m_module_lock);
-
-		bool call_orig_if_true = true;
-
-		for (const auto& module : g_lua_manager->m_modules)
-		{
-			auto mod = (lua_module_ext*)module.get();
-			for (const auto& cb : mod->m_data_ext.m_dynamic_hook_mid_callbacks[target_func_ptr])
-			{
-				const auto new_call_orig_if_true = cb(args);
-
-				if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
-				    && new_call_orig_if_true.get<bool>() == false)
-				{
-					call_orig_if_true = false;
-				}
-			}
-		}
-
-		return call_orig_if_true;
-	}
 } // namespace big::lua_manager_extension
