@@ -316,6 +316,10 @@ namespace qstd
 			// allocate space
 			cc.sub(asmjit::x86::rsp, stack_size);
 
+			// save capture registers to save change
+			std::unordered_map<uint8_t, asmjit::x86::Gp> cap_Gps;
+			std::unordered_map<uint8_t, asmjit::x86::Xmm> cap_Xmms;
+
 			// capture registers to the stack
 			for (uint8_t argIdx = 0; argIdx < param_types.size(); argIdx++)
 			{
@@ -358,6 +362,7 @@ namespace qstd
 							return 0;
 						}
 						cc.mov(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), *target_reg);
+						cap_Gps[argIdx] = *target_reg;
 					}
 					else if (is_XMM_register(argType))
 					{
@@ -368,6 +373,7 @@ namespace qstd
 							return 0;
 						}
 						cc.movq(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), *target_reg);
+						cap_Xmms[argIdx] = *target_reg;
 					}
 					else
 					{
@@ -388,6 +394,15 @@ namespace qstd
 			cc.call((uintptr_t)mid_callback);
 			cc.add(asmjit::x86::rsp, 32);
 
+			// apply change
+			for (const auto& pair : cap_Gps)
+			{
+				cc.mov(pair.second, asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * pair.first));
+			}
+			for (const auto& pair : cap_Xmms)
+			{
+				cc.movq(pair.second, asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * pair.first));
+			}
 			// stack cleanup
 			cc.add(asmjit::x86::rsp, stack_size);
 
@@ -402,14 +417,27 @@ namespace qstd
 			cc.test(asmjit::x86::rax, asmjit::x86::rax);
 			cc.jz(skip_original_invoke_label);
 
+			// skip capture registers
+			auto change_pop = [&](asmjit::x86::Gp reg)
+			{
+				for (const auto& pair : cap_Gps)
+				{
+					if (pair.second == reg)
+					{
+						cc.add(asmjit::x86::rsp, 8);
+						return;
+					}
+				}
+				cc.pop(reg);
+			};
 			// restore caller-saved registers
-			cc.pop(asmjit::x86::r11);
-			cc.pop(asmjit::x86::r10);
-			cc.pop(asmjit::x86::r9);
-			cc.pop(asmjit::x86::r8);
-			cc.pop(asmjit::x86::rdx);
-			cc.pop(asmjit::x86::rcx);
-			cc.pop(asmjit::x86::rax);
+			change_pop(asmjit::x86::r11);
+			change_pop(asmjit::x86::r10);
+			change_pop(asmjit::x86::r9);
+			change_pop(asmjit::x86::r8);
+			change_pop(asmjit::x86::rdx);
+			change_pop(asmjit::x86::rcx);
+			change_pop(asmjit::x86::rax);
 
 			// jump to the original function
 			asmjit::x86::Gp original_ptr = cc.zbx();
@@ -1152,7 +1180,8 @@ namespace lua::game_maker
 
 		return {};
 	}
-	static uintptr_t get_object_function_ptr (const std::string& function_name)
+
+	static uintptr_t get_object_function_ptr(const std::string& function_name)
 	{
 		static auto lazy_init_gml_func_cache = []()
 		{
@@ -1188,6 +1217,7 @@ namespace lua::game_maker
 		}
 		return ptr_it->second;
 	}
+
 	static make_central_script_result make_central_object_function_hook(const std::string& function_name, sol::this_environment& env, bool is_pre_hook)
 	{
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
@@ -1421,11 +1451,12 @@ namespace lua::game_maker
 					hooks_original_func_ptr_to_info[target_func_ptr]->create_and_enable_hook(hook_name.str(), target_func_ptr, JIT);
 				}
 				mdl->m_data_ext.m_dynamic_hook_mid_callbacks[target_func_ptr].push_back(lua_mid_callback);
-				mdl->m_data.m_pre_cleanup.push_back([target_func_ptr]()
-				{
-					hooks_original_func_ptr_to_info[target_func_ptr]->m_detour->disable();
-					hooks_original_func_ptr_to_info.erase(target_func_ptr);
-				});
+				mdl->m_data.m_pre_cleanup.push_back(
+				    [target_func_ptr]()
+				    {
+					    hooks_original_func_ptr_to_info[target_func_ptr]->m_detour->disable();
+					    hooks_original_func_ptr_to_info.erase(target_func_ptr);
+				    });
 			}
 		}
 	}
