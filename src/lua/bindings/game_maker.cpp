@@ -282,6 +282,7 @@ namespace qstd
 			code.setLogger(&log);
 
 			asmjit::Label skip_original_invoke_label = cc.newLabel();
+			asmjit::Label original_invoke_label = cc.newLabel();
 
 			// save caller-saved registers
 			cc.push(asmjit::x86::rax);
@@ -394,6 +395,10 @@ namespace qstd
 			cc.call((uintptr_t)mid_callback);
 			cc.add(asmjit::x86::rsp, 32);
 
+			// if the callback return value is zero, skip orig.
+			cc.test(asmjit::x86::rax, asmjit::x86::rax);
+			cc.jz(skip_original_invoke_label);
+			
 			// apply change
 			for (const auto& pair : cap_Gps)
 			{
@@ -412,10 +417,6 @@ namespace qstd
 				cc.mov(asmjit::x86::rsp, *rsp_restore_gp);
 				cc.pop(*rsp_restore_gp);
 			}
-
-			// if the callback return value is zero, skip orig.
-			cc.test(asmjit::x86::rax, asmjit::x86::rax);
-			cc.jz(skip_original_invoke_label);
 
 			// skip capture registers
 			auto change_pop = [&](asmjit::x86::Gp reg)
@@ -446,6 +447,7 @@ namespace qstd
 			cc.jmp(original_ptr);
 
 			cc.bind(skip_original_invoke_label);
+			cc.add(asmjit::x86::rsp, stack_size + 7*8);
 			// restore callee-saved registers
 			for (int i = 0; i < restore_targets.size(); i++)
 			{
@@ -653,71 +655,136 @@ namespace qstd
 
 		std::optional<asmjit::x86::Mem> get_addr_from_name(const std::string& name, const int64_t rsp_offset = 0)
 		{
-			auto get_base = [](std::string base) -> int
+			auto catch_substr = [&](auto& ch)
 			{
-				char ch = base[0];
-				if (ch == 'b')
+				std::string sub_str;
+				++ch;
+				while (*ch != '+' && *ch != '-' && *ch != '*' && *ch != ']' && ch != name.end())
 				{
-					return 2;
+					if (*ch != ' ')
+					{
+						sub_str += *ch;
+					}
+					++ch;
 				}
-				else if (ch == 'o')
-				{
-					return 8;
-				}
-				else if (ch == 'd')
-				{
-					return 10;
-				}
-				else if (ch == 'h')
-				{
-					return 16;
-				}
-				return 10;
+				--ch;
+				return sub_str;
 			};
-			auto get_shift = [](int num) -> int
+			auto to_number = [](std::string_view str) -> uint64_t
 			{
-				int l = 0;
-				while (num)
+				auto get_base = [](std::string_view& base) -> int
 				{
-					num >>= 1;
-					l++;
+					if (base.size() > 2 && base[0] == '0' && (base[1] == 'x' || base[1] == 'X'))
+					{
+						base.remove_prefix(2);
+						return 16;
+					}
+					switch (base.back())
+					{
+					case 'b': base.remove_suffix(1); return 2;
+					case 'o': base.remove_suffix(1); return 8;
+					case 'd': base.remove_suffix(1); return 10;
+					case 'h': base.remove_suffix(1); return 16;
+					default:  return 10;
+					}
+				};
+				uint64_t num;
+				auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), num, get_base(str));
+				if (ptr != (str.data() + str.size()))
+				{
+					return 0;
 				}
-				return l;
+				return num;
 			};
-			std::regex pattern(R"(\[([a-z0-9]+)\+?([a-z0-9]*)\*?([1-8]?)([bodh]?)\+?([-+]?\d*)([bodh]?)\])");
-			std::smatch match;
-			if (std::regex_search(name, match, pattern))
+			std::string base_str;
+			std::string index_str;
+			int32_t offset = 0;
+			uint32_t shift = 0;
+			for (auto ch = name.begin(); ch != name.end(); ++ch)
 			{
-				std::string base_str  = match[1].str();
-				std::string index_str = match[2].str();
-				auto base             = get_Gp_from_name(base_str);
-				if (!base.has_value())
+				if (*ch == '[')
 				{
-					LOG(ERROR) << "Failed to get base reg";
-					return std::nullopt;
+					std::string sub_str = catch_substr(ch);
+					auto num            = to_number(sub_str);
+					if (num != 0)
+					{
+						return asmjit::x86::ptr(num);
+					}
+					else
+					{
+						base_str = sub_str;
+					}
 				}
-				int offset             = *base == asmjit::x86::rsp ? rsp_offset : 0;
-				std::string offset_str = match[5].str();
-				if (!offset_str.empty())
+				else if (*ch == '+')
 				{
-					std::string offset_base_str  = match[6].str().empty() ? "d" : match[6].str();
-					offset                      += std::stoi(offset_str, nullptr, get_base(offset_base_str));
+					std::string sub_str = catch_substr(ch);
+					auto num            = to_number(sub_str);
+					if (num != 0)
+					{
+						offset += num;
+					}
+					else
+					{
+						index_str = sub_str;
+					}
 				}
-				auto index = get_Gp_from_name(index_str);
-				if (index.has_value())
+				else if (*ch == '-')
 				{
-					std::string shift_str      = match[3].str().empty() ? "1" : match[3].str();
-					std::string shift_base_str = match[4].str().empty() ? "d" : match[4].str();
-					int shift                  = std::stoi(shift_str, nullptr, get_base(shift_base_str));
-					shift                      = get_shift(shift);
-					return asmjit::x86::ptr(*base, *index, shift, offset);
+					std::string sub_str = catch_substr(ch);
+					auto num            = to_number(sub_str);
+					if (num != 0)
+					{
+						offset -= num;
+					}
+					else
+					{
+						// I'm not sure this should happen.
+						// I think this is not necessary in a normal situation, and may need a register to solve it.
+						LOG(ERROR) << "Can't sub a register";
+						return std::nullopt;
+					}
 				}
-				else
+				else if (*ch == '*')
 				{
-					return asmjit::x86::ptr(*base, offset);
+					std::string sub_str = catch_substr(ch);
+					auto num            = to_number(sub_str);
+					if (num != 0)
+					{
+						while (num)
+						{
+							num >>= 1;
+							shift++;
+						}
+						shift--;
+					}
+					else
+					{
+						LOG(ERROR) << "Can't parse the shift";
+						return std::nullopt;
+					}
 				}
 			}
-			LOG(ERROR) << "Parse address failed";
+
+			auto base = get_Gp_from_name(base_str);
+			if (!base.has_value())
+			{
+				LOG(ERROR) << "Failed to get base reg from : " << base_str;
+				return std::nullopt;
+			}
+			if (*base == asmjit::x86::rsp)
+			{
+				offset += rsp_offset;
+			}
+			auto index = get_Gp_from_name(index_str);
+			if (index.has_value())
+			{
+				return asmjit::x86::ptr(*base, *index, shift, offset);
+			}
+			else
+			{
+				return asmjit::x86::ptr(*base, offset);
+			}
+			LOG(ERROR) << "Failed to parse address from : " << name;
 			return std::nullopt;
 		}
 
