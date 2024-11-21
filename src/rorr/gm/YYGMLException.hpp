@@ -6,7 +6,7 @@ struct CInstance;
 class YYGMLException
 {
 public:
-	char m_object[sizeof RValue];
+	char m_object[sizeof(RValue)];
 
 	inline YYGMLException(CInstance* _pSelf, CInstance* _pOther, const char* _pMessage, const char* _pLongMessage, const char* _filename, int _line, const char** ppStackTrace, int numLines)
 	{
