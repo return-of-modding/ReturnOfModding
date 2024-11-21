@@ -318,9 +318,8 @@ namespace qstd
 					}
 					if (is_general_register(argType))
 					{
-						asmjit::x86::Gp temp = cc.newUIntPtr();
-						cc.mov(temp, *target_address);
-						cc.mov(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), temp);
+						cc.mov(asmjit::x86::rbp, *target_address);
+						cc.mov(asmjit::x86::ptr(asmjit::x86::rsp, sizeof(uintptr_t) * argIdx), asmjit::x86::rbp);
 					}
 					else if (is_XMM_register(argType))
 					{
@@ -425,13 +424,10 @@ namespace qstd
 			cc.pop(asmjit::x86::rbp);
 
 			// jump to the original function
-			asmjit::x86::Gp original_ptr = cc.zbx();
-			cc.mov(original_ptr, m_detour->get_original_ptr());
-			cc.mov(original_ptr, asmjit::x86::ptr(original_ptr));
-			cc.jmp(original_ptr);
+			cc.jmp(asmjit::x86::ptr((uint64_t)m_detour->get_original_ptr()));
 
 			cc.bind(skip_original_invoke_label);
-			// cc.add(asmjit::x86::rsp, stack_size + 7 * 8);
+			cc.add(asmjit::x86::rsp, stack_size + 8 * 8);
 			// restore callee-saved registers
 			for (int i = 0; i < restore_targets.size(); i++)
 			{
@@ -477,7 +473,7 @@ namespace qstd
 			// stack cleanup
 			if (stack_restore_offset != 0)
 			{
-				// cc.sub(asmjit::x86::rsp, stack_restore_offset);
+				cc.sub(asmjit::x86::rsp, stack_restore_offset);
 			}
 
 			// write to buffer
@@ -1469,7 +1465,7 @@ namespace lua::game_maker
 	// Table: gm
 	// Name: dynamic_hook_mid
 	// Param: hook_name: string: The name of the hook.
-	// Param: param_captures_targets: table<string>: Addresses of the parameters which you want to capture.
+	// Param: param_captures_targets: table<string>: Addresses of the parameters which you want to capture. Register should be placed in front of the address, if you captrue an XMM register and an XMM address in the same hook.
 	// Param: param_captures_types: table<string>: Types of the parameters which you want to capture.
 	// Param: stack_restore_offset: int: An offset used to restore stack, only need when you want to interrupt the function.
 	// Param: param_restores: table<string, string>: Restore targets and restore sources used to restore function, only need when you want to interrupt the function.
