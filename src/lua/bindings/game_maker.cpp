@@ -262,7 +262,7 @@ namespace qstd
 			return make_jit_func(sig, arch, callback, original_func_ptr);
 		}
 
-		uintptr_t make_jit_midfunc(const std::vector<std::string>& param_types, const std::vector<std::string>& param_captures, const std::string& rsp_restore, const int stack_restore_offset, const std::vector<std::string>& restore_targets, const std::vector<std::string>& restore_sources, const asmjit::Arch arch, bool (*mid_callback)(const parameters_t* params, const uint8_t param_count, const uintptr_t target_func_ptr), const uintptr_t target_func_ptr)
+		uintptr_t make_jit_midfunc(const std::vector<std::string>& param_types, const std::vector<std::string>& param_captures, const int stack_restore_offset, const std::vector<std::string>& restore_targets, const std::vector<std::string>& restore_sources, const asmjit::Arch arch, bool (*mid_callback)(const parameters_t* params, const uint8_t param_count, const uintptr_t target_func_ptr), const uintptr_t target_func_ptr)
 		{
 			asmjit::CodeHolder code;
 			auto env = asmjit::Environment::host();
@@ -284,6 +284,7 @@ namespace qstd
 			asmjit::Label skip_original_invoke_label = cc.newLabel();
 
 			// save caller-saved registers
+			cc.push(asmjit::x86::rbp);
 			cc.push(asmjit::x86::rax);
 			cc.push(asmjit::x86::rcx);
 			cc.push(asmjit::x86::rdx);
@@ -294,25 +295,7 @@ namespace qstd
 
 			// setup the stack structure to hold arguments for user callback
 			uint8_t stack_size = sizeof(uintptr_t) * param_types.size();
-			if (stack_size % 16 != 0)
-			{
-				stack_size += 16 - (stack_size % 16);
-			}
 
-			// stack alignment
-			auto rsp_restore_gp = get_Gp_from_name(rsp_restore);
-			if (rsp_restore_gp.has_value())
-			{
-				cc.push(*rsp_restore_gp);
-				cc.mov(*rsp_restore_gp, asmjit::x86::rsp);
-				cc.sub(asmjit::x86::rsp, 8);
-				cc.and_(asmjit::x86::rsp, 0xFF'FF'FF'F0);
-			}
-			else
-			{
-				int offset  = std::stoi(rsp_restore, nullptr, 10);
-				stack_size += offset;
-			}
 			// allocate space
 			cc.sub(asmjit::x86::rsp, stack_size);
 
@@ -387,12 +370,20 @@ namespace qstd
 			cc.mov(asmjit::x86::rdx, param_types.size());
 			cc.mov(asmjit::x86::r8, (uintptr_t)target_func_ptr);
 
+			// save the rsp
+			cc.mov(asmjit::x86::rbp, asmjit::x86::rsp);
+			
 			// allocate prelogue space, may require a bigger space
-			cc.sub(asmjit::x86::rsp, 32);
+			cc.sub(asmjit::x86::rsp, 48);
+
+			// stack alignment
+			cc.and_(asmjit::x86::rsp, 0xFF'FF'FF'F0);
 
 			// invoke the mid callback
 			cc.call((uintptr_t)mid_callback);
-			cc.add(asmjit::x86::rsp, 32);
+			
+			// restore rsp
+			cc.mov(asmjit::x86::rsp, asmjit::x86::rbp);
 
 			// if the callback return value is zero, skip orig.
 			cc.test(asmjit::x86::rax, asmjit::x86::rax);
@@ -409,13 +400,6 @@ namespace qstd
 			}
 			// stack cleanup
 			cc.add(asmjit::x86::rsp, stack_size);
-
-			// restore rsp
-			if (rsp_restore_gp.has_value())
-			{
-				cc.mov(asmjit::x86::rsp, *rsp_restore_gp);
-				cc.pop(*rsp_restore_gp);
-			}
 
 			// skip capture registers
 			auto change_pop = [&](asmjit::x86::Gp reg)
@@ -438,6 +422,7 @@ namespace qstd
 			change_pop(asmjit::x86::rdx);
 			change_pop(asmjit::x86::rcx);
 			change_pop(asmjit::x86::rax);
+			cc.pop(asmjit::x86::rbp);
 
 			// jump to the original function
 			asmjit::x86::Gp original_ptr = cc.zbx();
@@ -446,7 +431,7 @@ namespace qstd
 			cc.jmp(original_ptr);
 
 			cc.bind(skip_original_invoke_label);
-			cc.add(asmjit::x86::rsp, stack_size + 7 * 8);
+			// cc.add(asmjit::x86::rsp, stack_size + 7 * 8);
 			// restore callee-saved registers
 			for (int i = 0; i < restore_targets.size(); i++)
 			{
@@ -492,7 +477,7 @@ namespace qstd
 			// stack cleanup
 			if (stack_restore_offset != 0)
 			{
-				cc.sub(asmjit::x86::rsp, stack_restore_offset);
+				// cc.sub(asmjit::x86::rsp, stack_restore_offset);
 			}
 
 			// write to buffer
@@ -1486,7 +1471,6 @@ namespace lua::game_maker
 	// Param: hook_name: string: The name of the hook.
 	// Param: param_captures_targets: table<string>: Addresses of the parameters which you want to capture.
 	// Param: param_captures_types: table<string>: Types of the parameters which you want to capture.
-	// Param: rsp_restore: string: The name of reg which used to restore rsp pointer, or the stack alignment offset.
 	// Param: stack_restore_offset: int: An offset used to restore stack, only need when you want to interrupt the function.
 	// Param: param_restores: table<string, string>: Restore targets and restore sources used to restore function, only need when you want to interrupt the function.
 	// Param: target_func_ptr: memory.pointer: The pointer to the function to detour.
@@ -1500,7 +1484,7 @@ namespace lua::game_maker
 	// ```
 	// But scan_pattern may be affected by the other hooks.
 
-	static void dynamic_hook_mid(const std::string& hook_name_str, sol::table param_captures_targets, sol::table param_captures_types, const std::string& rsp_restore, int stack_restore_offset, sol::table restores_table, lua::memory::pointer& target_func_ptr_obj, sol::protected_function lua_mid_callback, sol::this_environment env)
+	static void dynamic_hook_mid(const std::string& hook_name_str, sol::table param_captures_targets, sol::table param_captures_types, int stack_restore_offset, sol::table restores_table, lua::memory::pointer& target_func_ptr_obj, sol::protected_function lua_mid_callback, sol::this_environment env)
 	{
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (mdl)
@@ -1548,7 +1532,7 @@ namespace lua::game_maker
 
 					std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
 
-					const auto JIT = runtime_func->make_jit_midfunc(param_types, param_captures, rsp_restore, stack_restore_offset, restore_targets, restore_sources, asmjit::Arch::kHost, mid_callback, target_func_ptr);
+					const auto JIT = runtime_func->make_jit_midfunc(param_types, param_captures, stack_restore_offset, restore_targets, restore_sources, asmjit::Arch::kHost, mid_callback, target_func_ptr);
 
 					hooks_original_func_ptr_to_info.emplace(target_func_ptr, std::move(runtime_func));
 
