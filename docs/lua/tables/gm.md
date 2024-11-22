@@ -16,7 +16,7 @@ Table containing helpers for interacting with the game maker engine.
 
 - Type: `constants_type_sorted[type_name][i] = constant_name`
 
-## Functions (9)
+## Functions (11)
 
 ### `pre_code_execute(function_name, callback)`
 
@@ -148,6 +148,42 @@ end)
 **Example Usage:**
 ```lua
 CScriptRef* = gm.get_script_ref(function_index)
+```
+
+### `get_script_function_address(function_index)`
+
+**Example Usage**
+```lua
+pointer = gm.get_script_function_address(gm.constants.actor_death)
+```
+
+- **Parameters:**
+  - `function_index` (number): index of the game script / builtin game maker function.
+
+- **Returns:**
+  - `pointer`: A pointer to the found address.
+
+**Example Usage:**
+```lua
+pointer = gm.get_script_function_address(function_index)
+```
+
+### `get_object_function_address(function_name)`
+
+**Example Usage**
+```lua
+pointer = gm.get_object_function_address("gml_Object_oStartMenu_Step_2")
+```
+
+- **Parameters:**
+  - `function_name` (string): the name of target function.
+
+- **Returns:**
+  - `pointer`: A pointer to the found address.
+
+**Example Usage:**
+```lua
+pointer = gm.get_object_function_address(function_name)
 ```
 
 
