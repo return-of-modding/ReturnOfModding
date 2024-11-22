@@ -1,5 +1,6 @@
 #include "game_maker.hpp"
 
+#include "lua/bindings/memory.hpp"
 #include "lua/lua_manager_extension.hpp"
 #include "lua/lua_module_ext.hpp"
 #include "rorr/gm/Code_Function_GET_the_function.hpp"
@@ -22,20 +23,14 @@
 
 namespace qstd
 {
-#define TYPEID_MATCH_STR_IF(var, T)                                      \
-	if (var == #T)                                                       \
-	{                                                                    \
-		return asmjit::TypeId(asmjit::TypeUtils::TypeIdOfT<T>::kTypeId); \
-	}
-#define TYPEID_MATCH_STR_ELSEIF(var, T)                                  \
-	else if (var == #T)                                                  \
-	{                                                                    \
-		return asmjit::TypeId(asmjit::TypeUtils::TypeIdOfT<T>::kTypeId); \
-	}
-
 	class runtime_func : public PLH::MemAccessor
 	{
+		std::vector<uint8_t> m_jit_function_buffer;
+		asmjit::x86::Mem argsStack;
+
 	public:
+		std::unique_ptr<big::detour_hook> m_detour;
+
 		struct parameters_t
 		{
 			template<typename T>
@@ -54,7 +49,6 @@ namespace qstd
 			// we the runtime_func allocates stack space that is set to point here (check asmjit::compiler.newStack calls)
 			volatile uintptr_t m_arguments;
 
-		private:
 			// must be char* for aliasing rules to work when reading back out
 			char* get_arg_ptr(const uint8_t idx) const
 			{
@@ -71,11 +65,13 @@ namespace qstd
 
 		runtime_func()
 		{
+			m_detour = std::make_unique<big::detour_hook>();
 			m_jit_function_buffer.clear();
 		}
 
 		~runtime_func()
 		{
+			m_detour->disable();
 		}
 
 		/* Construct a callback given the raw signature at runtime. 'Callback' param is the C stub to transfer to,
@@ -111,11 +107,11 @@ namespace qstd
 				const auto argType = sig.args()[argIdx];
 
 				asmjit::x86::Reg arg;
-				if (is_general_register(argType))
+				if (lua::memory::is_general_register(argType))
 				{
 					arg = cc.newUIntPtr();
 				}
-				else if (is_XMM_register(argType))
+				else if (lua::memory::is_XMM_register(argType))
 				{
 					arg = cc.newXmm();
 				}
@@ -151,11 +147,11 @@ namespace qstd
 				const auto argType = sig.args()[argIdx];
 
 				// have to cast back to explicit register types to gen right mov type
-				if (is_general_register(argType))
+				if (lua::memory::is_general_register(argType))
 				{
 					cc.mov(argsStackIdx, argRegisters.at(argIdx).as<asmjit::x86::Gp>());
 				}
-				else if (is_XMM_register(argType))
+				else if (lua::memory::is_XMM_register(argType))
 				{
 					cc.movq(argsStackIdx, argRegisters.at(argIdx).as<asmjit::x86::Xmm>());
 				}
@@ -199,7 +195,7 @@ namespace qstd
 			{
 				asmjit::x86::Mem retStackIdx(retStack);
 				retStackIdx.setSize(sizeof(uintptr_t));
-				if (is_general_register(sig.ret()))
+				if (lua::memory::is_general_register(sig.ret()))
 				{
 					asmjit::x86::Gp tmp2 = cc.newUIntPtr();
 					cc.mov(tmp2, retStackIdx);
@@ -249,116 +245,22 @@ namespace qstd
 		stdcall, fastcall, or cdecl (cdecl is default on x86). On x64 those map to the same thing.*/
 		uintptr_t make_jit_func(const std::string& return_type, const std::vector<std::string>& param_types, const asmjit::Arch arch, const user_callback_t callback, const uintptr_t original_func_ptr, std::string call_convention = "")
 		{
-			asmjit::FuncSignature sig(get_call_convention(call_convention), asmjit::FuncSignature::kNoVarArgs, get_type_id(return_type));
+			asmjit::FuncSignature sig(lua::memory::get_call_convention(call_convention), asmjit::FuncSignature::kNoVarArgs, lua::memory::get_type_id(return_type));
 
 			for (const std::string& s : param_types)
 			{
-				sig.addArg(get_type_id(s));
+				sig.addArg(lua::memory::get_type_id(s));
 			}
 
 			return make_jit_func(sig, arch, callback, original_func_ptr);
 		}
 
-	private:
-		// does a given type fit in a general purpose register (i.e. is it integer type)
-		bool is_general_register(const asmjit::TypeId type_id) const
+		void create_and_enable_hook(const std::string& hook_name, uintptr_t target_func_ptr, uintptr_t jitted_func_ptr)
 		{
-			switch (type_id)
-			{
-			case asmjit::TypeId::kInt8:
-			case asmjit::TypeId::kUInt8:
-			case asmjit::TypeId::kInt16:
-			case asmjit::TypeId::kUInt16:
-			case asmjit::TypeId::kInt32:
-			case asmjit::TypeId::kUInt32:
-			case asmjit::TypeId::kInt64:
-			case asmjit::TypeId::kUInt64:
-			case asmjit::TypeId::kIntPtr:
-			case asmjit::TypeId::kUIntPtr: return true;
-			default:                       return false;
-			}
+			m_detour->set_instance(hook_name, (void*)target_func_ptr, (void*)jitted_func_ptr);
+
+			m_detour->enable();
 		}
-
-		// float, double, simd128
-		bool is_XMM_register(const asmjit::TypeId type_id) const
-		{
-			switch (type_id)
-			{
-			case asmjit::TypeId::kFloat32:
-			case asmjit::TypeId::kFloat64: return true;
-			default:                       return false;
-			}
-		}
-
-		asmjit::CallConvId get_call_convention(const std::string& conv)
-		{
-			if (conv == "cdecl")
-			{
-				return asmjit::CallConvId::kCDecl;
-			}
-			else if (conv == "stdcall")
-			{
-				return asmjit::CallConvId::kStdCall;
-			}
-			else if (conv == "fastcall")
-			{
-				return asmjit::CallConvId::kFastCall;
-			}
-
-			return asmjit::CallConvId::kHost;
-		}
-
-		asmjit::TypeId get_type_id(const std::string& type)
-		{
-			if (type.find('*') != std::string::npos)
-			{
-				return asmjit::TypeId::kUIntPtr;
-			}
-
-			TYPEID_MATCH_STR_IF(type, signed char)
-			TYPEID_MATCH_STR_ELSEIF(type, unsigned char)
-			TYPEID_MATCH_STR_ELSEIF(type, short)
-			TYPEID_MATCH_STR_ELSEIF(type, unsigned short)
-			TYPEID_MATCH_STR_ELSEIF(type, int)
-			TYPEID_MATCH_STR_ELSEIF(type, unsigned int)
-			TYPEID_MATCH_STR_ELSEIF(type, long)
-			TYPEID_MATCH_STR_ELSEIF(type, unsigned long)
-#ifdef POLYHOOK2_OS_WINDOWS
-			TYPEID_MATCH_STR_ELSEIF(type, __int64)
-			TYPEID_MATCH_STR_ELSEIF(type, unsigned __int64)
-#endif
-			TYPEID_MATCH_STR_ELSEIF(type, long long)
-			TYPEID_MATCH_STR_ELSEIF(type, unsigned long long)
-			TYPEID_MATCH_STR_ELSEIF(type, char)
-			TYPEID_MATCH_STR_ELSEIF(type, char16_t)
-			TYPEID_MATCH_STR_ELSEIF(type, char32_t)
-			TYPEID_MATCH_STR_ELSEIF(type, wchar_t)
-			TYPEID_MATCH_STR_ELSEIF(type, uint8_t)
-			TYPEID_MATCH_STR_ELSEIF(type, int8_t)
-			TYPEID_MATCH_STR_ELSEIF(type, uint16_t)
-			TYPEID_MATCH_STR_ELSEIF(type, int16_t)
-			TYPEID_MATCH_STR_ELSEIF(type, int32_t)
-			TYPEID_MATCH_STR_ELSEIF(type, uint32_t)
-			TYPEID_MATCH_STR_ELSEIF(type, uint64_t)
-			TYPEID_MATCH_STR_ELSEIF(type, int64_t)
-			TYPEID_MATCH_STR_ELSEIF(type, float)
-			TYPEID_MATCH_STR_ELSEIF(type, double)
-			TYPEID_MATCH_STR_ELSEIF(type, bool)
-			TYPEID_MATCH_STR_ELSEIF(type, void)
-			else if (type == "intptr_t")
-			{
-				return asmjit::TypeId::kIntPtr;
-			}
-			else if (type == "uintptr_t")
-			{
-				return asmjit::TypeId::kUIntPtr;
-			}
-
-			return asmjit::TypeId::kVoid;
-		}
-
-		std::vector<uint8_t> m_jit_function_buffer;
-		asmjit::x86::Mem argsStack;
 	};
 } // namespace qstd
 
@@ -448,27 +350,7 @@ static std::vector<RValue> parse_variadic_args(sol::variadic_args args)
 
 namespace lua::game_maker
 {
-	struct runtime_hook_info
-	{
-		std::unique_ptr<qstd::runtime_func> m_runtime_func;
-		std::unique_ptr<big::detour_hook> m_detour;
-
-		runtime_hook_info() = default;
-
-		runtime_hook_info(std::unique_ptr<qstd::runtime_func>&& runtime_func, std::unique_ptr<big::detour_hook>&& detour) :
-		    m_runtime_func(std::move(runtime_func)),
-		    m_detour(std::move(detour))
-		{
-		}
-
-		runtime_hook_info(runtime_hook_info&& other) noexcept :
-		    m_runtime_func(std::move(other.m_runtime_func)),
-		    m_detour(std::move(other.m_detour))
-		{
-		}
-	};
-
-	static std::unordered_map<uintptr_t, runtime_hook_info> hooks_original_func_ptr_to_info;
+	static std::unordered_map<uintptr_t, std::unique_ptr<qstd::runtime_func>> hooks_original_func_ptr_to_info;
 
 	static void builtin_script_callback(const qstd::runtime_func::parameters_t* p, const uint8_t count, qstd::runtime_func::return_value_t* ret_val, const uintptr_t original_func_ptr)
 	{
@@ -482,7 +364,7 @@ namespace lua::game_maker
 
 		if (call_orig_if_true)
 		{
-			hooks_original_func_ptr_to_info[original_func_ptr].m_detour->get_original<gm::TRoutine>()(result, self, other, arg_count, args);
+			hooks_original_func_ptr_to_info[original_func_ptr]->m_detour->get_original<gm::TRoutine>()(result, self, other, arg_count, args);
 		}
 
 		big::lua_manager_extension::post_builtin_execute((void*)original_func_ptr, self, other, result, arg_count, args);
@@ -504,7 +386,7 @@ namespace lua::game_maker
 
 		if (call_orig_if_true)
 		{
-			hooks_original_func_ptr_to_info[original_func_ptr].m_detour->get_original<PFUNC_YYGMLScript>()(self, other, result, arg_count, args);
+			hooks_original_func_ptr_to_info[original_func_ptr]->m_detour->get_original<PFUNC_YYGMLScript>()(self, other, result, arg_count, args);
 		}
 
 		ret_val->m_return_value = (uintptr_t)result;
@@ -523,7 +405,7 @@ namespace lua::game_maker
 
 		if (call_orig_if_true)
 		{
-			hooks_original_func_ptr_to_info[original_func_ptr].m_detour->get_original<PFUNC_YYGML>()(self, other);
+			hooks_original_func_ptr_to_info[original_func_ptr]->m_detour->get_original<PFUNC_YYGML>()(self, other);
 		}
 
 		big::lua_manager_extension::post_code_execute_fast((void*)original_func_ptr, self, other);
@@ -618,12 +500,9 @@ namespace lua::game_maker
 					original_func_ptr);
 				// clang-format on
 
+				hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
 
-				hooks_original_func_ptr_to_info.emplace(
-				    original_func_ptr,
-				    runtime_hook_info{std::move(runtime_func), std::make_unique<big::detour_hook>(hook_name.str(), (void*)original_func_ptr, (void*)JIT)});
-
-				hooks_original_func_ptr_to_info[original_func_ptr].m_detour->enable();
+				hooks_original_func_ptr_to_info[original_func_ptr]->create_and_enable_hook(hook_name.str(), original_func_ptr, JIT);
 			}
 
 			return {mdl, (void*)original_func_ptr, true};
@@ -652,11 +531,9 @@ namespace lua::game_maker
 					original_func_ptr);
 				// clang-format on
 
-				hooks_original_func_ptr_to_info.emplace(
-				    original_func_ptr,
-				    runtime_hook_info{std::move(runtime_func), std::make_unique<big::detour_hook>(hook_name.str(), (void*)original_func_ptr, (void*)JIT)});
+				hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
 
-				hooks_original_func_ptr_to_info[original_func_ptr].m_detour->enable();
+				hooks_original_func_ptr_to_info[original_func_ptr]->create_and_enable_hook(hook_name.str(), original_func_ptr, JIT);
 			}
 
 			return {mdl, (void*)original_func_ptr, false};
@@ -665,14 +542,8 @@ namespace lua::game_maker
 		return {};
 	}
 
-	static make_central_script_result make_central_object_function_hook(const std::string& function_name, sol::this_environment& env, bool is_pre_hook)
+	static uintptr_t get_object_function_ptr(const std::string& function_name)
 	{
-		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
-		if (!mdl)
-		{
-			return {};
-		}
-
 		static auto lazy_init_gml_func_cache = []()
 		{
 			std::unordered_map<std::string, uintptr_t> gml_func_cache;
@@ -699,9 +570,25 @@ namespace lua::game_maker
 
 			return gml_func_cache;
 		}();
+		const auto ptr_it = lazy_init_gml_func_cache.find(function_name);
+		if (ptr_it == lazy_init_gml_func_cache.end())
+		{
+			LOG(ERROR) << "Could not find a corresponding object function pointer (" << function_name << ")";
+			return 0;
+		}
+		return ptr_it->second;
+	}
 
-		const auto original_function_ptr_it = lazy_init_gml_func_cache.find(function_name);
-		if (original_function_ptr_it == lazy_init_gml_func_cache.end())
+	static make_central_script_result make_central_object_function_hook(const std::string& function_name, sol::this_environment& env, bool is_pre_hook)
+	{
+		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
+		if (!mdl)
+		{
+			return {};
+		}
+
+		const auto original_func_ptr = get_object_function_ptr(function_name);
+		if (original_func_ptr == 0)
 		{
 			LOG(ERROR) << "Could not find a corresponding object function pointer (" << function_name << ")";
 			return {};
@@ -713,8 +600,6 @@ namespace lua::game_maker
 		                            mdl->m_data_ext.m_post_code_execute_fast_callbacks.size());
 
 		LOG(INFO) << "hook_name: " << hook_name.str();
-
-		const auto original_func_ptr = original_function_ptr_it->second;
 
 		if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
 		{
@@ -743,11 +628,9 @@ namespace lua::game_maker
 				// clang-format on
 			}
 
-			hooks_original_func_ptr_to_info.emplace(
-			    original_func_ptr,
-			    runtime_hook_info{std::move(runtime_func), std::make_unique<big::detour_hook>(hook_name.str(), (void*)original_func_ptr, (void*)JIT)});
+			hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
 
-			hooks_original_func_ptr_to_info[original_func_ptr].m_detour->enable();
+			hooks_original_func_ptr_to_info[original_func_ptr]->create_and_enable_hook(hook_name.str(), original_func_ptr, JIT);
 		}
 
 		return {mdl, (void*)original_func_ptr, true};
@@ -1565,9 +1448,9 @@ namespace lua::game_maker
 
 				    if (args_.size() < 2)
 				    {
-					    LOG(WARNING)
-					        << "Attempted to call a script reference without atleast 2 args 'self' and 'other' game "
-					           "maker instances / structs. lua nil can also be passed if needed.";
+					    LOG(WARNING) << "Attempted to call a script reference without atleast 2 args 'self' "
+					                    "and 'other' game "
+					                    "maker instances / structs. lua nil can also be passed if needed.";
 					    return sol::nil;
 				    }
 
@@ -1844,6 +1727,70 @@ namespace lua::game_maker
 
 			return RValue_to_lua(res, this_state_);
 		};
+
+		// Lua API: Function
+		// Table: gm
+		// Name: get_script_function_address
+		// Param: function_index: number: index of the game script / builtin game maker function.
+		// Returns: pointer: A pointer to the found address.
+		// **Example Usage**
+		// ```lua
+		// pointer = gm.get_script_function_address(gm.constants.actor_death)
+		// ```
+		ns["get_script_function_address"] = [](double function_index, sol::this_state this_state_) -> sol::object
+		{
+			const auto function_info = get_builtin_or_script_function_from_index(function_index);
+			if (!function_info.function_ptr)
+			{
+				return sol::lua_nil;
+			}
+			return sol::make_object(big::g_lua_manager->lua_state(), lua::memory::pointer(function_info.function_ptr));
+		};
+
+		// Lua API: Function
+		// Table: gm
+		// Name: get_object_function_address
+		// Param: function_name: string: the name of target function.
+		// Returns: pointer: A pointer to the found address.
+		// **Example Usage**
+		// ```lua
+		// pointer = gm.get_object_function_address("gml_Object_oStartMenu_Step_2")
+		// ```
+		ns["get_object_function_address"] = [](const std::string& function_name, sol::this_state this_state_) -> sol::object
+		{
+			uintptr_t ptr = get_object_function_ptr(function_name);
+			if (ptr == 0)
+			{
+				return sol::lua_nil;
+			}
+			return sol::make_object(big::g_lua_manager->lua_state(), lua::memory::pointer(ptr));
+		};
+
+		lua::memory::add_type_info_from_string("RValue*",
+		                                       [](lua_State* state_, char* arg_ptr) -> sol::object
+		                                       {
+			                                       return sol::make_object(state_, *(RValue**)arg_ptr);
+		                                       });
+		lua::memory::add_type_info_from_string("CInstance*",
+		                                       [](lua_State* state_, char* arg_ptr) -> sol::object
+		                                       {
+			                                       return sol::make_object(state_, *(CInstance**)arg_ptr);
+		                                       });
+		lua::memory::add_type_info_from_string("YYObjectBase*",
+		                                       [](lua_State* state_, char* arg_ptr) -> sol::object
+		                                       {
+			                                       return sol::make_object(state_, *(YYObjectBase**)arg_ptr);
+		                                       });
+		lua::memory::add_type_info_from_string("RefDynamicArrayOfRValue*",
+		                                       [](lua_State* state_, char* arg_ptr) -> sol::object
+		                                       {
+			                                       return sol::make_object(state_, *(RefDynamicArrayOfRValue**)arg_ptr);
+		                                       });
+		lua::memory::add_type_info_from_string("CScriptRef*",
+		                                       [](lua_State* state_, char* arg_ptr) -> sol::object
+		                                       {
+			                                       return sol::make_object(state_, *(CScriptRef**)arg_ptr);
+		                                       });
 
 		ns["variable_global_get"] = lua_gm_variable_global_get;
 		ns["variable_global_set"] = lua_gm_variable_global_set;
