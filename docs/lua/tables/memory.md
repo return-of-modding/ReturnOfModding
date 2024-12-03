@@ -2,7 +2,7 @@
 
 Table containing helper functions related to process memory.
 
-## Functions (7)
+## Functions (8)
 
 ### `scan_pattern(pattern)`
 
@@ -140,6 +140,30 @@ end
 **Example Usage:**
 ```lua
 string = memory.dynamic_call(return_type, param_types, target_func_ptr)
+```
+
+### `resolve_pointer_to_type(target_address, target_type)`
+
+**Example Usage:**
+```lua
+memory.dynamic_hook("test", "RValue*", {"CInstance*","CInstance*","RValue*","int","RValue**"},
+ptr, function (ret_val, skill, player, result, arg_num, args_ptr)
+     log.info(memory.resolve_pointer_to_type(memory.get_usertype_pointer(skill), "YYObjectBase*").skill_id)
+     log.info(memory.resolve_pointer_to_type(args_ptr:deref():get_address(), "RValue*").value)
+     log.info(memory.resolve_pointer_to_type(args_ptr:add(8):deref():get_address(), "RValue*").value)
+end)
+```
+
+- **Parameters:**
+  - `target_address` (number): The object target as a lua number.
+  - `target_type` (string): Target type (must be a pointer type).
+
+- **Returns:**
+  - `lua usertype.`: 
+
+**Example Usage:**
+```lua
+lua usertype. = memory.resolve_pointer_to_type(target_address, target_type)
 ```
 
 ### `get_usertype_pointer(usertype_object)`
