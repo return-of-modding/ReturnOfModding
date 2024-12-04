@@ -8,40 +8,6 @@
 
 namespace big::lua_manager_extension
 {
-	static void set_folder_for_lua_require(sol::state_view& state)
-	{
-		std::string plugins_search_path = g_lua_manager->m_plugins_folder.get_path().string() + "/?.lua;";
-
-		for (const auto& entry : std::filesystem::recursive_directory_iterator(g_lua_manager->m_plugins_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
-		{
-			if (!entry.is_directory())
-			{
-				continue;
-			}
-
-			plugins_search_path += entry.path().string() + "/?.lua;";
-		}
-		// Remove final ';'
-		plugins_search_path.pop_back();
-
-		state["package"]["path"] = plugins_search_path;
-
-		std::string plugins_search_cpath = g_lua_manager->m_plugins_folder.get_path().string() + "/?.dll;";
-
-		for (const auto& entry : std::filesystem::recursive_directory_iterator(g_lua_manager->m_plugins_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
-		{
-			if (!entry.is_directory())
-			{
-				continue;
-			}
-
-			plugins_search_cpath += entry.path().string() + "/?.dll;";
-		}
-		// Remove final ';'
-		plugins_search_cpath.pop_back();
-		state["package"]["cpath"] = plugins_search_cpath;
-	}
-
 	static void sandbox_lua_os_library(sol::state_view& state)
 	{
 		const auto& os = state["os"];
