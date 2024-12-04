@@ -88,152 +88,156 @@ namespace big::lua_manager_extension
 		// If no match is found with the folder path then we just set the same env as the require caller.
 		// TODO: This is hacked together, need to be cleaned up at some point.
 		// TODO: sub folders are not supported currently.
-		state["require"] = [](std::string path, sol::variadic_args args, sol::this_environment this_env) -> sol::object
+		state["require"] = [](std::string relative_path_to_lua_or_dll, sol::variadic_args args, sol::this_environment this_env) -> sol::object
 		{
 			// Example of a non local require (mod is requiring a file from another mod/package):
 			// require "ReturnOfModding-DebugToolkit/lib_debug"
-			const auto is_non_local_require = !path.starts_with("./") && path.contains('-') && path.contains('/');
-			std::string required_module_guid{};
+			const auto is_non_local_require = !relative_path_to_lua_or_dll.starts_with("./")
+			                                  && relative_path_to_lua_or_dll.contains('/')
+			                                  && string::split(relative_path_to_lua_or_dll, '/')[0].contains('-');
+
+			std::string required_module_guid;
+			std::filesystem::path required_module_path;
 			if (is_non_local_require)
 			{
-				LOG(INFO) << "Non Local require: " << path;
-
-				required_module_guid = string::split(path, '/')[0];
+				required_module_guid        = string::split(relative_path_to_lua_or_dll, '/')[0];
+				relative_path_to_lua_or_dll = string::split(relative_path_to_lua_or_dll, '/')[1];
 			}
 			else
 			{
-				LOG(INFO) << "Local require: " << path;
-
-				if (path.starts_with("./"))
+				if (relative_path_to_lua_or_dll.starts_with("./"))
 				{
-					path.erase(0, 2);
+					relative_path_to_lua_or_dll.erase(0, 2);
 				}
 
 				required_module_guid = lua_module::guid_from(this_env);
 			}
+			required_module_path = g_lua_manager->m_plugins_folder.get_path() / required_module_guid / relative_path_to_lua_or_dll;
+			required_module_path = std::filesystem::absolute(required_module_path);
 
-			if (std::ranges::count(path, '/') > 1)
+			if (!std::filesystem::exists(required_module_path))
 			{
-				LOG(WARNING) << "Require with sub folders are currently not supported";
+				const auto required_module_path_lua = required_module_path.replace_extension(".lua");
+				if (std::filesystem::exists(required_module_path_lua))
+				{
+					required_module_path = required_module_path_lua;
+				}
+				else
+				{
+					const auto required_module_path_dll = required_module_path.replace_extension(".dll");
+					if (std::filesystem::exists(required_module_path_dll))
+					{
+						required_module_path = required_module_path_dll;
+					}
+				}
 			}
 
-			const auto path_stem = std::filesystem::path(path).stem();
+			LOG(INFO) << (is_non_local_require ? "Non Local Require: " : "Local Require: ") << "Module guid: " << required_module_guid
+			          << "\nResolved path: " << (char*)required_module_path.u8string().c_str();
 
-			for (const auto& entry : std::filesystem::recursive_directory_iterator(g_lua_manager->m_plugins_folder.get_path(), std::filesystem::directory_options::skip_permission_denied))
+			if (!std::filesystem::exists(required_module_path))
 			{
-				if (entry.path().extension() == ".lua")
+				LOG(WARNING) << "Require resolving: No lua or dll file exists.";
+				return {};
+			}
+
+			if (required_module_path.extension() == ".lua")
+			{
+				const std::string full_path = (char*)required_module_path.u8string().c_str();
+
+				const auto guid_from_path = lua_manager::get_module_info(required_module_path);
+				if (!guid_from_path)
 				{
-					if (entry.path().stem() == path_stem)
+					LOG(WARNING) << "Couldnt get module info from path " << required_module_path;
+					return {};
+				}
+
+				static std::unordered_map<std::string, sol::object> required_module_cache;
+
+				if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
+				{
+					sol::state_view state = this_env.env.value().lua_state();
+					auto fresh_result     = get_loadfile_function(state)(full_path);
+					if (!fresh_result.valid() || fresh_result.get_type() == sol::type::nil /*LuaJIT*/)
 					{
-						const auto full_path_ = entry.path().u8string();
-						const auto full_path  = (char*)full_path_.c_str();
+						const auto error_msg =
+						    !fresh_result.valid() ? fresh_result.get<sol::error>().what() : fresh_result.get<const char*>(1) /*LuaJIT*/;
 
-						if (!strstr(full_path, required_module_guid.c_str()))
-						{
-							LOG(WARNING) << "Skipping " << full_path << " because the required module guid was not in the path " << required_module_guid;
-							continue;
-						}
+						LOG(ERROR) << "Failed require: " << error_msg;
+						Logger::FlushQueue();
+						return {};
+					}
 
-						const auto guid_from_path = lua_manager::get_module_info(full_path);
-						if (!guid_from_path)
-						{
-							LOG(WARNING) << "Couldnt get module info from path " << full_path;
-							break;
-						}
+					auto res = fresh_result.get<sol::protected_function>();
 
-						static std::unordered_map<std::string, sol::object> required_module_cache;
+					this_env.env.value().set_on(res);
 
-						if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
-						{
-							sol::state_view state = this_env.env.value().lua_state();
-							auto fresh_result     = get_loadfile_function(state)(full_path);
-							if (!fresh_result.valid() || fresh_result.get_type() == sol::type::nil /*LuaJIT*/)
-							{
-								const auto error_msg =
-								    !fresh_result.valid() ? fresh_result.get<sol::error>().what() : fresh_result.get<const char*>(1) /*LuaJIT*/;
+					required_module_cache[full_path] = res(args);
+				}
 
-								LOG(ERROR) << "Failed require: " << error_msg;
-								Logger::FlushQueue();
-								break;
-							}
+				bool found_the_other_module = false;
+				for (const auto& mod : g_lua_manager->m_modules)
+				{
+					if (guid_from_path.value().m_guid == mod->guid())
+					{
+						found_the_other_module = true;
 
-							auto res = fresh_result.get<sol::protected_function>();
-
-							this_env.env.value().set_on(res);
-
-							required_module_cache[full_path] = res(args);
-						}
-
-						bool found_the_other_module = false;
-						for (const auto& mod : g_lua_manager->m_modules)
-						{
-							if (guid_from_path.value().m_guid == mod->guid())
-							{
-								found_the_other_module = true;
-
-								break;
-							}
-						}
-
-						if (!found_the_other_module && is_non_local_require)
-						{
-							LOG(ERROR) << "You require'd a module called " << path << " but did not have a package manifest.json level dependency on it. Which lead to the owning package of that module to not be properly init yet. Expect unstable behaviors related to your dependencies.";
-						}
-
-						return required_module_cache[full_path];
+						break;
 					}
 				}
-				else if (entry.path().extension() == ".dll")
+
+				if (!found_the_other_module && is_non_local_require)
 				{
-					if (entry.path().stem() == path_stem)
-					{
-						const auto full_path_ = entry.path().u8string();
-						const auto full_path  = (char*)full_path_.c_str();
-
-						static std::unordered_map<std::string, sol::object> required_module_cache;
-
-						if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
-						{
-							sol::state_view state = this_env.env.value().lua_state();
-
-							sol::protected_function_result fresh_result;
-							std::string path_stem_str = (char*)path_stem.u8string().c_str();
-							const auto lua_igmark     = path_stem_str.find_first_of('-');
-							if (lua_igmark != std::string::npos)
-							{
-								auto func_name = std::string("luaopen_").append(path_stem_str.substr(lua_igmark + 1));
-
-								fresh_result = get_loadlib_function(state)(full_path, func_name);
-							}
-							else
-							{
-								auto func_name = std::string("luaopen_").append(path_stem_str);
-
-								fresh_result = get_loadlib_function(state)(full_path, func_name);
-							}
-
-							if (!fresh_result.valid() || fresh_result.get_type() == sol::type::nil /*LuaJIT*/)
-							{
-								const auto error_msg =
-								    !fresh_result.valid() ? fresh_result.get<sol::error>().what() : fresh_result.get<const char*>(1) /*LuaJIT*/;
-
-								LOG(ERROR) << "Failed require: " << error_msg;
-								Logger::FlushQueue();
-								break;
-							}
-
-							required_module_cache[full_path] = fresh_result.get<sol::protected_function>()(args);
-						}
-
-						return required_module_cache[full_path];
-					}
+					LOG(ERROR) << "You require'd a module called " << full_path << " but did not have a package manifest.json level dependency on it. Which lead to the owning package of that module to not be properly init yet. Expect unstable behaviors related to your dependencies.";
 				}
+
+				return required_module_cache[full_path];
+			}
+			else if (required_module_path.extension() == ".dll")
+			{
+				const std::string full_path = (char*)required_module_path.u8string().c_str();
+				const auto path_stem        = required_module_path.stem();
+
+				static std::unordered_map<std::string, sol::object> required_module_cache;
+
+				if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
+				{
+					sol::state_view state = this_env.env.value().lua_state();
+
+					sol::protected_function_result fresh_result;
+					std::string path_stem_str = (char*)path_stem.u8string().c_str();
+					const auto lua_igmark     = path_stem_str.find_first_of('-');
+					if (lua_igmark != std::string::npos)
+					{
+						auto func_name = std::string("luaopen_").append(path_stem_str.substr(lua_igmark + 1));
+
+						fresh_result = get_loadlib_function(state)(full_path, func_name);
+					}
+					else
+					{
+						auto func_name = std::string("luaopen_").append(path_stem_str);
+
+						fresh_result = get_loadlib_function(state)(full_path, func_name);
+					}
+
+					if (!fresh_result.valid() || fresh_result.get_type() == sol::type::nil /*LuaJIT*/)
+					{
+						const auto error_msg =
+						    !fresh_result.valid() ? fresh_result.get<sol::error>().what() : fresh_result.get<const char*>(1) /*LuaJIT*/;
+
+						LOG(ERROR) << "Failed require: " << error_msg;
+						Logger::FlushQueue();
+						return {};
+					}
+
+					required_module_cache[full_path] = fresh_result.get<sol::protected_function>()(args);
+				}
+
+				return required_module_cache[full_path];
 			}
 
 			return {};
 		};
-
-		set_folder_for_lua_require(state);
 	}
 
 	void init_lua_base(sol::state_view& state)
