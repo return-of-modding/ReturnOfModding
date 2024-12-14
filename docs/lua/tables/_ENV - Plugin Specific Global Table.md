@@ -21,11 +21,17 @@ for n in pairs(mods[_ENV._PLUGIN.guid]) do
 end
 ```
 
-## Fields (12)
+## Fields (13)
 
 ### `_PLUGIN.guid`
 
 Guid of the mod.
+
+- Type: `string`
+
+### `_PLUGIN.version`
+
+Version of the mod.
 
 - Type: `string`
 
