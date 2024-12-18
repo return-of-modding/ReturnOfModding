@@ -167,15 +167,6 @@ namespace big
 				g_pointers->m_rorr.m_get_save_file_name = ptr.sub(0x18A).as<gm::GetSaveFileName_t>();
             }
         },
-        // gml_Script_host_commit_lobby_options
-        {
-            "HCLO",
-            "48 89 5C 24 ? 4C 89 44 24 ? 48 89 4C 24 ? 55 56 57 41 54 41 55 41 56 41 57 48 83 EC 70",
-            [](memory::handle ptr)
-            {
-				g_pointers->m_rorr.m_gml_script_host_commit_lobby_options = ptr.as<gm::gml_Script_host_commit_lobby_options_t>();
-            }
-        },
         // save_file_serialize
         {
             "SFS",
