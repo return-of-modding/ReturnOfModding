@@ -1817,13 +1817,13 @@ namespace lua::game_maker
 				                     self.raw_set(key,
 				                                  // TODO: Both of these wrapper should ideally early return nil if the function name doesn't exist.
 				                                  sol::overload(
-				                                      [key, this_state_](sol::variadic_args args)
-				                                      {
-					                                      return RValue_to_lua(gm::call(key, parse_variadic_args(args)), this_state_);
-				                                      },
 				                                      [key, this_state_](CInstance* self, CInstance* other, sol::variadic_args args)
 				                                      {
 					                                      return RValue_to_lua(gm::call(key, self, other, parse_variadic_args(args)), this_state_);
+				                                      },
+				                                      [key, this_state_](sol::variadic_args args)
+				                                      {
+					                                      return RValue_to_lua(gm::call(key, parse_variadic_args(args)), this_state_);
 				                                      }));
 
 				                     return self.raw_get<sol::reference>(key);
