@@ -188,10 +188,25 @@ namespace big
 
 		LOG(INFO) << "Creating dummy device";
 
-		if (FAILED(d3d11_create_device(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, &feature_level, 1, D3D11_SDK_VERSION, &device, nullptr, nullptr)))
+		HRESULT hr = d3d11_create_device(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, &feature_level, 1, D3D11_SDK_VERSION, &device, nullptr, nullptr);
+		if (FAILED(hr))
 		{
-			LOG(ERROR) << "Failed to create D3D11 Dummy device";
-			return false;
+			// If hardware creation fails, log it and try creating a WARP device instead
+			LOG(ERROR) << "Failed to create D3D11 hardware device. HRESULT: " << hr;
+			LOG(INFO) << "Falling back to WARP (software) device.";
+
+			hr = d3d11_create_device(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0, &feature_level, 1, D3D11_SDK_VERSION, &device, nullptr, nullptr);
+			if (FAILED(hr))
+			{
+				LOG(ERROR) << "Failed to create D3D11 Dummy device with WARP. HRESULT: " << hr;
+				return false;
+			}
+
+			LOG(INFO) << "Created dummy device using WARP.";
+		}
+		else
+		{
+			LOG(INFO) << "Created dummy device using hardware.";
 		}
 
 		LOG(INFO) << "Dummy device: " << HEX_TO_UPPER(device);
@@ -215,9 +230,10 @@ namespace big
 		LOG(INFO) << "Creating dummy DXGI factory";
 
 		IDXGIFactory2* factory{nullptr};
-		if (FAILED(create_dxgi_factory(IID_PPV_ARGS(&factory))))
+		hr = create_dxgi_factory(IID_PPV_ARGS(&factory));
+		if (FAILED(hr))
 		{
-			LOG(ERROR) << "Failed to create D3D11 Dummy DXGI Factory";
+			LOG(ERROR) << "Failed to create D3D11 Dummy DXGI Factory. HRESULT: " << hr;
 			return false;
 		}
 
@@ -330,9 +346,10 @@ namespace big
 
 		LOG(INFO) << "Querying dummy swapchain";
 
-		if (FAILED(swap_chain1->QueryInterface(IID_PPV_ARGS(&swap_chain))))
+		hr = swap_chain1->QueryInterface(IID_PPV_ARGS(&swap_chain));
+		if (FAILED(hr))
 		{
-			LOG(ERROR) << "Failed to retrieve D3D11 DXGI SwapChain";
+			LOG(ERROR) << "Failed to retrieve D3D11 DXGI SwapChain. HRESULT: " << hr;
 			return false;
 		}
 
