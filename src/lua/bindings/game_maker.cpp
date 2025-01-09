@@ -958,6 +958,7 @@ namespace lua::game_maker
 			// Lua API: Field
 			// Class: YYObjectBase
 			// Field: script_name: string or nil if not a SCRIPTREF
+			// Can be used to then hook the function with a pre / post script hook. The `gml_Script_` prefix may need to be removed for the hook to work.
 			type["script_name"] = sol::property(
 			    [](YYObjectBase& inst, sol::this_state this_state_)
 			    {
@@ -1432,6 +1433,8 @@ namespace lua::game_maker
 		// Atleast 2 args 'self' and 'other' game maker instances / structs need to be passed when calling the script.
 		//
 		// lua nil can also be passed if needed for those two args.
+		//
+		// Can also be hooked with a pre / post script hook. The `gml_Script_` prefix may need to be removed for the hook to work. Use the `script_name` field to retrieve the name.
 		{
 			sol::usertype<CScriptRef> type = state.new_usertype<CScriptRef>(
 			    "CScriptRef",
