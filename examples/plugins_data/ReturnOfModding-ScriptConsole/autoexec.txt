@@ -1,0 +1,3 @@
+echo "hello, testing!"
+echo "one two"; echo "three four"
+luae autoexec
