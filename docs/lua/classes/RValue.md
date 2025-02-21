@@ -6,48 +6,24 @@ Class representing a value coming from the game maker engine
 
 ### `type`
 
-- Type: `RValueType`
+- Type: `RValueType: The actual type behind the RValue`
 
 ### `value`
 
-- Type: `The actual value behind the RValue, or RValue if the type is not handled yet.`
+- Type: `any: The actual value behind the RValue, or RValue if the type is not handled yet.`
 
 ### `tostring`
 
-- Type: `string representation of the RValue`
+- Type: `string: string representation of the RValue`
 
-## Constructors (3)
-
-### `new(value)`
-
-Returns an RValue instance
-
-- **Parameters:**
-  - `value` (boolean): value
-
-**Example Usage:**
-```lua
-myInstance = RValue:new(value)
-```
+## Constructors (1)
 
 ### `new(value)`
 
 Returns an RValue instance
 
 - **Parameters:**
-  - `value` (number): value
-
-**Example Usage:**
-```lua
-myInstance = RValue:new(value)
-```
-
-### `new(value)`
-
-Returns an RValue instance
-
-- **Parameters:**
-  - `value` (string): value
+  - `value` (boolean|number|string): value
 
 **Example Usage:**
 ```lua

@@ -1,0 +1,42 @@
+---@meta CInstance
+
+-- Class representing a game maker object instance.
+--
+--You can use most if not all of the builtin game maker variables (For example `myCInstance.x`) [listed here](https://manual.gamemaker.io/monthly/en/GameMaker_Language/GML_Reference/Asset_Management/Instances/Instance_Variables/Instance_Variables.htm).
+--
+--To know the specific instance variables of a given object defined by the game call dump_vars() on the instance
+---@class (exact) CInstance
+---@field id number
+---@field object_index number
+---@field sprite_index number
+---@field image_index number
+---@field image_speed number
+---@field image_xscale number
+---@field image_yscale number
+---@field image_angle number
+---@field image_alpha number
+---@field image_blend number
+---@field x number
+---@field y number
+---@field xstart number
+---@field ystart number
+---@field xprevious number
+---@field yprevious number
+---@field direction number
+---@field speed number
+---@field friction number
+---@field gravity_direction number
+---@field gravity number
+---@field hspeed number
+---@field vspeed number
+---@field bbox number[4] array
+---@field timer number[12] array
+---@field layer number
+---@field mask_index number
+---@field m_nMouseOver number
+---@field depth number
+---@field i_currentdepth number
+---@field object_name string
+
+
+

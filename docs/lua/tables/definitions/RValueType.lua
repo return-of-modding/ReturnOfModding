@@ -1,0 +1,22 @@
+---@meta RValueType
+
+-- Table containing all possible types of an RValue
+---@class (exact) RValueType
+---@field REAL REAL
+---@field STRING STRING
+---@field ARRAY ARRAY
+---@field PTR PTR
+---@field VEC3 VEC3
+---@field UNDEFINED UNDEFINED
+---@field OBJECT OBJECT
+---@field INT32 INT32
+---@field VEC4 VEC4
+---@field MATRIX MATRIX
+---@field INT64 INT64
+---@field ACCESSOR ACCESSOR
+---@field JSNULL JSNULL
+---@field BOOL BOOL
+---@field ITERATOR ITERATOR
+---@field REF REF
+---@field UNSET UNSET
+
