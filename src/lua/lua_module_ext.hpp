@@ -32,6 +32,8 @@ namespace big
 	private:
 		void backcompat_init()
 		{
+			m_env["_ENV"] = sol::as_table(m_env);
+
 			auto plugin_ns = get_PLUGIN_table(m_env);
 
 			// Lua API: Field

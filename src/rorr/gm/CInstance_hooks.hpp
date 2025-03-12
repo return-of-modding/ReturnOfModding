@@ -9,6 +9,18 @@ namespace gm
 	inline std::vector<CInstance*> CInstances_all;
 	inline std::vector<CInstance*> CInstances_active;
 	inline std::unordered_map<int, CInstance*> CInstance_id_to_CInstance;
+	inline std::unordered_map<int, uintptr_t> CInstance_id_to_CInstance_ffi;
+
+#define big_only_once(lambda)                                      \
+	do                                                             \
+	{                                                              \
+		static bool execute_only_once_flag_macro_variable = false; \
+		if (!execute_only_once_flag_macro_variable)                \
+		{                                                          \
+			execute_only_once_flag_macro_variable = true;          \
+			lambda();                                              \
+		}                                                          \
+	} while (0)
 
 	using CInstance_ctor = CInstance* (*)(CInstance* this_, float a2, float a3, int a4, int a5, bool a6);
 
@@ -16,11 +28,18 @@ namespace gm
 	{
 		std::lock_guard lock(CInstance_containers_mutex);
 
+		//big_only_once(
+		//[]
+		//{
+		//LOG(ERROR) << GetCurrentThreadId();
+		//});
+
 		auto* res = big::g_hooking->get_original<hook_CInstance_ctor>()(this_, a2, a3, a4, a5, a6);
 
 		CInstances_all.push_back(res);
 
-		CInstance_id_to_CInstance[res->id] = res;
+		CInstance_id_to_CInstance[res->id]     = res;
+		CInstance_id_to_CInstance_ffi[res->id] = (uintptr_t)res;
 
 		return res;
 	}
@@ -38,6 +57,7 @@ namespace gm
 		              });
 
 		CInstance_id_to_CInstance.erase(this_->id);
+		CInstance_id_to_CInstance_ffi.erase(this_->id);
 
 		auto* res = big::g_hooking->get_original<hook_CInstance_dctor>()(this_);
 

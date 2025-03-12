@@ -352,4 +352,401 @@ namespace gm
 			}
 		}
 	}
+
+	inline void generate_gmf_ffi()
+	{
+		constexpr auto gmf_ffi_version_file_name = "gmf_version";
+		constexpr auto gmf_ffi_version           = "1";
+
+		const auto folder_path = big::g_file_manager.get_project_folder("plugins").get_path() / "ReturnOfModding-GLOBAL";
+
+		try
+		{
+			std::filesystem::create_directories(folder_path);
+		}
+		catch (const std::exception& e)
+		{
+			LOG(ERROR) << e.what();
+		}
+		catch (...)
+		{
+			LOG(ERROR) << "unknown exception";
+		}
+
+		const auto file_path_gmf_ffi_version = folder_path / gmf_ffi_version_file_name;
+
+		const auto functions_file_path = folder_path / "gmf_functions.lua";
+
+		const auto main_file_path = folder_path / "gmf.lua";
+
+		const auto write_version_to_version_file = [&]()
+		{
+			std::ofstream file_output_versioning(file_path_gmf_ffi_version, std::ios::out | std::ios::binary);
+			file_output_versioning << gmf_ffi_version;
+		};
+
+		if (std::filesystem::exists(file_path_gmf_ffi_version) && std::filesystem::exists(functions_file_path))
+		{
+			std::ifstream file_input(file_path_gmf_ffi_version, std::ios::in);
+			std::string version;
+			file_input >> version;
+			if (version == gmf_ffi_version)
+			{
+				return;
+			}
+			else
+			{
+				write_version_to_version_file();
+			}
+		}
+		else
+		{
+			write_version_to_version_file();
+		}
+
+		std::ofstream functions_file_output(functions_file_path, std::ios::out | std::ios::binary);
+
+		functions_file_output << R"(if gmf ~= nil then return gmf end
+
+gmf = {}
+
+ffi.cdef[[
+typedef struct RefString
+{
+	const char* m_str;
+	int m_refCount;
+	int m_size;
+} RefString;
+
+typedef struct YYObjectBase YYObjectBase;
+typedef struct CInstance CInstance;
+typedef struct CScriptRef CScriptRef;
+
+typedef struct RValue {
+	union {
+		int32_t i32;
+		int64_t i64;
+		double value;
+		struct RefString* ref_string;
+		struct YYObjectBase* yy_object_base;
+		struct CInstance* cinstance;
+		struct CScriptRef* cscriptref;
+	};
+	
+    int32_t __flags;
+    int32_t type;
+} RValue;
+
+typedef struct YYObjectBase {
+	void* virtual_table_ptr;
+
+	struct RValue* __yyvars;
+
+	struct YYObjectBase* m_pNextObject;
+	struct YYObjectBase* m_pPrevObject;
+	struct YYObjectBase* m_prototype;
+	const char* m_class;
+	void* m_getOwnProperty;
+	void* m_deleteProperty;
+	void* m_defineOwnProperty;
+	void* m_yyvarsMap;
+	void* m_pWeakRefs;
+	unsigned int m_numWeakRefs;
+	unsigned int m_nvars;
+	unsigned int m_flags;
+	unsigned int m_capacity;
+	unsigned int m_visited;
+	unsigned int m_visitedGC;
+	int m_GCgen;
+	int m_GCcreationframe;
+	int m_slot;            
+	int32_t type; // YYObjectBaseType
+	int m_rvalueInitType;
+	int m_curSlot;
+    
+} YYObjectBase;
+
+typedef struct YYGMLFuncs {
+	const char* m_name;
+
+	void* m_function_ptr;
+
+	void* m_func_var;
+} YYGMLFuncs;
+
+typedef struct CScript {
+	void* virtual_table_ptr;
+	void* m_code;
+	YYGMLFuncs* m_funcs;
+	void* m_CInstance_static_object;
+
+	union
+	{
+		const char* m_script;
+		int m_compiled_index;
+	};
+
+	const char* m_script_name; // example: gml_Script_init_player
+	int m_offset;
+} CScript;
+
+typedef struct CScriptRef {
+
+	void* virtual_table_ptr;
+
+	struct RValue* __yyvars;
+
+	struct YYObjectBase* m_pNextObject;
+	struct YYObjectBase* m_pPrevObject;
+	struct YYObjectBase* m_prototype;
+	const char* m_class;
+	void* m_getOwnProperty;
+	void* m_deleteProperty;
+	void* m_defineOwnProperty;
+	void* m_yyvarsMap;
+	void* m_pWeakRefs;
+	unsigned int m_numWeakRefs;
+	unsigned int m_nvars;
+	unsigned int m_flags;
+	unsigned int m_capacity;
+	unsigned int m_visited;
+	unsigned int m_visitedGC;
+	int m_GCgen;
+	int m_GCcreationframe;
+	int m_slot;            
+	int32_t type; // YYObjectBaseType
+	int m_rvalueInitType;
+	int m_curSlot;
+
+	void* m_unk;
+	void* m_unk2;
+	void* m_unk3;
+	void* m_unk4;
+	void* m_unk5;
+	void* m_unk6;
+	void* m_unk7;
+
+	CScript* m_call_script;
+} CScriptRef;
+
+typedef struct CInstance {
+	void* virtual_table_ptr;
+
+	struct RValue* __yyvars;
+
+	struct YYObjectBase* m_pNextObject;
+	struct YYObjectBase* m_pPrevObject;
+	struct YYObjectBase* m_prototype;
+	const char* m_class;
+	void* m_getOwnProperty;
+	void* m_deleteProperty;
+	void* m_defineOwnProperty;
+	void* m_yyvarsMap;
+	void* m_pWeakRefs;
+	unsigned int m_numWeakRefs;
+	unsigned int m_nvars;
+	unsigned int m_flags;
+	unsigned int m_capacity;
+	unsigned int m_visited;
+	unsigned int m_visitedGC;
+	int m_GCgen;
+	int m_GCcreationframe;
+	int m_slot;            
+	int32_t type; // YYObjectBaseType
+	int m_rvalueInitType;
+	int m_curSlot;
+
+	__int64 m_CreateCounter;
+	void* m_pObject;
+	void* m_pPhysicsObject;
+	void* m_pSkeletonAnimation;
+	void* m_pControllingSeqInst;
+	unsigned int m_Instflags;
+	int id;
+	int object_index;
+	int sprite_index;
+	float i_sequencePos;
+	float i_lastSequencePos;
+	float i_sequenceDir;
+	float image_index;
+	float image_speed;
+	float image_xscale;
+	float image_yscale;
+	float image_angle;
+	float image_alpha;
+	unsigned int image_blend;
+	float x;
+	float y;
+	float xstart;
+	float ystart;
+	float xprevious;
+	float yprevious;
+	float direction;
+	float speed;
+	float friction;
+	float gravity_direction;
+	float gravity;
+	float hspeed;
+	float vspeed;
+	int bbox[4];
+	int timer[12];
+	void* m_pPathAndTimeline;
+	void* i_initcode; // CCode
+	void* i_precreatecode; // CCode
+	void* m_pOldObject;
+	int layer;
+	int mask_index;
+	int16_t m_nMouseOver;
+	void* m_pNext; // CInstance
+	void* m_pPrev; // CInstance
+	void* m_collisionLink[3]; // SLink
+	void* m_dirtyLink[3];     // SLink
+	void* m_withLink[3];      // SLink
+	float depth;
+	float i_currentdepth;
+	float i_lastImageNumber;
+	unsigned int m_collisionTestNumber;
+    
+} CInstance;
+]]
+)";
+
+		struct func_info_
+		{
+			const char* m_name;
+			void* m_func_ptr;
+		};
+
+		std::vector<func_info_> func_info_builtins;
+		std::vector<func_info_> func_info_objects;
+		std::vector<func_info_> func_info_scripts;
+
+		// Builtin GML Functions
+		const auto size = *big::g_pointers->m_rorr.m_code_function_GET_the_function_function_count;
+		for (int i = 0; i < size; i++)
+		{
+			code_function_info result{};
+
+			big::g_pointers->m_rorr.m_code_function_GET_the_function(i,
+			                                                         &result.function_name,
+			                                                         &result.function_ptr,
+			                                                         &result.function_arg_count);
+
+			if (result.function_name && result.function_ptr)
+			{
+				func_info_builtins.push_back({result.function_name, result.function_ptr});
+			}
+		}
+
+		// Script Execute
+		/*for (size_t i = 0; true; i++)
+		{
+			const auto& asset_get_index = gm::get_code_function("asset_get_index");
+
+			auto cscript = big::g_pointers->m_rorr.m_script_data(i);
+			if (cscript)
+			{
+				func_info_scripts.push_back({cscript->m_script_name, (void*)cscript->m_funcs->m_script_function});
+			}
+			else
+			{
+				break;
+			}
+		}*/
+
+		auto gml_funcs = big::g_pointers->m_rorr.m_GMLFuncs;
+
+		const auto game_base_address = (uintptr_t)GetModuleHandleA(0);
+
+		while (true)
+		{
+			if (gml_funcs->m_name && ((uintptr_t)gml_funcs->m_script_function - game_base_address) < 0xF'F0'00'00'00 /* stupid bound check */)
+			{
+				if (strstr(gml_funcs->m_name, "gml_Script_"))
+				{
+					func_info_scripts.push_back({gml_funcs->m_name + 11, (void*)gml_funcs->m_script_function});
+				}
+				else if (strstr(gml_funcs->m_name, "gml_Object_"))
+				{
+					func_info_objects.push_back({gml_funcs->m_name, (void*)gml_funcs->m_script_function});
+				}
+
+				gml_funcs++;
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		functions_file_output << "local game_base_address = memory.game_base_address\n\n";
+
+		functions_file_output
+		    << "local builtin_signature = \"void (*)(struct RValue* result, struct CInstance* self, struct "
+		       "CInstance* other, int64_t arg_count, struct RValue* args)\"\n";
+		functions_file_output
+		    << "local object_signature = \"void (*)(struct CInstance* self, struct CInstance* other)\"\n";
+		functions_file_output
+		    << "local script_signature = \"void (*)(struct CInstance * self, struct "
+		       "CInstance* other, struct RValue* result, int64_t arg_count, struct RValue** args)\"\n\n";
+
+		for (const auto& func_info : func_info_builtins)
+		{
+			functions_file_output << "gmf[\"" << func_info.m_name << "\"] = ffi.cast(builtin_signature, game_base_address + "
+			                      << HEX_TO_UPPER_OFFSET(func_info.m_func_ptr) << ")\n";
+		}
+
+		functions_file_output << "\n\n";
+
+		for (const auto& func_info : func_info_objects)
+		{
+			functions_file_output << "gmf[\"" << func_info.m_name << "\"] = ffi.cast(object_signature, game_base_address + "
+			                      << HEX_TO_UPPER_OFFSET(func_info.m_func_ptr) << ")\n";
+		}
+
+		functions_file_output << "\n\n";
+
+		for (const auto& func_info : func_info_scripts)
+		{
+			functions_file_output << "gmf[\"" << func_info.m_name << "\"] = ffi.cast(script_signature, game_base_address + "
+			                      << HEX_TO_UPPER_OFFSET(func_info.m_func_ptr) << ")\n";
+		}
+
+		functions_file_output << "\nreturn gmf\n";
+
+		std::ofstream main_file_output(main_file_path, std::ios::out | std::ios::binary);
+
+		main_file_output << R"(if gmf ~= nil then return gmf end
+
+gmf = require("ReturnOfModding-GLOBAL/gmf_functions")
+
+)";
+
+		main_file_output
+		    << "gmf.yysetstring = ffi.cast(\"void (*)(struct RValue*, const char*)\", memory.game_base_address + ";
+
+		main_file_output << HEX_TO_UPPER_OFFSET(big::g_pointers->m_rorr.m_yysetstring) << ")\n\n";
+
+		main_file_output << R"(local rvalue_type = ffi.typeof("struct RValue")
+
+gmf.rvalue_type = rvalue_type
+
+gmf.rvalue_new = function (val)
+	local rvalue = ffi.new(rvalue_type)
+	rvalue.value = val
+	return rvalue
+end
+
+gmf.rvalue_new_string = function (str)
+    local result = ffi.new("struct RValue[1]")
+	gmf.yysetstring(result, str)
+    return result[0]
+end
+
+return gmf
+
+)";
+
+		LOG(INFO) << "Done generating gmf ffi lua table.";
+	}
 } // namespace gm

@@ -298,35 +298,34 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 
 static RValue parse_sol_object(sol::object arg)
 {
-	if (arg.get_type() == sol::type::number)
+	switch (arg.get_type())
 	{
-		return RValue(arg.as<double>());
+	case sol::type::number:  return RValue(arg.as<double>());
+	case sol::type::string:  return RValue(arg.as<std::string>());
+	case sol::type::boolean: return RValue(arg.as<bool>());
+	case sol::type::userdata:
+		if (arg.is<RefDynamicArrayOfRValue*>())
+		{
+			return RValue(arg.as<RefDynamicArrayOfRValue*>());
+		}
+		else if (arg.is<CScriptRef*>())
+		{
+			return RValue(arg.as<YYObjectBase*>());
+		}
+		else if (arg.is<CInstance*>())
+		{
+			return RValue(arg.as<CInstance*>());
+		}
+		else if (arg.is<YYObjectBase*>())
+		{
+			return RValue(arg.as<YYObjectBase*>());
+		}
+		break;
+	//case sol::type::table: break;
+	default: break;
 	}
-	else if (arg.get_type() == sol::type::string)
-	{
-		return RValue(arg.as<std::string>());
-	}
-	else if (arg.get_type() == sol::type::boolean)
-	{
-		return RValue(arg.as<bool>());
-	}
-	else if (arg.is<RefDynamicArrayOfRValue*>())
-	{
-		return RValue(arg.as<RefDynamicArrayOfRValue*>());
-	}
-	else if (arg.is<CScriptRef*>())
-	{
-		return RValue(arg.as<YYObjectBase*>());
-	}
-	else if (arg.is<CInstance*>())
-	{
-		return RValue(arg.as<CInstance*>());
-	}
-	else if (arg.is<YYObjectBase*>())
-	{
-		return RValue(arg.as<YYObjectBase*>());
-	}
-	else if (arg.is<RValue>())
+
+	if (arg.is<RValue>())
 	{
 		return arg.as<RValue>();
 	}
@@ -337,6 +336,7 @@ static RValue parse_sol_object(sol::object arg)
 static std::vector<RValue> parse_variadic_args(sol::variadic_args args)
 {
 	std::vector<RValue> vec_args;
+	vec_args.reserve(args.size());
 	for (const auto& arg : args)
 	{
 		vec_args.push_back(parse_sol_object(arg));
@@ -500,6 +500,8 @@ namespace lua::game_maker
 					original_func_ptr);
 				// clang-format on
 
+				//LOG(INFO) << "hook func address: " << HEX_TO_UPPER(JIT);
+
 				hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
 
 				hooks_original_func_ptr_to_info[original_func_ptr]->create_and_enable_hook(hook_name.str(), original_func_ptr, JIT);
@@ -530,6 +532,8 @@ namespace lua::game_maker
 					&builtin_script_callback,
 					original_func_ptr);
 				// clang-format on
+
+				//LOG(INFO) << "hook func address: " << HEX_TO_UPPER(JIT);
 
 				hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
 
@@ -627,6 +631,8 @@ namespace lua::game_maker
 					original_func_ptr);
 				// clang-format on
 			}
+
+			//LOG(INFO) << "hook func address: " << HEX_TO_UPPER(JIT);
 
 			hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
 
@@ -787,6 +793,17 @@ namespace lua::game_maker
 		return out_res.yy_object_base;
 	}
 
+	// Lua API: Function
+	// Table: gm
+	// Name: gmf_struct_create
+	// Returns: number: The freshly made empty struct pointer
+	static uintptr_t lua_gmf_struct_create()
+	{
+		RValue out_res;
+		big::g_pointers->m_rorr.m_struct_create(&out_res);
+		return (uintptr_t)out_res.yy_object_base;
+	}
+
 	void bind(sol::table& state)
 	{
 		auto ns = state["gm"].get_or_create<sol::table>();
@@ -901,44 +918,16 @@ namespace lua::game_maker
 			sol::usertype<YYObjectBase> type = state.new_usertype<YYObjectBase>(
 			    "YYObjectBase",
 			    sol::meta_function::index,
-			    [](sol::this_state this_state_, sol::object self, sol::stack_object key) -> sol::reference
+			    [](sol::this_state this_state_, YYObjectBase* self, const char* key)
 			    {
-				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
-				    if (v)
-				    {
-					    return v.value();
-				    }
-				    else
-				    {
-					    const auto yyobject = self.as<YYObjectBase*>();
-					    if (!key.is<const char*>() || yyobject->type != YYObjectBaseType::YYOBJECTBASE)
-					    {
-						    return sol::lua_nil;
-					    }
+				    const auto res = gm::call("struct_get", std::to_array<RValue, 2>({self, key}));
 
-					    const auto res = gm::call("struct_get", std::to_array<RValue, 2>({yyobject, key.as<const char*>()}));
-
-					    return RValue_to_lua(res, this_state_);
-				    }
+				    return RValue_to_lua(res, this_state_);
 			    },
 			    sol::meta_function::new_index,
-			    [](sol::object self, sol::stack_object key, sol::stack_object value)
+			    [](YYObjectBase* self, const char* key, sol::stack_object value)
 			    {
-				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
-				    if (v)
-				    {
-					    self.as<sol::table&>().raw_set(key, value);
-				    }
-				    else
-				    {
-					    const auto yyobject = self.as<YYObjectBase*>();
-					    if (!key.is<const char*>() || yyobject->type != YYObjectBaseType::YYOBJECTBASE)
-					    {
-						    return;
-					    }
-
-					    gm::call("struct_set", std::to_array<RValue, 3>({yyobject, key.as<const char*>(), parse_sol_object(value)}));
-				    }
+				    gm::call("struct_set", std::to_array<RValue, 3>({self, key, parse_sol_object(value)}));
 			    });
 
 			// Lua API: Field
@@ -948,7 +937,8 @@ namespace lua::game_maker
 
 			// Lua API: Field
 			// Class: YYObjectBase
-			// Field: cinstance: CInstance or nil if not a CInstance
+			// Field: cinstance: CInstance|nil
+			// nil if not a CInstance
 			type["cinstance"] = sol::property(
 			    [](YYObjectBase& inst, sol::this_state this_state_)
 			    {
@@ -957,8 +947,8 @@ namespace lua::game_maker
 
 			// Lua API: Field
 			// Class: YYObjectBase
-			// Field: script_name: string or nil if not a SCRIPTREF
-			// Can be used to then hook the function with a pre / post script hook. The `gml_Script_` prefix may need to be removed for the hook to work.
+			// Field: script_name: string|nil
+			// nil if not a SCRIPTREF. Can be used to then hook the function with a pre / post script hook. The `gml_Script_` prefix may need to be removed for the hook to work.
 			type["script_name"] = sol::property(
 			    [](YYObjectBase& inst, sol::this_state this_state_)
 			    {
@@ -974,28 +964,18 @@ namespace lua::game_maker
 		{
 			// Lua API: Constructor
 			// Class: RValue
-			// Param: value: boolean: value
-			// Returns an RValue instance
-
-			// Lua API: Constructor
-			// Class: RValue
-			// Param: value: number: value
-			// Returns an RValue instance
-
-			// Lua API: Constructor
-			// Class: RValue
-			// Param: value: string: value
+			// Param: value: boolean|number|string: value
 			// Returns an RValue instance
 			sol::usertype<RValue> type = state.new_usertype<RValue>("RValue", sol::constructors<RValue(), RValue(bool), RValue(double), RValue(const char*)>(), sol::meta_function::garbage_collect, sol::destructor(&RValue::__localFree));
 
 			// Lua API: Field
 			// Class: RValue
-			// Field: type: RValueType
+			// Field: type: RValueType: The actual type behind the RValue
 			BIND_USERTYPE(type, RValue, type);
 
 			// Lua API: Field
 			// Class: RValue
-			// Field: value: The actual value behind the RValue, or RValue if the type is not handled yet.
+			// Field: value: any: The actual value behind the RValue, or RValue if the type is not handled yet.
 			type["value"] = sol::property(
 			    [](RValue& inst, sol::this_state this_state_)
 			    {
@@ -1008,7 +988,7 @@ namespace lua::game_maker
 
 			// Lua API: Field
 			// Class: RValue
-			// Field: tostring: string representation of the RValue
+			// Field: tostring: string: string representation of the RValue
 			type["tostring"] = sol::property(
 			    [](RValue& inst)
 			    {
@@ -1173,63 +1153,35 @@ namespace lua::game_maker
 			static sol::usertype<CInstance> type = state.new_usertype<CInstance>(
 			    "CInstance",
 			    sol::meta_function::index,
-			    [&](sol::this_state this_state_, sol::object self, sol::stack_object key) -> sol::reference
+			    [&](sol::this_state this_state_, CInstance* self, const char* key) -> sol::object
 			    {
-				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
-				    if (v)
+				    const auto var_get_args = std::to_array<RValue, 2>({self->id, key});
+				    const auto var_exists   = gm::call("variable_instance_exists", var_get_args);
+				    if (var_exists.asBoolean())
 				    {
-					    return v.value();
+					    const auto res = gm::call("variable_instance_get", var_get_args);
+					    return RValue_to_lua(res, this_state_);
 				    }
 				    else
 				    {
-					    if (!key.is<const char*>())
+					    if (!gm::is_valid_call(key))
 					    {
 						    return sol::lua_nil;
 					    }
 
-					    const char* key_str = key.as<const char*>();
-
-					    const auto var_get_args = std::to_array<RValue, 2>({self.as<CInstance&>().id, key_str});
-					    const auto var_exists   = gm::call("variable_instance_exists", var_get_args);
-					    if (var_exists.asBoolean())
+					    const std::string key_str_copy = key;
+					    type[key] = [key_str_copy](sol::this_state this_state_, sol::object key, sol::variadic_args args)
 					    {
-						    const auto res = gm::call("variable_instance_get", var_get_args);
+						    const auto res = gm::call(key_str_copy, key.as<CInstance*>(), nullptr, parse_variadic_args(args));
 						    return RValue_to_lua(res, this_state_);
-					    }
-					    else
-					    {
-						    if (!gm::is_valid_call(key_str))
-						    {
-							    return sol::lua_nil;
-						    }
-
-						    const std::string key_str_copy = key_str;
-						    type[key_str] = [key_str_copy](sol::this_state this_state_, sol::stack_object key, sol::variadic_args args)
-						    {
-							    const auto res = gm::call(key_str_copy, key.as<CInstance*>(), nullptr, parse_variadic_args(args));
-							    return RValue_to_lua(res, this_state_);
-						    };
-						    return type[key_str];
-					    }
+					    };
+					    return type[key];
 				    }
 			    },
 			    sol::meta_function::new_index,
-			    [](sol::object self, sol::stack_object key, sol::stack_object value)
+			    [](CInstance* self, const char* key, sol::object value)
 			    {
-				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
-				    if (v)
-				    {
-					    self.as<sol::table&>().raw_set(key, value);
-				    }
-				    else
-				    {
-					    if (!key.is<const char*>())
-					    {
-						    return;
-					    }
-
-					    gm::call("variable_instance_set", std::to_array<RValue, 3>({self.as<CInstance&>().id, key.as<const char*>(), parse_sol_object(value)}));
-				    }
+				    gm::call("variable_instance_set", std::to_array<RValue, 3>({self->id, key, parse_sol_object(value)}));
 			    });
 
 			BIND_USERTYPE(type, CInstance, m_CreateCounter);
@@ -1410,18 +1362,22 @@ namespace lua::game_maker
 
 			// Lua API: Field
 			// Table: gm.CInstance
-			// Field: instances_all: CInstance table of all (active or unactive) game maker object instances
+			// Field: instances_all: table<CInstance>
+			// table of all (active or unactive) game maker object instances
 			CInstance_table["instances_all"] = std::ref(gm::CInstances_all);
 
 			// Lua API: Field
 			// Table: gm.CInstance
-			// Field: instances_active: CInstance table of all active game maker object instances
+			// Field: instances_active: table<CInstance>
+			// table of all active game maker object instances
 			CInstance_table["instances_active"] = std::ref(gm::CInstances_active);
 
 			// Lua API: Field
 			// Table: gm.CInstance
-			// Field: instance_id_to_CInstance: table of all game maker object instances ids to their corresponding CInstance
-			CInstance_table["instance_id_to_CInstance"] = std::ref(gm::CInstance_id_to_CInstance);
+			// Field: instance_id_to_CInstance: table<number, CInstance>
+			// table of all game maker object instances ids to their corresponding CInstance
+			CInstance_table["instance_id_to_CInstance"]     = std::ref(gm::CInstance_id_to_CInstance);
+			CInstance_table["instance_id_to_CInstance_ffi"] = std::ref(gm::CInstance_id_to_CInstance_ffi);
 		}
 
 		// Lua API: Class
@@ -1798,41 +1754,38 @@ namespace lua::game_maker
 		ns["variable_global_get"] = lua_gm_variable_global_get;
 		ns["variable_global_set"] = lua_gm_variable_global_set;
 
-		ns["struct_create"] = lua_struct_create;
+		ns["struct_create"]     = lua_struct_create;
+		ns["gmf_struct_create"] = lua_gmf_struct_create;
 
 		auto meta_gm = state.create();
 		// Wrapper so that users can do gm.room_goto(new_room) for example instead of gm.call("room_goto", new_room)
 		meta_gm.set_function(sol::meta_function::index,
 		                     [](sol::this_state this_state_, sol::table self, std::string key) -> sol::reference
 		                     {
-			                     auto v = self.raw_get<sol::optional<sol::reference>>(key);
-			                     if (v)
+			                     if (!key.size())
 			                     {
-				                     return v.value();
+				                     return sol::lua_nil;
 			                     }
-			                     else
-			                     {
-				                     if (!key.size())
-				                     {
-					                     return sol::lua_nil;
-				                     }
 
-				                     self.raw_set(key,
-				                                  // TODO: Both of these wrapper should ideally early return nil if the function name doesn't exist.
-				                                  sol::overload(
-				                                      // TODO: Comment this out for now, the ordering of the two overloads below were wrong
-				                                      // and it's unsure if some existing mods relied on this overload never triggering.
-				                                      /*[key, this_state_](CInstance* self, CInstance* other, sol::variadic_args args)
+			                     if (!gm::is_valid_call(key))
+			                     {
+				                     return sol::lua_nil;
+			                     }
+
+			                     self.raw_set(key,
+			                                  sol::overload(
+			                                      // TODO: Comment this out for now, the ordering of the two overloads below were wrong
+			                                      // and it's unsure if some existing mods relied on this overload never triggering.
+			                                      /*[key, this_state_](CInstance* self, CInstance* other, sol::variadic_args args)
 				                                      {
 					                                      return RValue_to_lua(gm::call(key, self, other, parse_variadic_args(args)), this_state_);
 				                                      },*/
-				                                      [key, this_state_](sol::variadic_args args)
-				                                      {
-					                                      return RValue_to_lua(gm::call(key, parse_variadic_args(args)), this_state_);
-				                                      }));
+			                                      [key, this_state_](sol::variadic_args args)
+			                                      {
+				                                      return RValue_to_lua(gm::call(key, parse_variadic_args(args)), this_state_);
+			                                      }));
 
-				                     return self.raw_get<sol::reference>(key);
-			                     }
+			                     return self.raw_get<sol::reference>(key);
 		                     });
 		meta_gm.set_function(sol::meta_function::new_index,
 		                     [](lua_State* L) -> int
@@ -1840,5 +1793,12 @@ namespace lua::game_maker
 			                     return luaL_error(L, "Can't define new game maker functions this way");
 		                     });
 		state["gm"][sol::metatable_key] = meta_gm;
+
+		// game maker fast
+
+		auto ns_memory                 = state["memory"].get_or_create<sol::table>();
+		ns_memory["game_base_address"] = (uintptr_t)GetModuleHandleA(0);
+
+		gm::generate_gmf_ffi();
 	}
 } // namespace lua::game_maker

@@ -126,6 +126,12 @@ namespace big
 
 	void gui::dx_on_tick()
 	{
+		//big_only_once(
+		//[]
+		//{
+		//LOG(ERROR) << GetCurrentThreadId();
+		//});
+
 		g_lua_manager->process_file_watcher_queue();
 
 		push_theme_colors();
