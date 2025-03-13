@@ -16,7 +16,7 @@ Table containing helpers for interacting with the game maker engine.
 
 - Type: `constants_type_sorted[type_name][i] = constant_name`
 
-## Functions (11)
+## Functions (12)
 
 ### `pre_code_execute(function_name, callback)`
 
@@ -118,6 +118,16 @@ value = gm.call(name, self, other, args)
 **Example Usage:**
 ```lua
 YYObjectBase* = gm.struct_create()
+```
+
+### `gmf_struct_create()`
+
+- **Returns:**
+  - `number`: The freshly made empty struct pointer
+
+**Example Usage:**
+```lua
+number = gm.gmf_struct_create()
 ```
 
 ### `get_script_ref(function_index)`

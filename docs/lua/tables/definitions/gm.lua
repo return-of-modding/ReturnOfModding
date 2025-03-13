@@ -44,6 +44,9 @@ function gm.call(name, self, other, args) end
 ---@return YYObjectBase* # The freshly made empty struct
 function gm.struct_create() end
 
+---@return number # The freshly made empty struct pointer
+function gm.gmf_struct_create() end
+
 -- **Example Usage**
 --```lua
 --callable_ref = nil
