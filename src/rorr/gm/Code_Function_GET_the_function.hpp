@@ -356,7 +356,7 @@ namespace gm
 	inline void generate_gmf_ffi()
 	{
 		constexpr auto gmf_ffi_version_file_name = "gmf_version";
-		constexpr auto gmf_ffi_version           = "1";
+		constexpr auto gmf_ffi_version           = "2";
 
 		const auto folder_path = big::g_file_manager.get_project_folder("plugins").get_path() / "ReturnOfModding-GLOBAL";
 
@@ -375,9 +375,11 @@ namespace gm
 
 		const auto file_path_gmf_ffi_version = folder_path / gmf_ffi_version_file_name;
 
-		const auto functions_file_path = folder_path / "gmf_functions.lua";
-
 		const auto main_file_path = folder_path / "gmf.lua";
+
+		const auto builtin_file_path = folder_path / "gmf_functions_builtin.lua";
+		const auto object_file_path  = folder_path / "gmf_functions_object.lua";
+		const auto script_file_path  = folder_path / "gmf_functions_script.lua";
 
 		const auto write_version_to_version_file = [&]()
 		{
@@ -385,7 +387,7 @@ namespace gm
 			file_output_versioning << gmf_ffi_version;
 		};
 
-		if (std::filesystem::exists(file_path_gmf_ffi_version) && std::filesystem::exists(functions_file_path))
+		if (std::filesystem::exists(file_path_gmf_ffi_version) && std::filesystem::exists(script_file_path))
 		{
 			std::ifstream file_input(file_path_gmf_ffi_version, std::ios::in);
 			std::string version;
@@ -404,9 +406,13 @@ namespace gm
 			write_version_to_version_file();
 		}
 
-		std::ofstream functions_file_output(functions_file_path, std::ios::out | std::ios::binary);
+		std::ofstream main_file_output(main_file_path, std::ios::out | std::ios::binary);
 
-		functions_file_output << R"(if gmf ~= nil then return gmf end
+		std::ofstream functions_builtin_output(builtin_file_path, std::ios::out | std::ios::binary);
+		std::ofstream functions_object_output(object_file_path, std::ios::out | std::ios::binary);
+		std::ofstream functions_script_output(script_file_path, std::ios::out | std::ios::binary);
+
+		main_file_output << R"(if gmf ~= nil then return gmf end
 
 gmf = {}
 
@@ -638,22 +644,6 @@ typedef struct CInstance {
 			}
 		}
 
-		// Script Execute
-		/*for (size_t i = 0; true; i++)
-		{
-			const auto& asset_get_index = gm::get_code_function("asset_get_index");
-
-			auto cscript = big::g_pointers->m_rorr.m_script_data(i);
-			if (cscript)
-			{
-				func_info_scripts.push_back({cscript->m_script_name, (void*)cscript->m_funcs->m_script_function});
-			}
-			else
-			{
-				break;
-			}
-		}*/
-
 		auto gml_funcs = big::g_pointers->m_rorr.m_GMLFuncs;
 
 		const auto game_base_address = (uintptr_t)GetModuleHandleA(0);
@@ -679,46 +669,57 @@ typedef struct CInstance {
 			}
 		}
 
-		functions_file_output << "local game_base_address = memory.game_base_address\n\n";
+		constexpr auto gmf_import_from_the_require = "gmf = ...\n\n";
 
-		functions_file_output
+		functions_builtin_output << gmf_import_from_the_require;
+		functions_object_output << gmf_import_from_the_require;
+		functions_script_output << gmf_import_from_the_require;
+
+		constexpr auto game_base_address_str = "local game_base_address = memory.game_base_address\n\n";
+
+		functions_builtin_output << game_base_address_str;
+		functions_object_output << game_base_address_str;
+		functions_script_output << game_base_address_str;
+
+		functions_builtin_output
 		    << "local builtin_signature = \"void (*)(struct RValue* result, struct CInstance* self, struct "
-		       "CInstance* other, int64_t arg_count, struct RValue* args)\"\n";
-		functions_file_output
-		    << "local object_signature = \"void (*)(struct CInstance* self, struct CInstance* other)\"\n";
-		functions_file_output
+		       "CInstance* other, int64_t arg_count, struct RValue* args)\"\n\n";
+		functions_object_output
+		    << "local object_signature = \"void (*)(struct CInstance* self, struct CInstance* other)\"\n\n";
+		functions_script_output
 		    << "local script_signature = \"void (*)(struct CInstance * self, struct "
 		       "CInstance* other, struct RValue* result, int64_t arg_count, struct RValue** args)\"\n\n";
 
 		for (const auto& func_info : func_info_builtins)
 		{
-			functions_file_output << "gmf[\"" << func_info.m_name << "\"] = ffi.cast(builtin_signature, game_base_address + "
-			                      << HEX_TO_UPPER_OFFSET(func_info.m_func_ptr) << ")\n";
+			functions_builtin_output << "gmf[\"" << func_info.m_name << "\"] = function(...) ffi.cast(builtin_signature, game_base_address + "
+			                         << HEX_TO_UPPER_OFFSET(func_info.m_func_ptr) << ")(...) end\n";
+			functions_builtin_output << "jit.off(gmf[\"" << func_info.m_name << "\"])\n\n";
 		}
-
-		functions_file_output << "\n\n";
 
 		for (const auto& func_info : func_info_objects)
 		{
-			functions_file_output << "gmf[\"" << func_info.m_name << "\"] = ffi.cast(object_signature, game_base_address + "
-			                      << HEX_TO_UPPER_OFFSET(func_info.m_func_ptr) << ")\n";
+			functions_object_output << "gmf[\"" << func_info.m_name << "\"] = function(...) ffi.cast(object_signature, game_base_address + "
+			                        << HEX_TO_UPPER_OFFSET(func_info.m_func_ptr) << ")(...) end\n";
+			functions_object_output << "jit.off(gmf[\"" << func_info.m_name << "\"])\n\n";
 		}
-
-		functions_file_output << "\n\n";
 
 		for (const auto& func_info : func_info_scripts)
 		{
-			functions_file_output << "gmf[\"" << func_info.m_name << "\"] = ffi.cast(script_signature, game_base_address + "
-			                      << HEX_TO_UPPER_OFFSET(func_info.m_func_ptr) << ")\n";
+			functions_script_output << "gmf[\"" << func_info.m_name << "\"] = function(...) ffi.cast(script_signature, game_base_address + "
+			                        << HEX_TO_UPPER_OFFSET(func_info.m_func_ptr) << ")(...) end\n";
+			functions_script_output << "jit.off(gmf[\"" << func_info.m_name << "\"])\n\n";
 		}
 
-		functions_file_output << "\nreturn gmf\n";
+		functions_builtin_output << "\nreturn gmf\n";
+		functions_object_output << "\nreturn gmf\n";
+		functions_script_output << "\nreturn gmf\n";
 
-		std::ofstream main_file_output(main_file_path, std::ios::out | std::ios::binary);
 
-		main_file_output << R"(if gmf ~= nil then return gmf end
-
-gmf = require("ReturnOfModding-GLOBAL/gmf_functions")
+		main_file_output << R"(
+gmf = require("ReturnOfModding-GLOBAL/gmf_functions_builtin", gmf)
+gmf = require("ReturnOfModding-GLOBAL/gmf_functions_object", gmf)
+gmf = require("ReturnOfModding-GLOBAL/gmf_functions_script", gmf)
 
 )";
 
