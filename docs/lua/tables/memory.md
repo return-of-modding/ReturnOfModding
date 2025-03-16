@@ -2,7 +2,7 @@
 
 Table containing helper functions related to process memory.
 
-## Functions (8)
+## Functions (10)
 
 ### `scan_pattern(pattern)`
 
@@ -72,9 +72,12 @@ end})
   - `target_func_ptr` (memory.pointer): The pointer to the function to detour.
   - `callbacks` (table<function>): Table first element (can be nil): Pre function callback, lua function that will be called before the original function is about to be called. Pre function callback must match the following signature: ( return_value (value_wrapper), arg1 (value_wrapper), arg2 (value_wrapper), ... ) -> Returns true or false (boolean) depending on whether you want the original function to be called. Table second element (can be nil): function that will be called after the original function. Post function callback must match the following signature: ( return_value (value_wrapper), arg1 (value_wrapper), arg2 (value_wrapper), ... ) -> No return value.
 
+- **Returns:**
+  - `number`: Unique identifier for later disabling / enabling the hook on the fly.
+
 **Example Usage:**
 ```lua
-memory.dynamic_hook(hook_name, return_type, param_types, target_func_ptr, callbacks)
+number = memory.dynamic_hook(hook_name, return_type, param_types, target_func_ptr, callbacks)
 ```
 
 ### `dynamic_hook_mid(hook_name, param_captures_targets, param_captures_types, stack_restore_offset, target_func_ptr, mid_callback)`
@@ -97,11 +100,31 @@ But scan_pattern may be affected by the other hooks.
   - `mid_callback` (function): The function that will be called when the program reaches the position. The callback must match the following signature: ( args (can be a value_wrapper, or a lua usertype directly, depending if you used `add_type_info_from_string` through some c++ code and exposed it to the lua vm) ) -> Returns memory.pointer if you want to customize the jump location. Be careful when customizing the jump location, you need to restore the registers and the stack before the jump.
 
 - **Returns:**
-  - `add(246)`: 
+  - `add(246)`: Unique identifier for later disabling / enabling the hook on the fly.
 
 **Example Usage:**
 ```lua
 add(246) = memory.dynamic_hook_mid(hook_name, param_captures_targets, param_captures_types, stack_restore_offset, target_func_ptr, mid_callback)
+```
+
+### `dynamic_hook_enable(identifier)`
+
+- **Parameters:**
+  - `identifier` (number): The identifier returned by the `dynamic_hook` family functions.
+
+**Example Usage:**
+```lua
+memory.dynamic_hook_enable(identifier)
+```
+
+### `dynamic_hook_disable(identifier)`
+
+- **Parameters:**
+  - `identifier` (number): The identifier returned by the `dynamic_hook` family functions.
+
+**Example Usage:**
+```lua
+memory.dynamic_hook_disable(identifier)
 ```
 
 ### `dynamic_call(return_type, param_types, target_func_ptr)`

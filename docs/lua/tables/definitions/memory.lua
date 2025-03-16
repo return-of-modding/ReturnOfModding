@@ -40,6 +40,7 @@ function memory.free(ptr) end
 ---@param param_types table<string> Types of the parameters of the detoured function.
 ---@param target_func_ptr memory.pointer The pointer to the function to detour.
 ---@param callbacks table<function> Table first element (can be nil): Pre function callback, lua function that will be called before the original function is about to be called. Pre function callback must match the following signature: ( return_value (value_wrapper), arg1 (value_wrapper), arg2 (value_wrapper), ... ) -> Returns true or false (boolean) depending on whether you want the original function to be called. Table second element (can be nil): function that will be called after the original function. Post function callback must match the following signature: ( return_value (value_wrapper), arg1 (value_wrapper), arg2 (value_wrapper), ... ) -> No return value.
+---@return number # Unique identifier for later disabling / enabling the hook on the fly.
 function memory.dynamic_hook(hook_name, return_type, param_types, target_func_ptr, callbacks) end
 
 -- **Example Usage:**
@@ -56,8 +57,14 @@ function memory.dynamic_hook(hook_name, return_type, param_types, target_func_pt
 ---@param stack_restore_offset int An offset used to restore stack, only need when you want to customize the jump location.
 ---@param target_func_ptr memory.pointer The pointer to the function to detour.
 ---@param mid_callback function The function that will be called when the program reaches the position. The callback must match the following signature: ( args (can be a value_wrapper, or a lua usertype directly, depending if you used `add_type_info_from_string` through some c++ code and exposed it to the lua vm) ) -> Returns memory.pointer if you want to customize the jump location. Be careful when customizing the jump location, you need to restore the registers and the stack before the jump.
----@return add(246) # 
+---@return add(246) # Unique identifier for later disabling / enabling the hook on the fly.
 function memory.dynamic_hook_mid(hook_name, param_captures_targets, param_captures_types, stack_restore_offset, target_func_ptr, mid_callback) end
+
+---@param identifier number The identifier returned by the `dynamic_hook` family functions.
+function memory.dynamic_hook_enable(identifier) end
+
+---@param identifier number The identifier returned by the `dynamic_hook` family functions.
+function memory.dynamic_hook_disable(identifier) end
 
 -- **Example Usage:**
 --```lua
