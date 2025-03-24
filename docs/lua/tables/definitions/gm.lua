@@ -47,6 +47,9 @@ function gm.struct_create() end
 ---@return number # The freshly made empty struct pointer
 function gm.gmf_struct_create() end
 
+---@return number # The converted pointer
+function gm.gmf_convert_yyobjectbase() end
+
 -- **Example Usage**
 --```lua
 --callable_ref = nil
