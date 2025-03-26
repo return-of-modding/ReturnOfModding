@@ -804,15 +804,6 @@ namespace lua::game_maker
 		return (uintptr_t)out_res.yy_object_base;
 	}
 
-	// Lua API: Function
-	// Table: gm
-	// Name: gmf_convert_yyobjectbase
-	// Returns: number: The converted pointer
-	static uintptr_t lua_gmf_convert_yyobjectbase(YYObjectBase* input)
-	{
-		return (uintptr_t)input;
-	}
-
 	void bind(sol::table& state)
 	{
 		auto ns = state["gm"].get_or_create<sol::table>();
@@ -1763,9 +1754,8 @@ namespace lua::game_maker
 		ns["variable_global_get"] = lua_gm_variable_global_get;
 		ns["variable_global_set"] = lua_gm_variable_global_set;
 
-		ns["struct_create"]            = lua_struct_create;
-		ns["gmf_struct_create"]        = lua_gmf_struct_create;
-		ns["gmf_convert_yyobjectbase"] = lua_gmf_convert_yyobjectbase;
+		ns["struct_create"]     = lua_struct_create;
+		ns["gmf_struct_create"] = lua_gmf_struct_create;
 
 		auto meta_gm = state.create();
 		// Wrapper so that users can do gm.room_goto(new_room) for example instead of gm.call("room_goto", new_room)
