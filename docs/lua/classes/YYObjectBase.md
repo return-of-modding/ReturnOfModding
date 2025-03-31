@@ -10,13 +10,11 @@ Class representing an object coming from the game maker engine
 
 ### `cinstance`
 
-nil if not a CInstance
-
-- Type: `CInstance|nil`
+- Type: `CInstance or nil if not a CInstance`
 
 ### `script_name`
 
-nil if not a SCRIPTREF. Can be used to then hook the function with a pre / post script hook. The `gml_Script_` prefix may need to be removed for the hook to work.
+Can be used to then hook the function with a pre / post script hook. The `gml_Script_` prefix may need to be removed for the hook to work.
 
-- Type: `string|nil`
+- Type: `string or nil if not a SCRIPTREF`
 
