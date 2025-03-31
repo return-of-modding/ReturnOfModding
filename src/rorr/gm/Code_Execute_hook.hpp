@@ -31,7 +31,7 @@ namespace gm
 		                                                 });
 		sol::state_view sol_state_view(L);
 		big::lua_manager_extension::init_lua_base(sol_state_view);
-		lua_manager_instance->init<big::lua_module_ext>();
+		lua_manager_instance->init<big::lua_module_ext>(true);
 		LOG(INFO) << "Lua manager initialized.";
 
 		if (big::g_abort)
