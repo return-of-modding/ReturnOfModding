@@ -117,14 +117,14 @@ boolean = path.exists(path)
 Registers a callback that will be called when a file changes.
 **Example Usage:**
 ```lua
-path.add_file_watcher(_ENV["!config_mod_folder_path"], function (file_path)
-		log.info(file_path)
+path.add_file_watcher(_ENV["!config_mod_folder_path"], function (file_name, timestamp)
+		log.info(file_name, timestamp)
 end)
 ```
 
 - **Parameters:**
   - `path` (string): The path to add file watcher.
-  - `callback` (function): callback that match signature function ( file_path ).
+  - `callback` (function): callback that match signature function ( file_name, timestamp ).
 
 **Example Usage:**
 ```lua
