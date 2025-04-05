@@ -3,6 +3,8 @@
 
 // clang-format off
 
+#include <mimalloc.h>
+
 #include <sdkddkver.h>
 #include <winsock2.h>
 #include <windows.h>

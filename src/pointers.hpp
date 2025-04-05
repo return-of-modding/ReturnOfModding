@@ -35,7 +35,7 @@ namespace big
 				load_pointers_from_cache(cache_file, pointer_to_cacheable_data_start, mem_region);
 			}
 
-			cache_file.free();
+			cache_file.free_data();
 		}
 
 		void load_pointers_from_cache(const cache_file& cache_file, const uintptr_t pointer_to_cacheable_data_start, const memory::module& mem_region);

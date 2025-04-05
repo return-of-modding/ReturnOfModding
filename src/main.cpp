@@ -14,7 +14,7 @@
 #include "threads/util.hpp"
 #include "version.hpp"
 
-#include <lua/lua_module_ext.hpp>
+#include <mimalloc-new-delete.h>
 
 //#include "debug/debug.hpp"
 
