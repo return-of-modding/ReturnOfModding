@@ -118,7 +118,7 @@ namespace big::lua_manager_extension
 					return {};
 				}
 
-				static std::unordered_map<std::string, sol::object> required_module_cache;
+				static ankerl::unordered_dense::map<std::string, sol::object> required_module_cache;
 
 				if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
 				{
@@ -164,7 +164,7 @@ namespace big::lua_manager_extension
 				const std::string full_path = (char*)required_module_path.u8string().c_str();
 				const auto path_stem        = required_module_path.stem();
 
-				static std::unordered_map<std::string, sol::object> required_module_cache;
+				static ankerl::unordered_dense::map<std::string, sol::object> required_module_cache;
 
 				if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
 				{

@@ -3,7 +3,7 @@
 
 struct YYObjectPinMap
 {
-	inline static std::unordered_map<YYObjectBase*, size_t> m_refcounts;
+	inline static ankerl::unordered_dense::map<YYObjectBase*, size_t> m_refcounts;
 
 	// a ds map for pinnable objects.
 	inline static RValue m_pin_map{};

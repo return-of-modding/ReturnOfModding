@@ -8,7 +8,7 @@ namespace gm
 	inline std::recursive_mutex CInstance_containers_mutex;
 	inline std::vector<CInstance*> CInstances_all;
 	inline std::vector<CInstance*> CInstances_active;
-	inline std::unordered_map<int, CInstance*> CInstance_id_to_CInstance;
+	inline ankerl::unordered_dense::map<int, CInstance*> CInstance_id_to_CInstance;
 
 	using CInstance_ctor = CInstance* (*)(CInstance* this_, float a2, float a3, int a4, int a5, bool a6);
 
