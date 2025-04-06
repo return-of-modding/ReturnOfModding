@@ -9,7 +9,6 @@ set(SRC_DIR "${PROJECT_SOURCE_DIR}/src")
 # Fetch modules
 message("\nFetching modules")
 include(cmake_scripts/git.cmake)
-include(cmake_scripts/mimalloc.cmake)
 include(cmake_scripts/rom.cmake)
 
 message(STATUS "ReturnOfModding")
@@ -45,7 +44,7 @@ target_include_directories(ReturnOfModding PRIVATE
 
 target_precompile_headers(ReturnOfModding PRIVATE "${SRC_DIR}/common.hpp")
 
-target_link_libraries(ReturnOfModding PRIVATE ReturnOfModdingBase mimalloc-static)
+target_link_libraries(ReturnOfModding PRIVATE ReturnOfModdingBase)
 
 # Warnings as errors
 set_property(TARGET ReturnOfModding PROPERTY COMPILE_WARNING_AS_ERROR ON)
