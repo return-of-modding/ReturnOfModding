@@ -124,7 +124,7 @@ namespace big::lua_manager_extension
 				{
 					sol::state_view state = this_env.env.value().lua_state();
 					auto fresh_result     = get_loadfile_function(state)(full_path);
-					if (!fresh_result.valid() || fresh_result.get_type() == sol::type::nil /*LuaJIT*/)
+					if (!fresh_result.valid() || fresh_result.get_type() != sol::type::function /*LuaJIT*/)
 					{
 						const auto error_msg =
 						    !fresh_result.valid() ? fresh_result.get<sol::error>().what() : fresh_result.get<const char*>(1) /*LuaJIT*/;
@@ -134,11 +134,19 @@ namespace big::lua_manager_extension
 						return {};
 					}
 
-					auto res = fresh_result.get<sol::protected_function>();
+					sol::protected_function res_function = fresh_result.get<sol::protected_function>();
 
-					this_env.env.value().set_on(res);
+					this_env.env.value().set_on(res_function);
 
-					required_module_cache[full_path] = res(args);
+					auto res = res_function(args);
+					if (res.valid())
+					{
+						required_module_cache[full_path] = res;
+					}
+					else
+					{
+						required_module_cache[full_path] = sol::table(state, sol::create);
+					}
 				}
 
 				bool found_the_other_module = false;
@@ -186,7 +194,7 @@ namespace big::lua_manager_extension
 						fresh_result = get_loadlib_function(state)(full_path, func_name);
 					}
 
-					if (!fresh_result.valid() || fresh_result.get_type() == sol::type::nil /*LuaJIT*/)
+					if (!fresh_result.valid() || fresh_result.get_type() != sol::type::function /*LuaJIT*/)
 					{
 						const auto error_msg =
 						    !fresh_result.valid() ? fresh_result.get<sol::error>().what() : fresh_result.get<const char*>(1) /*LuaJIT*/;
@@ -196,7 +204,20 @@ namespace big::lua_manager_extension
 						return {};
 					}
 
-					required_module_cache[full_path] = fresh_result.get<sol::protected_function>()(args);
+					sol::protected_function res_function = fresh_result.get<sol::protected_function>();
+
+					// Not putting env on dlls cause???
+					// this_env.env.value().set_on(res_function);
+
+					auto res = res_function(args);
+					if (res.valid())
+					{
+						required_module_cache[full_path] = res;
+					}
+					else
+					{
+						required_module_cache[full_path] = sol::table(state, sol::create);
+					}
 				}
 
 				return required_module_cache[full_path];
