@@ -11,6 +11,8 @@
 #include "rorr/gm/Variable_BuiltIn.hpp"
 #include "rorr/gm/YYGMLFuncs.hpp"
 
+#include <ankerl/unordered_dense.h>
+
 #pragma warning(push, 0)
 #include <asmjit/asmjit.h>
 #pragma warning(pop)
@@ -350,7 +352,7 @@ static std::vector<RValue> parse_variadic_args(sol::variadic_args args)
 
 namespace lua::game_maker
 {
-	static std::unordered_map<uintptr_t, std::unique_ptr<qstd::runtime_func>> hooks_original_func_ptr_to_info;
+	static ankerl::unordered_dense::map<uintptr_t, std::unique_ptr<qstd::runtime_func>> hooks_original_func_ptr_to_info;
 
 	static void builtin_script_callback(const qstd::runtime_func::parameters_t* p, const uint8_t count, qstd::runtime_func::return_value_t* ret_val, const uintptr_t original_func_ptr)
 	{
@@ -418,7 +420,7 @@ namespace lua::game_maker
 		bool m_is_game_script_func             = false;
 	};
 
-	static std::unordered_map<int, std::string> script_index_to_name;
+	static ankerl::unordered_dense::map<int, std::string> script_index_to_name;
 
 	struct builtin_or_script_function_info
 	{
@@ -550,7 +552,7 @@ namespace lua::game_maker
 	{
 		static auto lazy_init_gml_func_cache = []()
 		{
-			std::unordered_map<std::string, uintptr_t> gml_func_cache;
+			ankerl::unordered_dense::map<std::string, uintptr_t> gml_func_cache;
 
 			auto gml_funcs = big::g_pointers->m_rorr.m_GMLFuncs;
 

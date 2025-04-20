@@ -118,13 +118,13 @@ namespace big::lua_manager_extension
 					return {};
 				}
 
-				static std::unordered_map<std::string, std::vector<sol::object>> required_module_cache;
+				static ankerl::unordered_dense::map<std::string, std::vector<sol::object>> required_module_cache;
 
 				if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
 				{
 					sol::state_view state = this_env.env.value().lua_state();
 					auto fresh_result     = get_loadfile_function(state)(full_path);
-					if (!fresh_result.valid() || fresh_result.get_type() == sol::type::nil /*LuaJIT*/)
+					if (!fresh_result.valid() || fresh_result.get_type() != sol::type::function /*LuaJIT*/)
 					{
 						const auto error_msg =
 						    !fresh_result.valid() ? fresh_result.get<sol::error>().what() : fresh_result.get<const char*>(1) /*LuaJIT*/;
@@ -181,7 +181,7 @@ namespace big::lua_manager_extension
 				const std::string full_path = (char*)required_module_path.u8string().c_str();
 				const auto path_stem        = required_module_path.stem();
 
-				static std::unordered_map<std::string, std::vector<sol::object>> required_module_cache;
+				static ankerl::unordered_dense::map<std::string, std::vector<sol::object>> required_module_cache;
 
 				if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
 				{
@@ -203,7 +203,7 @@ namespace big::lua_manager_extension
 						fresh_result = get_loadlib_function(state)(full_path, func_name);
 					}
 
-					if (!fresh_result.valid() || fresh_result.get_type() == sol::type::nil /*LuaJIT*/)
+					if (!fresh_result.valid() || fresh_result.get_type() != sol::type::function /*LuaJIT*/)
 					{
 						const auto error_msg =
 						    !fresh_result.valid() ? fresh_result.get<sol::error>().what() : fresh_result.get<const char*>(1) /*LuaJIT*/;

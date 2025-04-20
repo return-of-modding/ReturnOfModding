@@ -127,8 +127,8 @@ RValue::RValue(long long v)
 RValue::RValue(bool v)
 {
 	flags = 0;
-	type  = REAL;
-	value = v ? 1.0 : 0.0;
+	type  = _BOOL;
+	value = v;
 }
 
 RValue::RValue(std::nullptr_t)

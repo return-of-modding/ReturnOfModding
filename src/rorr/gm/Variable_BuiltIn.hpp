@@ -4,14 +4,12 @@
 #include "rorr/gm/Code_Function_GET_the_function.hpp"
 #include "string/hash.hpp"
 
-#include <unordered_set>
-
 namespace gm
 {
-	static std::unordered_map<std::string, gm::RVariableRoutineGetter, big::string::transparent_string_hash, std::equal_to<>> builtin_getter_cache;
-	static std::unordered_map<std::string, gm::RVariableRoutineSetter, big::string::transparent_string_hash, std::equal_to<>> builtin_setter_cache;
+	static ankerl::unordered_dense::map<std::string, gm::RVariableRoutineGetter, big::string::transparent_string_hash, std::equal_to<>> builtin_getter_cache;
+	static ankerl::unordered_dense::map<std::string, gm::RVariableRoutineSetter, big::string::transparent_string_hash, std::equal_to<>> builtin_setter_cache;
 
-	static std::unordered_set<std::string, big::string::transparent_string_hash, std::equal_to<>> game_defined_cache;
+	static ankerl::unordered_dense::set<std::string, big::string::transparent_string_hash, std::equal_to<>> game_defined_cache;
 
 	inline RValue variable_global_get(std::string_view variable_name)
 	{

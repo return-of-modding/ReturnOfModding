@@ -59,7 +59,7 @@ namespace gm
 	};
 
 	inline code_function_info dummy{};
-	inline std::unordered_map<std::string, code_function_info, big::string::transparent_string_hash, std::equal_to<>> code_function_cache;
+	inline ankerl::unordered_dense::map<std::string, code_function_info, big::string::transparent_string_hash, std::equal_to<>> code_function_cache;
 
 	inline code_function_info& get_code_function(std::string_view name)
 	{

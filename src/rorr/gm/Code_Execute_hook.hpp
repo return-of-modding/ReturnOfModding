@@ -5,6 +5,23 @@
 #include <lua/lua_manager_extension.hpp>
 #include <string/string.hpp>
 
+static void* lua_custom_alloc(void* ud, void* ptr, size_t osize, size_t nsize)
+{
+	(void)ud;
+	(void)osize;
+	if (nsize == 0)
+	{
+		//mi_free(ptr);
+		free(ptr);
+		return NULL;
+	}
+	else
+	{
+		//return mi_realloc_aligned(ptr, nsize, 16);
+		return realloc(ptr, nsize);
+	}
+}
+
 namespace gm
 {
 	inline bool g_is_gml_safe_to_init = false;
@@ -18,7 +35,8 @@ namespace gm
 
 		big::g_running = true;
 
-		auto L = luaL_newstate();
+		lua_State* L = lua_newstate(lua_custom_alloc, NULL);
+		//lua_State* L = luaL_newstate();
 
 		// Purposely leak it, we are not unloading this module in any case.
 		auto lua_manager_instance = new big::lua_manager(L,

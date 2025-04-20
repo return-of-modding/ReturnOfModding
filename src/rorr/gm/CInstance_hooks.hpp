@@ -8,8 +8,8 @@ namespace gm
 	inline std::recursive_mutex CInstance_containers_mutex;
 	inline std::vector<CInstance*> CInstances_all;
 	inline std::vector<CInstance*> CInstances_active;
-	inline std::unordered_map<int, CInstance*> CInstance_id_to_CInstance;
-	inline std::unordered_map<int, uintptr_t> CInstance_id_to_CInstance_ffi;
+	inline ankerl::unordered_dense::map<int, CInstance*> CInstance_id_to_CInstance;
+	inline ankerl::unordered_dense::map<int, uintptr_t> CInstance_id_to_CInstance_ffi;
 
 #define big_only_once(lambda)                                      \
 	do                                                             \

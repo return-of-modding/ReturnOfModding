@@ -40,7 +40,7 @@ void CInstance::imgui_dump_instance_variables()
 			const auto& var_name = instance_variable_names.ref_array->m_Array[i].ref_string->m_thing;
 			ImGui::Text("%d: %s (Ref: %d)", i, var_name, instance_variable_names.ref_array->m_Array[i].ref_string->m_refCount);
 			ImGui::SameLine();
-			static std::unordered_map<std::string, std::array<char, 256>> var_to_input_texts;
+			static ankerl::unordered_dense::map<std::string, std::array<char, 256>> var_to_input_texts;
 			ImGui::InputText(std::format("##{}", var_name).c_str(), var_to_input_texts[var_name].data(), 256);
 			ImGui::SameLine();
 			if (ImGui::Button(std::format("SAVE ##btn{}", var_name).c_str()))
@@ -52,7 +52,7 @@ void CInstance::imgui_dump_instance_variables()
 	}
 }
 
-static std::unordered_map<int, std::string> object_index_to_name;
+static ankerl::unordered_dense::map<int, std::string> object_index_to_name;
 static std::string dummy;
 
 const std::string& CInstance::object_name() const

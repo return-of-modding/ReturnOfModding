@@ -14,8 +14,6 @@
 #include "threads/util.hpp"
 #include "version.hpp"
 
-#include <lua/lua_module_ext.hpp>
-
 //#include "debug/debug.hpp"
 
 BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
