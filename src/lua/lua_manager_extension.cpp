@@ -141,7 +141,7 @@ namespace big::lua_manager_extension
 					sol::protected_function_result ress = res(args);
 
 					std::vector<sol::object> results;
-					if (!res.valid())
+					if (!res.valid() || !ress.valid())
 					{
 						LOG(ERROR) << "Failed require";
 						Logger::FlushQueue();
@@ -220,7 +220,7 @@ namespace big::lua_manager_extension
 					sol::protected_function_result ress = res(args);
 
 					std::vector<sol::object> results;
-					if (!res.valid())
+					if (!res.valid() || !ress.valid())
 					{
 						LOG(ERROR) << "Failed require";
 						Logger::FlushQueue();
