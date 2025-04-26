@@ -547,7 +547,8 @@ bool RValue::asBoolean() const
 		{
 		}
 	}
-	default: LOG(ERROR) << "unhandled " << (type & MASK_TYPE_RVALUE);
+	case UNDEFINED: return false;
+	default:        LOG(ERROR) << "unhandled " << (type & MASK_TYPE_RVALUE);
 	}
 
 	return false;
