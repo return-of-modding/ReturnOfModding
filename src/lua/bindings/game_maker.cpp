@@ -1759,6 +1759,18 @@ namespace lua::game_maker
 		ns["struct_create"]     = lua_struct_create;
 		ns["gmf_struct_create"] = lua_gmf_struct_create;
 
+		ns["gmf_builtin_variables_count"] = []()
+		{
+			const auto size = *big::g_pointers->m_rorr.m_builtin_variable_count;
+
+			return size;
+		};
+
+		ns["gmf_builtin_variables"] = []()
+		{
+			return (uintptr_t)big::g_pointers->m_rorr.m_builtin_variables;
+		};
+
 		auto meta_gm = state.create();
 		// Wrapper so that users can do gm.room_goto(new_room) for example instead of gm.call("room_goto", new_room)
 		meta_gm.set_function(sol::meta_function::index,

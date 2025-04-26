@@ -356,7 +356,7 @@ namespace gm
 	inline void generate_gmf_ffi()
 	{
 		constexpr auto gmf_ffi_version_file_name = "gmf_version";
-		constexpr auto gmf_ffi_version           = "4";
+		constexpr auto gmf_ffi_version           = "5";
 
 		const auto folder_path = big::g_file_manager.get_project_folder("plugins").get_path() / "ReturnOfModding-GLOBAL";
 
@@ -614,6 +614,13 @@ typedef struct CInstance {
 	unsigned int m_collisionTestNumber;
     
 } CInstance;
+
+typedef struct RVariableRoutine {
+    const char* name;
+    unsigned char (*getter)(struct CInstance* self, void* a2, struct RValue* out);
+    unsigned char (*setter)(struct CInstance* self, void* a2, struct RValue* new_value);
+    void* has_setter;
+} RVariableRoutine;
 ]]
 )";
 
@@ -710,6 +717,9 @@ typedef struct CInstance {
 			                        << HEX_TO_UPPER_OFFSET(func_info.m_func_ptr) << ")\n";
 			functions_script_output << "gmf[\"" << func_info.m_name << "\"] = function(...) gmf[\"" << func_info.m_name << "_func_ptr\"](...) end\n";
 		}
+
+		functions_builtin_output
+		    << "gmf.__builtin_variables = ffi.cast(\"RVariableRoutine*\", gm.gmf_builtin_variables())";
 
 		functions_builtin_output << "\nreturn gmf\n";
 		functions_object_output << "\nreturn gmf\n";
