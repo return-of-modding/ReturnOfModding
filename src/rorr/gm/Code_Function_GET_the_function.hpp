@@ -356,7 +356,7 @@ namespace gm
 	inline void generate_gmf_ffi()
 	{
 		constexpr auto gmf_ffi_version_file_name = "gmf_version";
-		constexpr auto gmf_ffi_version           = "5";
+		constexpr auto gmf_ffi_version           = "6";
 
 		const auto folder_path = big::g_file_manager.get_project_folder("plugins").get_path() / "ReturnOfModding-GLOBAL";
 
@@ -702,6 +702,7 @@ typedef struct RVariableRoutine {
 			functions_builtin_output << "gmf[\"" << func_info.m_name << "_func_ptr\"] = ffi.cast(builtin_signature, game_base_address + "
 			                         << HEX_TO_UPPER_OFFSET(func_info.m_func_ptr) << ")\n";
 			functions_builtin_output << "gmf[\"" << func_info.m_name << "\"] = function(...) gmf[\"" << func_info.m_name << "_func_ptr\"](...) end\n";
+			functions_builtin_output << "jit.off(gmf[\"" << func_info.m_name << "\"])\n\n";
 		}
 
 		for (const auto& func_info : func_info_objects)
@@ -709,6 +710,7 @@ typedef struct RVariableRoutine {
 			functions_object_output << "gmf[\"" << func_info.m_name << "_func_ptr\"] = ffi.cast(object_signature, game_base_address + "
 			                        << HEX_TO_UPPER_OFFSET(func_info.m_func_ptr) << ")\n";
 			functions_object_output << "gmf[\"" << func_info.m_name << "\"] = function(...) gmf[\"" << func_info.m_name << "_func_ptr\"](...) end\n";
+			functions_object_output << "jit.off(gmf[\"" << func_info.m_name << "\"])\n\n";
 		}
 
 		for (const auto& func_info : func_info_scripts)
@@ -716,10 +718,11 @@ typedef struct RVariableRoutine {
 			functions_script_output << "gmf[\"" << func_info.m_name << "_func_ptr\"] = ffi.cast(script_signature, game_base_address + "
 			                        << HEX_TO_UPPER_OFFSET(func_info.m_func_ptr) << ")\n";
 			functions_script_output << "gmf[\"" << func_info.m_name << "\"] = function(...) gmf[\"" << func_info.m_name << "_func_ptr\"](...) end\n";
+			functions_script_output << "jit.off(gmf[\"" << func_info.m_name << "\"])\n\n";
 		}
 
 		functions_builtin_output
-		    << "gmf.__builtin_variables = ffi.cast(\"RVariableRoutine*\", gm.gmf_builtin_variables())";
+		    << "\ngmf.__builtin_variables = ffi.cast(\"RVariableRoutine*\", gm.gmf_builtin_variables())";
 
 		functions_builtin_output << "\nreturn gmf\n";
 		functions_object_output << "\nreturn gmf\n";
