@@ -10,6 +10,8 @@
 #include "gm/save_file_serialize_t.hpp"
 #include "gm/Script_Data.hpp"
 #include "gm/StructCreate.hpp"
+#include "gm/YYShader.hpp"
+#include "gm/MemoryManager_ReAlloc.hpp"
 #include "gm/YYSetScriptRef.hpp"
 
 #include <memory/handle.hpp>
@@ -51,6 +53,12 @@ namespace big
 		gm::Script_Data_t m_script_data;
 
 		gm::StructCreate_t m_struct_create;
+
+		gm::ShaderCreate_t m_shader_create;
+		YYShader*** m_shader_pool;
+		int* m_shader_amount;
+
+		gm::MemoryManager::ReAlloc m_memorymanager_realloc;
 
 		gm::GetSaveFileName_t m_get_save_file_name;
 

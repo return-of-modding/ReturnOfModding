@@ -13,7 +13,6 @@
 
 #include <ankerl/unordered_dense.h>
 
-
 #pragma warning(push, 0)
 #include <asmjit/asmjit.h>
 #pragma warning(pop)
@@ -23,6 +22,8 @@
 #include "polyhook2/ErrorLog.hpp"
 #include "polyhook2/MemAccessor.hpp"
 #include "polyhook2/PolyHookOs.hpp"
+
+#pragma comment(lib, "d3dcompiler.lib")
 
 namespace qstd
 {
@@ -788,6 +789,116 @@ namespace lua::game_maker
 		RValue out_res;
 		big::g_pointers->m_rorr.m_struct_create(&out_res);
 		return out_res.yy_object_base;
+	}
+
+	// based on https://github.com/YAL-GameMaker/shader_replace_unsafe/blob/main/shader_replace_unsafe/shader_add.cpp
+
+	std::string shader_model = "5_0";
+
+	static int lua_shader_add(std::string file_path, std::string name)
+	{
+		int size = MultiByteToWideChar(CP_UTF8, 0, file_path.c_str(), -1, nullptr, 0);
+		std::wstring wide_file_path(size, 0);
+		MultiByteToWideChar(CP_UTF8, 0, file_path.c_str(), -1, &wide_file_path[0], size);
+		wide_file_path.pop_back();
+
+		auto vs_model = "vs_" + shader_model;
+		auto ps_model = "ps_" + shader_model;
+
+		Microsoft::WRL::ComPtr<ID3DBlob> vertex_blob;
+		Microsoft::WRL::ComPtr<ID3DBlob> fragment_blob;
+		Microsoft::WRL::ComPtr<ID3D11ShaderReflection> vertex_reflection;
+		Microsoft::WRL::ComPtr<ID3D11ShaderReflection> fragment_reflection;
+
+		Microsoft::WRL::ComPtr<ID3DBlob> error_blob;
+		HRESULT hr;
+
+		std::wstring vertex_path   = wide_file_path + L".vsh";
+		std::wstring fragment_path = wide_file_path + L".fsh";
+
+		std::string shader_last_error;
+
+#define m_try_break(_call, _text)                                                             \
+	{                                                                                         \
+		hr = _call;                                                                           \
+		if (FAILED(hr))                                                                       \
+		{                                                                                     \
+			shader_last_error = std::string(_text) + " (hresult:" + std::to_string(hr) + ")"; \
+			break;                                                                            \
+		}                                                                                     \
+	}
+		do
+		{
+			m_try_break(D3DCompileFromFile(vertex_path.c_str(),
+			                               nullptr,
+			                               nullptr,
+			                               "main",
+			                               vs_model.c_str(),
+			                               D3DCOMPILE_ENABLE_BACKWARDS_COMPATIBILITY,
+			                               0,
+			                               vertex_blob.GetAddressOf(),
+			                               error_blob.GetAddressOf());
+			            , "Vertex shader compile failed");
+			m_try_break(D3DCompileFromFile(fragment_path.c_str(),
+			                               nullptr,
+			                               nullptr,
+			                               "main",
+			                               ps_model.c_str(),
+			                               D3DCOMPILE_ENABLE_BACKWARDS_COMPATIBILITY,
+			                               0,
+			                               fragment_blob.GetAddressOf(),
+			                               error_blob.GetAddressOf()),
+			            "Fragment shader compile failed");
+
+			m_try_break(D3DReflect(vertex_blob->GetBufferPointer(),
+			                       vertex_blob->GetBufferSize(),
+			                       IID_ID3D11ShaderReflection,
+			                       (void**)vertex_reflection.GetAddressOf()),
+			            "Vertex shader reflection failed");
+
+			m_try_break(D3DReflect(fragment_blob->GetBufferPointer(),
+			                       fragment_blob->GetBufferSize(),
+			                       IID_ID3D11ShaderReflection,
+			                       (void**)fragment_reflection.GetAddressOf()),
+			            "Fragment shader reflection failed");
+
+			YYShader* shader              = new YYShader();
+			shader->HLSL11.vertexShader   = YYShaderDataHeader(vertex_blob, vertex_reflection).convertToRaw();
+			shader->HLSL11.fragmentShader = YYShaderDataHeader(fragment_blob, fragment_reflection).convertToRaw();
+
+			char* cname = new char[name.length() + 1];
+			memcpy(cname, name.c_str(), name.length());
+			shader->name = cname;
+
+			int amount = *big::g_pointers->m_rorr.m_shader_amount;
+
+			shader->id = amount;
+
+			amount++;
+
+			shader->type = YYShaderKind::HLSL_11;
+
+			*big::g_pointers->m_rorr.m_shader_amount = amount;
+
+			*big::g_pointers->m_rorr.m_shader_pool =
+			    (YYShader**)big::g_pointers->m_rorr.m_memorymanager_realloc((uintptr_t)*big::g_pointers->m_rorr.m_shader_pool, 8 * amount);
+
+			(*big::g_pointers->m_rorr.m_shader_pool)[shader->id] = shader;
+
+			LOG(INFO) << "try to create shader";
+			big::g_pointers->m_rorr.m_shader_create(shader);
+			return shader->id;
+		} while (false);
+#undef m_try_break
+
+		if (error_blob)
+		{
+			shader_last_error += std::string(": ") + (const char*)error_blob->GetBufferPointer();
+			error_blob->Release();
+			LOG(ERROR) << shader_last_error;
+		}
+
+		return -1;
 	}
 
 	void bind(sol::table& state)
@@ -1802,6 +1913,7 @@ namespace lua::game_maker
 		ns["variable_global_set"] = lua_gm_variable_global_set;
 
 		ns["struct_create"] = lua_struct_create;
+		ns["shader_add"]    = lua_shader_add;
 
 		auto meta_gm = state.create();
 		// Wrapper so that users can do gm.room_goto(new_room) for example instead of gm.call("room_goto", new_room)
