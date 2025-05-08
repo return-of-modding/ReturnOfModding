@@ -793,10 +793,10 @@ namespace lua::game_maker
 	}
 
 	// based on https://github.com/YAL-GameMaker/shader_replace_unsafe/blob/main/shader_replace_unsafe/shader_add.cpp
-
+	// I think my solution is terrible.
 	std::string shader_model = "5_0";
 
-	static int lua_shader_add(std::string file_path, std::string name)
+	static YYShader* shader_compiler(std::string file_path, std::string name, int id)
 	{
 		int size = MultiByteToWideChar(CP_UTF8, 0, file_path.c_str(), -1, nullptr, 0);
 		std::wstring wide_file_path(size, 0);
@@ -807,19 +807,20 @@ namespace lua::game_maker
 		auto ps_model = "ps_" + shader_model;
 
 		Microsoft::WRL::ComPtr<ID3DBlob> vertex_blob;
-		Microsoft::WRL::ComPtr<ID3DBlob> fragment_blob;
+		Microsoft::WRL::ComPtr<ID3DBlob> pixel_blob;
 		Microsoft::WRL::ComPtr<ID3D11ShaderReflection> vertex_reflection;
-		Microsoft::WRL::ComPtr<ID3D11ShaderReflection> fragment_reflection;
+		Microsoft::WRL::ComPtr<ID3D11ShaderReflection> pixel_reflection;
 
 		Microsoft::WRL::ComPtr<ID3DBlob> error_blob;
 		HRESULT hr;
 
-		std::wstring vertex_path   = wide_file_path + L".vsh";
-		std::wstring fragment_path = wide_file_path + L".fsh";
+		std::wstring vertex_path = wide_file_path + L".vsh";
+		std::wstring pixel_path  = wide_file_path + L".fsh";
 
 		std::string shader_last_error;
 
 #define m_try_break(_call, _text)                                                             \
+	do                                                                                        \
 	{                                                                                         \
 		hr = _call;                                                                           \
 		if (FAILED(hr))                                                                       \
@@ -827,7 +828,7 @@ namespace lua::game_maker
 			shader_last_error = std::string(_text) + " (hresult:" + std::to_string(hr) + ")"; \
 			break;                                                                            \
 		}                                                                                     \
-	}
+	} while (false)
 		do
 		{
 			m_try_break(D3DCompileFromFile(vertex_path.c_str(),
@@ -840,16 +841,16 @@ namespace lua::game_maker
 			                               vertex_blob.GetAddressOf(),
 			                               error_blob.GetAddressOf());
 			            , "Vertex shader compile failed");
-			m_try_break(D3DCompileFromFile(fragment_path.c_str(),
+			m_try_break(D3DCompileFromFile(pixel_path.c_str(),
 			                               nullptr,
 			                               nullptr,
 			                               "main",
 			                               ps_model.c_str(),
 			                               D3DCOMPILE_ENABLE_BACKWARDS_COMPATIBILITY,
 			                               0,
-			                               fragment_blob.GetAddressOf(),
+			                               pixel_blob.GetAddressOf(),
 			                               error_blob.GetAddressOf()),
-			            "Fragment shader compile failed");
+			            "Pixel shader compile failed");
 
 			m_try_break(D3DReflect(vertex_blob->GetBufferPointer(),
 			                       vertex_blob->GetBufferSize(),
@@ -857,43 +858,19 @@ namespace lua::game_maker
 			                       (void**)vertex_reflection.GetAddressOf()),
 			            "Vertex shader reflection failed");
 
-			m_try_break(D3DReflect(fragment_blob->GetBufferPointer(),
-			                       fragment_blob->GetBufferSize(),
+			m_try_break(D3DReflect(pixel_blob->GetBufferPointer(),
+			                       pixel_blob->GetBufferSize(),
 			                       IID_ID3D11ShaderReflection,
-			                       (void**)fragment_reflection.GetAddressOf()),
-			            "Fragment shader reflection failed");
-			LOG(INFO) << "shader compile success";
-			YYShader* shader              = new YYShader();
+			                       (void**)pixel_reflection.GetAddressOf()),
+			            "Pixel shader reflection failed");
 
 			std::vector<char> vertexShaderRaw = YYShaderDataHeader(vertex_blob, vertex_reflection).convertToRaw();
-			shader->HLSL11.vertexShader   = new char[vertexShaderRaw.size()];
-			memcpy(shader->HLSL11.vertexShader, vertexShaderRaw.data(), vertexShaderRaw.size());
+			std::vector<char> pixelShaderRaw  = YYShaderDataHeader(pixel_blob, pixel_reflection).convertToRaw();
 
-			std::vector<char> fragmentShaderRaw = YYShaderDataHeader(fragment_blob, fragment_reflection).convertToRaw();
-			shader->HLSL11.fragmentShader   = new char[fragmentShaderRaw.size()];
-			memcpy(shader->HLSL11.fragmentShader, fragmentShaderRaw.data(), fragmentShaderRaw.size());
+			YYShader* shader = new YYShader(name, id, vertexShaderRaw, pixelShaderRaw);
 
-			char* cname = new char[name.length() + 1];
-			memcpy(cname, name.c_str(), name.length());
-			shader->name = cname;
-
-			int amount = *big::g_pointers->m_rorr.m_shader_amount;
-
-			shader->id = amount;
-
-			amount++;
-
-			shader->type = YYShaderKind::HLSL_11;
-
-			*big::g_pointers->m_rorr.m_shader_amount = amount;
-
-			*big::g_pointers->m_rorr.m_shader_pool =
-			    (YYShader**)big::g_pointers->m_rorr.m_memorymanager_realloc((uintptr_t)*big::g_pointers->m_rorr.m_shader_pool, 8 * amount);
-
-			(*big::g_pointers->m_rorr.m_shader_pool)[shader->id] = shader;
-
-			big::g_pointers->m_rorr.m_shader_create(shader);
-			return shader->id;
+			LOG(INFO) << "shader compile success " << shader->name;
+			return shader;
 		} while (false);
 #undef m_try_break
 
@@ -903,8 +880,103 @@ namespace lua::game_maker
 			error_blob->Release();
 			LOG(ERROR) << shader_last_error;
 		}
+		return nullptr;
+	}
 
+	// The find_shader_by_name function exists in GameMaker.
+	static int lua_find_shader_by_name(std::string name)
+	{
+		int shader_amount = *big::g_pointers->m_rorr.m_shader_amount;
+		for (int i = 0; i < shader_amount; i++)
+		{
+			YYShader* shader = (*big::g_pointers->m_rorr.m_shader_pool)[i];
+			if (name == shader->name)
+			{
+				return i;
+			}
+		}
 		return -1;
+	}
+
+	static void lua_shader_replace(std::string file_path, std::string name, int id)
+	{
+		if (id < 0 || id >= *big::g_pointers->m_rorr.m_shader_amount)
+		{
+			LOG(ERROR) << "Failed to replace shader. InValid shader id.";
+			return;
+		}
+		int existing_shader_id = lua_find_shader_by_name(name);
+		if (existing_shader_id != -1 && existing_shader_id != id)
+		{
+			LOG(ERROR) << "Failed to replace shader. The shader name already exists.";
+			return;
+		}
+		YYShader* shader = shader_compiler(file_path, name, id);
+		if (shader == nullptr)
+		{
+			return;
+		}
+		int native_shader_handle = -1;
+		YYNativeShader* native_shader = new YYNativeShader(shader->HLSL11.vertexShader, shader->HLSL11.pixelShader, native_shader_handle);
+
+
+		if (native_shader_handle < 0)
+		{
+			if (native_shader_handle == -1)
+			{
+				LOG(ERROR) << "Failed to replace shader. Vertex shader not compatible with this device";
+			}
+			else if (native_shader_handle == -2)
+			{
+				LOG(ERROR) << "Failed to replace shader. Pixel shader not compatible with this device";
+			}
+			else
+			{
+				LOG(ERROR) << "Failed to replace shader. Unknow error.";
+			}
+			delete native_shader;
+			delete shader;
+			return;
+		}
+
+		shader->native_shader_handle = native_shader_handle;
+
+		shader->gm_BaseTexture = gm::call("shader_get_sampler_index", std::to_array<RValue, 2>({id, "gm_BaseTexture"}));
+		shader->gm_Matrices    = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_Matrices"}));
+		shader->gm_Lights_Direction = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_Lights_Direction"}));
+		shader->gm_Lights_PosRange = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_Lights_PosRange"}));
+		shader->gm_Lights_Colour = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_Lights_Colour"}));
+		shader->gm_AmbientColour = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_AmbientColour"}));
+		shader->gm_LightingEnabled = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_LightingEnabled"}));
+
+		delete (*big::g_pointers->m_rorr.m_shader_pool)[id];
+		(*big::g_pointers->m_rorr.m_shader_pool)[id] = shader;
+
+		delete (*big::g_pointers->m_rorr.m_native_shader_pool)[id];
+		(*big::g_pointers->m_rorr.m_native_shader_pool)[id] = native_shader;
+	}
+
+	static int lua_shader_add(std::string file_path, std::string name)
+	{
+		int existing_shader_id = lua_find_shader_by_name(name);
+		if (existing_shader_id != -1)
+		{
+			LOG(WARNING) << "The shader name already exists. Try replacing instead of adding.";
+			lua_shader_replace(file_path, name, existing_shader_id);
+			return existing_shader_id;
+		}
+		YYShader* shader = shader_compiler(file_path, name, *big::g_pointers->m_rorr.m_shader_amount);
+
+		if (shader == nullptr)
+		{
+			return -1;
+		}
+		(*big::g_pointers->m_rorr.m_shader_amount)++;
+		*big::g_pointers->m_rorr.m_shader_pool =
+		    (YYShader**)big::g_pointers->m_rorr.m_memorymanager_realloc(*big::g_pointers->m_rorr.m_shader_pool,
+		                                                                8 * (*big::g_pointers->m_rorr.m_shader_amount));
+		(*big::g_pointers->m_rorr.m_shader_pool)[shader->id] = shader;
+		return shader->id;
 	}
 
 	void bind(sol::table& state)
@@ -1919,7 +1991,10 @@ namespace lua::game_maker
 		ns["variable_global_set"] = lua_gm_variable_global_set;
 
 		ns["struct_create"] = lua_struct_create;
-		ns["shader_add"]    = lua_shader_add;
+
+		ns["shader_add"]          = lua_shader_add;
+		ns["shader_replace"]      = lua_shader_replace;
+		ns["find_shader_by_name"] = lua_find_shader_by_name;
 
 		auto meta_gm = state.create();
 		// Wrapper so that users can do gm.room_goto(new_room) for example instead of gm.call("room_goto", new_room)
