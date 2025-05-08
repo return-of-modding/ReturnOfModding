@@ -24,6 +24,7 @@
 #include "polyhook2/PolyHookOs.hpp"
 
 #pragma comment(lib, "d3dcompiler.lib")
+#pragma comment(lib, "dxguid.lib")
 
 namespace qstd
 {
@@ -861,10 +862,16 @@ namespace lua::game_maker
 			                       IID_ID3D11ShaderReflection,
 			                       (void**)fragment_reflection.GetAddressOf()),
 			            "Fragment shader reflection failed");
-
+			LOG(INFO) << "shader compile success";
 			YYShader* shader              = new YYShader();
-			shader->HLSL11.vertexShader   = YYShaderDataHeader(vertex_blob, vertex_reflection).convertToRaw();
-			shader->HLSL11.fragmentShader = YYShaderDataHeader(fragment_blob, fragment_reflection).convertToRaw();
+
+			std::vector<char> vertexShaderRaw = YYShaderDataHeader(vertex_blob, vertex_reflection).convertToRaw();
+			shader->HLSL11.vertexShader   = new char[vertexShaderRaw.size()];
+			memcpy(shader->HLSL11.vertexShader, vertexShaderRaw.data(), vertexShaderRaw.size());
+
+			std::vector<char> fragmentShaderRaw = YYShaderDataHeader(fragment_blob, fragment_reflection).convertToRaw();
+			shader->HLSL11.fragmentShader   = new char[fragmentShaderRaw.size()];
+			memcpy(shader->HLSL11.fragmentShader, fragmentShaderRaw.data(), fragmentShaderRaw.size());
 
 			char* cname = new char[name.length() + 1];
 			memcpy(cname, name.c_str(), name.length());
@@ -885,7 +892,6 @@ namespace lua::game_maker
 
 			(*big::g_pointers->m_rorr.m_shader_pool)[shader->id] = shader;
 
-			LOG(INFO) << "try to create shader";
 			big::g_pointers->m_rorr.m_shader_create(shader);
 			return shader->id;
 		} while (false);
