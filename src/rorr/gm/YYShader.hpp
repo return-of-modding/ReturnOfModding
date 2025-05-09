@@ -289,6 +289,9 @@ struct YYNativeShader
 
 	YYNativeShader(const YYNativeShader &other)            = delete;
 	YYNativeShader &operator=(const YYNativeShader &other) = delete;
+
+	void *operator new(size_t size);
+	void operator delete(void *ptr, size_t size);
 };
 
 namespace gm

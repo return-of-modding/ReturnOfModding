@@ -238,7 +238,7 @@ YYShader::~YYShader()
 	}
 }
 
-void* YYShader::operator new(size_t size)
+void *YYShader::operator new(size_t size)
 {
 	return big::g_pointers->m_rorr.m_memorymanager_alloc(size, "D:\\a\\GameMaker\\GameMaker\\GameMaker\\Runner\\VC_Runner\\Platform\\MemoryManager.cpp", 1856LL, true);
 }
@@ -258,21 +258,6 @@ YYNativeShader::YYNativeShader(char *vertexShaderRaw, char *pixelShaderRaw, int 
 
 YYNativeShader::~YYNativeShader()
 {
-#define FreeStruct(_data, _count)                                                     \
-	if (_data)                                                                        \
-	{                                                                                 \
-		for (int i = 0; i < _count; i++)                                              \
-		{                                                                             \
-			big::g_pointers->m_rorr.m_memorymanager_free(&_data[i]);                  \
-		}                                                                             \
-		big::g_pointers->m_rorr.m_memorymanager_free((void *)((uintptr_t)_data - 8)); \
-		_data = nullptr;                                                              \
-	}
-	FreeStruct(samplers, samplerCount);
-	FreeStruct(constBufVars, constBufVarCount);
-	FreeStruct(constBuffers, constBufferCount);
-#undef FreeStruct
-
 #define m_free_if_exists(_thing) \
 	if (_thing)                  \
 	{                            \
@@ -311,6 +296,30 @@ YYNativeShader::~YYNativeShader()
 	m_free_if_exists(vertexShader);
 	m_free_if_exists(pixelShader);
 #undef m_free_if_exists
+#define FreeStruct(_data, _count)                                                     \
+	if (_data)                                                                        \
+	{                                                                                 \
+		for (int i = 0; i < _count; i++)                                              \
+		{                                                                             \
+			big::g_pointers->m_rorr.m_memorymanager_free(&_data[i]);                  \
+		}                                                                             \
+		big::g_pointers->m_rorr.m_memorymanager_free((void *)((uintptr_t)_data - 8)); \
+		_data = nullptr;                                                              \
+	}
+	FreeStruct(samplers, samplerCount);
+	FreeStruct(constBufVars, constBufVarCount);
+	FreeStruct(constBuffers, constBufferCount);
+#undef FreeStruct
 	big::g_pointers->m_rorr.m_free_shader_data_header(&vertexHeader);
 	big::g_pointers->m_rorr.m_free_shader_data_header(&pixelHeader);
+}
+
+void *YYNativeShader::operator new(size_t size)
+{
+	return big::g_pointers->m_rorr.m_memorymanager_alloc(size, "D:\\a\\GameMaker\\GameMaker\\GameMaker\\Runner\\VC_Runner\\Platform\\MemoryManager.cpp", 1856LL, true);
+}
+
+void YYNativeShader::operator delete(void *ptr, size_t size)
+{
+	big::g_pointers->m_rorr.m_memorymanager_free(ptr);
 }
