@@ -264,13 +264,6 @@ YYNativeShader::~YYNativeShader()
 		_thing->Release();       \
 		_thing = nullptr;        \
 	}
-	if (constBuffers)
-	{
-		for (int i = 0; i < constBufferCount; i++)
-		{
-			m_free_if_exists(constBuffers[i].buffer);
-		}
-	}
 	if (inputs)
 	{
 		big::g_pointers->m_rorr.m_memorymanager_free(inputs);
@@ -296,22 +289,39 @@ YYNativeShader::~YYNativeShader()
 	m_free_if_exists(vertexShader);
 	m_free_if_exists(pixelShader);
 #undef m_free_if_exists
+
+	big::g_pointers->m_rorr.m_free_shader_data_header(&vertexHeader);
+	big::g_pointers->m_rorr.m_free_shader_data_header(&pixelHeader);
+
 #define FreeStruct(_data, _count)                                                     \
 	if (_data)                                                                        \
 	{                                                                                 \
 		for (int i = 0; i < _count; i++)                                              \
 		{                                                                             \
-			big::g_pointers->m_rorr.m_memorymanager_free(&_data[i]);                  \
+			big::g_pointers->m_rorr.m_memorymanager_free(_data[i].name);              \
 		}                                                                             \
 		big::g_pointers->m_rorr.m_memorymanager_free((void *)((uintptr_t)_data - 8)); \
-		_data = nullptr;                                                              \
 	}
 	FreeStruct(samplers, samplerCount);
 	FreeStruct(constBufVars, constBufVarCount);
-	FreeStruct(constBuffers, constBufferCount);
+
+	if (constBuffers)
+	{
+		for (int i = 0; i < constBufferCount; i++)
+		{
+			auto buf = constBuffers[i];
+			if (buf.data)
+			{
+				big::g_pointers->m_rorr.m_memorymanager_free(buf.data);
+			}
+			if (buf.buffer)
+			{
+				buf.buffer->Release();
+			}
+		}
+		big::g_pointers->m_rorr.m_memorymanager_free((void *)((uintptr_t)constBuffers - 8));
+	}
 #undef FreeStruct
-	big::g_pointers->m_rorr.m_free_shader_data_header(&vertexHeader);
-	big::g_pointers->m_rorr.m_free_shader_data_header(&pixelHeader);
 }
 
 void *YYNativeShader::operator new(size_t size)

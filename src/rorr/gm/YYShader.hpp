@@ -115,21 +115,20 @@ struct YYShader
 	YYShaderPair mysteryPairs[3] = {};
 	int mysteryPadding[4]        = {};
 
-	char *error_str     = nullptr;
-	bool is_pixel_error = false;
-
+	char *error_str       = nullptr;
+	bool is_pixel_error   = false;
 	int attributeCount    = 0;
 	char **attributeNames = nullptr;
 
 	int native_shader_handle = -1;
-
-	int gm_BaseTexture      = 0;
-	int gm_Matrices         = 0;
-	int gm_Lights_Direction = 0;
-	int gm_Lights_PosRange  = 0;
-	int gm_Lights_Colour    = 0;
-	int gm_AmbientColour    = 0;
-	int gm_LightingEnabled  = 0;
+	int a11                  = 0;
+	int gm_BaseTexture       = 0;
+	int gm_Matrices          = 0;
+	int gm_Lights_Direction  = 0;
+	int gm_Lights_PosRange   = 0;
+	int gm_Lights_Colour     = 0;
+	int gm_AmbientColour     = 0;
+	int gm_LightingEnabled   = 0;
 
 	YYShader() = default;
 	YYShader(std::string name, int id, const std::vector<char> &vertexShaderRaw, const std::vector<char> &pixelShaderRaw);
@@ -255,6 +254,12 @@ struct YYShaderDataHeader
 
 	YYShaderDataHeader(const YYShaderDataHeader &)            = delete;
 	YYShaderDataHeader &operator=(const YYShaderDataHeader &) = delete;
+
+	void *operator new(size_t size)   = delete;
+	void *operator new[](size_t size) = delete;
+
+	void operator delete(void *ptr)   = delete;
+	void operator delete[](void *ptr) = delete;
 };
 
 struct YYNativeShader
