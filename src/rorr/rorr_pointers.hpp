@@ -67,6 +67,7 @@ namespace big
 
 		gm::MemoryManager::ReAlloc m_memorymanager_realloc;
 		gm::MemoryManager::Free m_memorymanager_free;
+		gm::MemoryManager::Alloc m_memorymanager_alloc;
 
 		gm::GetSaveFileName_t m_get_save_file_name;
 

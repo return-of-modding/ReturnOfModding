@@ -939,7 +939,7 @@ namespace lua::game_maker
 			return;
 		}
 
-		shader->native_shader_handle = native_shader_handle;
+		shader->native_shader_handle = id;
 
 		shader->gm_BaseTexture = gm::call("shader_get_sampler_index", std::to_array<RValue, 2>({id, "gm_BaseTexture"}));
 		shader->gm_Matrices    = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_Matrices"}));
@@ -949,10 +949,10 @@ namespace lua::game_maker
 		shader->gm_AmbientColour = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_AmbientColour"}));
 		shader->gm_LightingEnabled = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_LightingEnabled"}));
 
-		delete (*big::g_pointers->m_rorr.m_shader_pool)[id];
+		//delete (*big::g_pointers->m_rorr.m_shader_pool)[id];
 		(*big::g_pointers->m_rorr.m_shader_pool)[id] = shader;
 
-		delete (*big::g_pointers->m_rorr.m_native_shader_pool)[id];
+		//delete (*big::g_pointers->m_rorr.m_native_shader_pool)[id];
 		(*big::g_pointers->m_rorr.m_native_shader_pool)[id] = native_shader;
 	}
 
@@ -974,8 +974,10 @@ namespace lua::game_maker
 		(*big::g_pointers->m_rorr.m_shader_amount)++;
 		*big::g_pointers->m_rorr.m_shader_pool =
 		    (YYShader**)big::g_pointers->m_rorr.m_memorymanager_realloc(*big::g_pointers->m_rorr.m_shader_pool,
-		                                                                8 * (*big::g_pointers->m_rorr.m_shader_amount));
+		                                                    8 * (*big::g_pointers->m_rorr.m_shader_amount));
 		(*big::g_pointers->m_rorr.m_shader_pool)[shader->id] = shader;
+		big::g_pointers->m_rorr.m_shader_create(shader);
+		LOG(INFO)<<"id :" <<shader->id<< "native "<< shader->native_shader_handle;
 		return shader->id;
 	}
 

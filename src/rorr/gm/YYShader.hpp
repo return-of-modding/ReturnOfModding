@@ -134,6 +134,12 @@ struct YYShader
 	YYShader() = default;
 	YYShader(std::string name, int id, const std::vector<char> &vertexShaderRaw, const std::vector<char> &pixelShaderRaw);
 	~YYShader();
+
+	void *operator new(size_t size);
+	void *operator new[](size_t size) = delete;
+
+	void operator delete(void *ptr, size_t size);
+	void operator delete[](void *ptr, size_t size) = delete;
 };
 
 template<UINT N>
@@ -249,12 +255,6 @@ struct YYShaderDataHeader
 
 	YYShaderDataHeader(const YYShaderDataHeader &)            = delete;
 	YYShaderDataHeader &operator=(const YYShaderDataHeader &) = delete;
-
-	void *operator new(size_t size)   = delete;
-	void *operator new[](size_t size) = delete;
-
-	void operator delete(void *ptr)   = delete;
-	void operator delete[](void *ptr) = delete;
 };
 
 struct YYNativeShader
@@ -297,5 +297,5 @@ namespace gm
 	using GenShaderDataHeader_t  = YYShaderDataHeader *(*)(char *raw_data);
 	using NativeShaderGenCBuf_t  = YYShaderDataHeader *(*)(YYNativeShader *native);
 	using NativeShaderCreate_t   = int (*)(YYNativeShader *native);
-	using FreeShaderDataHeader_t = void (*)(YYShaderDataHeader *header);
+	using FreeShaderDataHeader_t = void (*)(YYShaderDataHeader **header);
 } // namespace gm

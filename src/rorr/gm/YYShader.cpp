@@ -135,31 +135,31 @@ std::vector<char> YYShaderDataHeader::convertToRaw()
 		}
 	};
 
-#define APPEND_DATA(_data, _count, _offset)                                 \
-	do                                                                      \
-	{                                                                       \
-		UINT name_offset = _offset;                                         \
-		std::vector<std::string> name_cache;                                \
-		for (UINT i = 0; i < _count; i++)                                   \
-		{                                                                   \
-			auto [data, name] = _data[i].convertToRaw(name_offset);         \
-			if (name_offset == _offset)                                     \
-			{                                                               \
-				name_offset += _count * data.size();                        \
-				memcpy(data.data(), &name_offset, sizeof(UINT));            \
-			}                                                               \
-			data_append(data.data(), data.size());                          \
-			if (name.size() > 0)                                            \
-			{                                                               \
-							name_offset += (name.size() + 1);                           \
-				name_cache.emplace_back(std::move(name));                   \
-			}                                                               \
-		}                                                                   \
-		for (const auto &name : name_cache)                                 \
-		{                                                                   \
-			data_append(name.c_str(), name.size() + 1);                     \
-		}                                                                   \
-		_offset = name_offset;                                              \
+#define APPEND_DATA(_data, _count, _offset)                         \
+	do                                                              \
+	{                                                               \
+		UINT name_offset = _offset;                                 \
+		std::vector<std::string> name_cache;                        \
+		for (UINT i = 0; i < _count; i++)                           \
+		{                                                           \
+			auto [data, name] = _data[i].convertToRaw(name_offset); \
+			if (name_offset == _offset)                             \
+			{                                                       \
+				name_offset += _count * data.size();                \
+				memcpy(data.data(), &name_offset, sizeof(UINT));    \
+			}                                                       \
+			data_append(data.data(), data.size());                  \
+			if (name.size() > 0)                                    \
+			{                                                       \
+				name_offset += (name.size() + 1);                   \
+				name_cache.emplace_back(std::move(name));           \
+			}                                                       \
+		}                                                           \
+		for (const auto &name : name_cache)                         \
+		{                                                           \
+			data_append(name.c_str(), name.size() + 1);             \
+		}                                                           \
+		_offset = name_offset;                                      \
 	} while (false)
 	UINT cbuf_offset    = sizeof(UINT) * 13;
 	UINT cbufvar_offset = cbuf_offset;
@@ -203,10 +203,6 @@ std::vector<char> YYShaderDataHeader::convertToRaw()
 YYShader::YYShader(std::string n, int id, const std::vector<char> &vertexShaderRaw, const std::vector<char> &pixelShaderRaw) :
     id(id)
 {
-	if (auto s = _YYCustomShaderPool.find(id); s != _YYCustomShaderPool.end())
-	{
-		delete s->second;
-	}
 	_YYCustomShaderPool[id] = this;
 
 	name = new char[n.length() + 1];
@@ -240,10 +236,16 @@ YYShader::~YYShader()
 			delete[] HLSL11.pixelShader;
 		}
 	}
-	else
-	{
-		big::g_pointers->m_rorr.m_memorymanager_free(this);
-	}
+}
+
+void* YYShader::operator new(size_t size)
+{
+	return big::g_pointers->m_rorr.m_memorymanager_alloc(size, "D:\\a\\GameMaker\\GameMaker\\GameMaker\\Runner\\VC_Runner\\Platform\\MemoryManager.cpp", 1856LL, true);
+}
+
+void YYShader::operator delete(void *ptr, size_t size)
+{
+	big::g_pointers->m_rorr.m_memorymanager_free(ptr);
 }
 
 YYNativeShader::YYNativeShader(char *vertexShaderRaw, char *pixelShaderRaw, int &result)
@@ -309,6 +311,6 @@ YYNativeShader::~YYNativeShader()
 	m_free_if_exists(vertexShader);
 	m_free_if_exists(pixelShader);
 #undef m_free_if_exists
-	big::g_pointers->m_rorr.m_free_shader_data_header(vertexHeader);
-	big::g_pointers->m_rorr.m_free_shader_data_header(pixelHeader);
+	big::g_pointers->m_rorr.m_free_shader_data_header(&vertexHeader);
+	big::g_pointers->m_rorr.m_free_shader_data_header(&pixelHeader);
 }

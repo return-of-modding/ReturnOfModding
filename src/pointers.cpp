@@ -195,6 +195,15 @@ namespace big
                 g_pointers->m_rorr.m_memorymanager_free = ptr.as<gm::MemoryManager::Free>();
             }
         },
+        // MemoryManager::Alloc
+        {
+            "MMA",
+            "40 53 56 57 48 81 EC 70 04 00 00",
+            [](memory::handle ptr)
+            {
+                g_pointers->m_rorr.m_memorymanager_alloc = ptr.as<gm::MemoryManager::Alloc>();
+            }
+        },
         //NativeShaderCreateFromHeader
         {
             "NSCFH",
