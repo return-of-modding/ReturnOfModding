@@ -28,6 +28,8 @@ struct YYShaderConstBuf
 	uint8_t *data;
 	ID3D11Buffer *buffer;
 	bool dirty;
+	YYShaderConstBuf() = delete;
+	~YYShaderConstBuf();
 };
 
 struct YYShaderSampler
@@ -35,6 +37,8 @@ struct YYShaderSampler
 	char *name;
 	int reg;
 	YYShaderKind type = YYShaderKind::Pixel;
+	YYShaderSampler() = delete;
+	~YYShaderSampler();
 };
 
 enum class YYShaderVarType : UINT
@@ -59,6 +63,8 @@ struct YYShaderConstBufVar
 	int cols;
 	int rows;
 	int elementCount;
+	YYShaderConstBufVar() = delete;
+	~YYShaderConstBufVar();
 };
 
 enum class YYShaderInputSemantic : UINT
@@ -90,6 +96,8 @@ struct YYShaderInputLayout
 {
 	int format;
 	ID3D11InputLayout *layout;
+	YYShaderInputLayout() = delete;
+	~YYShaderInputLayout();
 };
 
 struct YYShader;

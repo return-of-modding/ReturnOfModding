@@ -798,10 +798,13 @@ namespace lua::game_maker
 
 	static YYShader* shader_compiler(std::string file_path, std::string name, int id)
 	{
-		int size = MultiByteToWideChar(CP_UTF8, 0, file_path.c_str(), -1, nullptr, 0);
+		int size = MultiByteToWideChar(CP_UTF8, 0, file_path.c_str(), -1, nullptr, 0) - 1;
 		std::wstring wide_file_path(size, 0);
 		MultiByteToWideChar(CP_UTF8, 0, file_path.c_str(), -1, &wide_file_path[0], size);
-		wide_file_path.pop_back();
+
+		std::wstring vertex_path = wide_file_path + L".vsh";
+		std::wstring pixel_path  = wide_file_path + L".fsh";
+
 
 		auto vs_model = "vs_" + shader_model;
 		auto ps_model = "ps_" + shader_model;
@@ -813,9 +816,6 @@ namespace lua::game_maker
 
 		Microsoft::WRL::ComPtr<ID3DBlob> error_blob;
 		HRESULT hr;
-
-		std::wstring vertex_path = wide_file_path + L".vsh";
-		std::wstring pixel_path  = wide_file_path + L".fsh";
 
 		std::string shader_last_error;
 
@@ -868,17 +868,16 @@ namespace lua::game_maker
 
 			YYShader* shader = new YYShader(name, id, vertexShaderRaw, pixelShaderRaw);
 
-			LOG(INFO) << "shader compile success " << shader->name;
+			LOG(INFO) << "shader compile success " << name;
 			return shader;
 		} while (false);
 #undef m_try_break
-
 		if (error_blob)
 		{
 			shader_last_error += std::string(": ") + (const char*)error_blob->GetBufferPointer();
 			error_blob->Release();
-			LOG(ERROR) << shader_last_error;
 		}
+		LOG(ERROR) << "shader compile failed " << name << shader_last_error;
 		return nullptr;
 	}
 

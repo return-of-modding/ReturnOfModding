@@ -2,6 +2,42 @@
 
 #include "../../pointers.hpp"
 
+YYShaderConstBuf::~YYShaderConstBuf()
+{
+	if (data)
+	{
+		big::g_pointers->m_rorr.m_memorymanager_free(data);
+	}
+	if (buffer)
+	{
+		buffer->Release();
+	}
+}
+
+YYShaderSampler::~YYShaderSampler()
+{
+	if (name)
+	{
+		big::g_pointers->m_rorr.m_memorymanager_free(name);
+	}
+}
+
+YYShaderConstBufVar::~YYShaderConstBufVar()
+{
+	if (name)
+	{
+		big::g_pointers->m_rorr.m_memorymanager_free(name);
+	}
+}
+
+YYShaderInputLayout::~YYShaderInputLayout()
+{
+	if (layout)
+	{
+		layout->Release();
+	}
+}
+
 YYShaderVarType YYShaderDataHeader::D3DtoGMLvarType(_D3D_SHADER_VARIABLE_TYPE t)
 {
 	switch (t)
@@ -64,30 +100,26 @@ YYShaderDataHeader::YYShaderDataHeader(const Microsoft::WRL::ComPtr<ID3DBlob> &b
 			auto rt = rv->GetType();
 			rt->GetDesc(&rtd);
 
-			auto vname   = rvd.Name;
-			auto vexists = false;
-			for (const auto &v : cvars)
-			{
-				if (strcmp(v.name, vname) == 0)
-				{
-					vexists = true;
-					break;
-				}
-			}
-			if (vexists)
+			auto vname = rvd.Name;
+
+			auto it = std::find_if(cvars.begin(),
+			                       cvars.end(),
+			                       [&](const auto &v)
+			                       {
+				                       return strcmp(v.name, vname) == 0;
+			                       });
+			if (it != cvars.end())
 			{
 				continue;
 			}
+
 			cvars.emplace_back(ConstBufVarData(vname, {i, rvd.StartOffset, rvd.Size, (UINT)D3DtoGMLvarType(rtd.Type), rtd.Columns, rtd.Rows, rtd.Elements}));
 		}
 	}
 
 	cbufvar_count = cvars.size();
 	cbufvar_data  = new ConstBufVarData[cbufvar_count];
-	for (int i = 0; i < cbufvar_count; i++)
-	{
-		cbufvar_data[i] = cvars[i];
-	}
+	std::copy(cvars.begin(), cvars.end(), cbufvar_data);
 
 	std::vector<SamplerData> samplers{};
 	for (auto i = 0u; i < rsd.BoundResources; i++)
@@ -103,10 +135,7 @@ YYShaderDataHeader::YYShaderDataHeader(const Microsoft::WRL::ComPtr<ID3DBlob> &b
 
 	sampler_count = samplers.size();
 	sampler_data  = new SamplerData[sampler_count];
-	for (int i = 0; i < sampler_count; i++)
-	{
-		sampler_data[i] = samplers[i];
-	}
+	std::copy(samplers.begin(), samplers.end(), sampler_data);
 
 	shader_size = blob->GetBufferSize();
 	shader_data = new char[shader_size];
@@ -258,12 +287,14 @@ YYNativeShader::YYNativeShader(char *vertexShaderRaw, char *pixelShaderRaw, int 
 
 YYNativeShader::~YYNativeShader()
 {
-#define m_free_if_exists(_thing) \
-	if (_thing)                  \
-	{                            \
-		_thing->Release();       \
-		_thing = nullptr;        \
-	}
+	auto safe_release = [](auto &ptr) noexcept
+	{
+		if (ptr)
+		{
+			ptr->Release();
+			ptr = nullptr;
+		}
+	};
 	if (inputs)
 	{
 		big::g_pointers->m_rorr.m_memorymanager_free(inputs);
@@ -274,10 +305,7 @@ YYNativeShader::~YYNativeShader()
 		for (int i = 0; i < inputLayoutCount; i++)
 		{
 			YYShaderInputLayout *inputLayout = inputLayouts[i];
-			if (inputLayout)
-			{
-				m_free_if_exists(inputLayout->layout);
-			}
+			inputLayout->~YYShaderInputLayout();
 			big::g_pointers->m_rorr.m_memorymanager_free(inputLayout);
 		}
 		big::g_pointers->m_rorr.m_memorymanager_free(inputLayouts);
@@ -286,42 +314,36 @@ YYNativeShader::~YYNativeShader()
 	inputLayoutCount    = 0;
 	lastUsedInputLayout = -1;
 
-	m_free_if_exists(vertexShader);
-	m_free_if_exists(pixelShader);
-#undef m_free_if_exists
+	safe_release(vertexShader);
+	safe_release(pixelShader);
 
 	big::g_pointers->m_rorr.m_free_shader_data_header(&vertexHeader);
 	big::g_pointers->m_rorr.m_free_shader_data_header(&pixelHeader);
 
-#define FreeStruct(_data, _count)                                                     \
-	if (_data)                                                                        \
-	{                                                                                 \
-		for (int i = 0; i < _count; i++)                                              \
-		{                                                                             \
-			big::g_pointers->m_rorr.m_memorymanager_free(_data[i].name);              \
-		}                                                                             \
-		big::g_pointers->m_rorr.m_memorymanager_free((void *)((uintptr_t)_data - 8)); \
+	if (samplers)
+	{
+		for (int i = 0; i < samplerCount; i++)
+		{
+			samplers[i].~YYShaderSampler();
+		}
+		big::g_pointers->m_rorr.m_memorymanager_free((void *)((uintptr_t)samplers - 8));
 	}
-	FreeStruct(samplers, samplerCount);
-	FreeStruct(constBufVars, constBufVarCount);
-
+	if (constBufVars)
+	{
+		for (int i = 0; i < constBufVarCount; i++)
+		{
+			constBufVars[i].~YYShaderConstBufVar();
+		}
+		big::g_pointers->m_rorr.m_memorymanager_free((void *)((uintptr_t)constBufVars - 8));
+	}
 	if (constBuffers)
 	{
 		for (int i = 0; i < constBufferCount; i++)
 		{
-			auto buf = constBuffers[i];
-			if (buf.data)
-			{
-				big::g_pointers->m_rorr.m_memorymanager_free(buf.data);
-			}
-			if (buf.buffer)
-			{
-				buf.buffer->Release();
-			}
+			constBuffers[i].~YYShaderConstBuf();
 		}
 		big::g_pointers->m_rorr.m_memorymanager_free((void *)((uintptr_t)constBuffers - 8));
 	}
-#undef FreeStruct
 }
 
 void *YYNativeShader::operator new(size_t size)
