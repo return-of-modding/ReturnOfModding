@@ -883,6 +883,13 @@ namespace lua::game_maker
 	}
 
 	// The find_shader_by_name function exists in GameMaker.
+
+
+	// Lua API: Function
+	// Table: gm
+	// Name: find_shader_by_name
+	// Param: shader_name: string: the name of shader.
+	// Returns: value: The id of the shader.
 	static int lua_find_shader_by_name(std::string name)
 	{
 		int shader_amount = *big::g_pointers->m_rorr.m_shader_amount;
@@ -897,6 +904,12 @@ namespace lua::game_maker
 		return -1;
 	}
 
+	// Lua API: Function
+	// Table: gm
+	// Name: shader_replace
+	// Param: file_path: string: the path to the shader source code (must be HLSL).
+	// Param: name: string: the shader name.
+	// Param: id: int: the id of the shader to replace.
 	static void lua_shader_replace(std::string file_path, std::string name, int id)
 	{
 		if (id < 0 || id >= *big::g_pointers->m_rorr.m_shader_amount)
@@ -955,6 +968,16 @@ namespace lua::game_maker
 		shader->gm_LightingEnabled = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_LightingEnabled"}));
 	}
 
+	// Lua API: Function
+	// Table: gm
+	// Name: shader_add
+	// Param: file_path: string: the path to the shader source code (must be HLSL).
+	// Param: name: string: the shader name.
+	// Returns: value: The id of the shader.
+	// **Example Usage**
+	// ```lua
+	// local shd_test = gm.shader_add(path.combine(PATH, "shd_test"), "shd_test")
+	// ```
 	static int lua_shader_add(std::string file_path, std::string name)
 	{
 		int existing_shader_id = lua_find_shader_by_name(name);
