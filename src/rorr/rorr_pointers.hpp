@@ -10,6 +10,8 @@
 #include "gm/save_file_serialize_t.hpp"
 #include "gm/Script_Data.hpp"
 #include "gm/StructCreate.hpp"
+#include "gm/YYShader.hpp"
+#include "gm/MemoryManager.hpp"
 #include "gm/YYSetScriptRef.hpp"
 
 #include <memory/handle.hpp>
@@ -51,6 +53,21 @@ namespace big
 		gm::Script_Data_t m_script_data;
 
 		gm::StructCreate_t m_struct_create;
+
+		YYShader*** m_shader_pool;
+		int *m_shader_amount;
+		YYNativeShader*** m_native_shader_pool;
+		int *m_native_shader_amount;
+
+		gm::ShaderCreate_t m_shader_create;
+		gm::NativeShaderCreate_t m_native_shader_create;
+		gm::GenShaderDataHeader_t m_gen_shader_data_header;
+		gm::NativeShaderGenCBuf_t m_native_shader_gen_cbuf;
+		gm::FreeShaderDataHeader_t m_free_shader_data_header;
+
+		gm::MemoryManager::ReAlloc m_memorymanager_realloc;
+		gm::MemoryManager::Free m_memorymanager_free;
+		gm::MemoryManager::Alloc m_memorymanager_alloc;
 
 		gm::GetSaveFileName_t m_get_save_file_name;
 

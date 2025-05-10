@@ -158,6 +158,66 @@ namespace big
 				g_pointers->m_rorr.m_struct_create = ptr.sub(0x6).as<gm::StructCreate_t>();
             }
         },
+        // ShaderCreate
+        {
+            "ShC",
+            "E8 ? ? ? ? 85 C0 79 ? 83 F8 FF",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_shader_create = ptr.sub(0x37).as<gm::ShaderCreate_t>();
+            }
+        },
+        // in FindShaderByName
+        {
+            "FSBN",
+            "44 8B 1D ? ? ? ? 45 33 C9 48 8B D9",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_shader_amount = ptr.add(3).rip().as<int*>();
+                g_pointers->m_rorr.m_shader_pool = ptr.add(18).add(3).rip().as<YYShader***>();
+            }
+        },
+        // MemoryManager::ReAlloc
+        {
+            "MMRA",
+            "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 56 41 57 48 83 EC 40 41 8B E9",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_memorymanager_realloc = ptr.as<gm::MemoryManager::ReAlloc>();
+            }
+        },
+        // MemoryManager::Free
+        {
+            "MMF",
+            "48 85 C9 0F 84 ? ? ? ? 53 48 83 EC 30 48 8B D9",
+            [](memory::handle ptr)
+            {
+                g_pointers->m_rorr.m_memorymanager_free = ptr.as<gm::MemoryManager::Free>();
+            }
+        },
+        // MemoryManager::Alloc
+        {
+            "MMA",
+            "40 53 56 57 48 81 EC 70 04 00 00",
+            [](memory::handle ptr)
+            {
+                g_pointers->m_rorr.m_memorymanager_alloc = ptr.as<gm::MemoryManager::Alloc>();
+            }
+        },
+        //NativeShaderCreateFromHeader
+        {
+            "NSCFH",
+            "E8 ? ? ? ? 48 89 43 ? 48 8B CB E8 ? ? ? ? 48 8B CB",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_gen_shader_data_header = ptr.add(1).rip().as<gm::GenShaderDataHeader_t>();
+				g_pointers->m_rorr.m_native_shader_gen_cbuf = ptr.add(12).add(1).rip().as<gm::NativeShaderGenCBuf_t>();
+				g_pointers->m_rorr.m_native_shader_create = ptr.add(20).add(1).rip().as<gm::NativeShaderCreate_t>();
+				g_pointers->m_rorr.m_free_shader_data_header = ptr.add(0x1A5).add(1).rip().as<gm::FreeShaderDataHeader_t>();
+                g_pointers->m_rorr.m_native_shader_amount = ptr.add(0x2D2).add(2).rip().as<int*>();
+				g_pointers->m_rorr.m_native_shader_pool = ptr.add(0x2F4).add(3).rip().as<YYNativeShader***>();
+            }
+        },
         // GetSaveFileName
         {
             "GSFN",
