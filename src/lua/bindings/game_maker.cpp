@@ -875,7 +875,6 @@ namespace lua::game_maker
 		if (error_blob)
 		{
 			shader_last_error += std::string(": ") + (const char*)error_blob->GetBufferPointer();
-			error_blob->Release();
 		}
 		LOG(ERROR) << "shader compile failed " << name << shader_last_error;
 		return nullptr;
