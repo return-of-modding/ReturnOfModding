@@ -47,8 +47,30 @@ function gm.struct_create() end
 ---@return number # The freshly made empty struct pointer
 function gm.gmf_struct_create() end
 
----@return number # The converted pointer
-function gm.gmf_convert_yyobjectbase() end
+---@param shader_name string the name of shader.
+---@return value # The id of the shader.
+function gm.find_shader_by_name(shader_name) end
+
+---@param file_path string the path to the shader source code (must be HLSL).
+---@param name string the shader name.
+---@param id int the id of the shader to replace.
+function gm.shader_replace(file_path, name, id) end
+
+-- **Example Usage**
+--```lua
+--local shd_test = gm.shader_add(path.combine(PATH, "shd_test"), "shd_test")
+--```
+---@param file_path string the path to the shader source code (must be HLSL). Check https://github.com/GameMakerDiscord/gists/blob/master/HLSL_passthrough for example.
+---@param name string the shader name.
+---@return value # The id of the shader.
+function gm.shader_add(file_path, name) end
+
+-- **Example Usage**
+--```lua
+--gm.shader_dump(1)
+--```
+---@param id int The id of the shader.
+function gm.shader_dump(id) end
 
 -- **Example Usage**
 --```lua

@@ -16,7 +16,7 @@ Table containing helpers for interacting with the game maker engine.
 
 - Type: `constants_type_sorted[type_name][i] = constant_name`
 
-## Functions (13)
+## Functions (16)
 
 ### `pre_code_execute(function_name, callback)`
 
@@ -130,14 +130,63 @@ YYObjectBase* = gm.struct_create()
 number = gm.gmf_struct_create()
 ```
 
-### `gmf_convert_yyobjectbase()`
+### `find_shader_by_name(shader_name)`
+
+- **Parameters:**
+  - `shader_name` (string): the name of shader.
 
 - **Returns:**
-  - `number`: The converted pointer
+  - `value`: The id of the shader.
 
 **Example Usage:**
 ```lua
-number = gm.gmf_convert_yyobjectbase()
+value = gm.find_shader_by_name(shader_name)
+```
+
+### `shader_replace(file_path, name, id)`
+
+- **Parameters:**
+  - `file_path` (string): the path to the shader source code (must be HLSL).
+  - `name` (string): the shader name.
+  - `id` (int): the id of the shader to replace.
+
+**Example Usage:**
+```lua
+gm.shader_replace(file_path, name, id)
+```
+
+### `shader_add(file_path, name)`
+
+**Example Usage**
+```lua
+local shd_test = gm.shader_add(path.combine(PATH, "shd_test"), "shd_test")
+```
+
+- **Parameters:**
+  - `file_path` (string): the path to the shader source code (must be HLSL). Check https://github.com/GameMakerDiscord/gists/blob/master/HLSL_passthrough for example.
+  - `name` (string): the shader name.
+
+- **Returns:**
+  - `value`: The id of the shader.
+
+**Example Usage:**
+```lua
+value = gm.shader_add(file_path, name)
+```
+
+### `shader_dump(id)`
+
+**Example Usage**
+```lua
+gm.shader_dump(1)
+```
+
+- **Parameters:**
+  - `id` (int): The id of the shader.
+
+**Example Usage:**
+```lua
+gm.shader_dump(id)
 ```
 
 ### `get_script_ref(function_index)`

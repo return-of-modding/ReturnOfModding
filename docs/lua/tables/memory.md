@@ -2,11 +2,42 @@
 
 Table containing helper functions related to process memory.
 
-## Functions (10)
+## Functions (12)
+
+### `get_module_base_address(module_name (optional))`
+
+Returns the base address of a specified module within the current process. Returns a pointer:is_null() == true pointer otherwise.
+
+- **Parameters:**
+  - `module_name (optional)` (string): The name of the module for which the base address is to be retrieved. Example: "ntdll.dll". If not provided, the API resolves this to the current targeted main module name automatically.
+
+- **Returns:**
+  - `pointer`: A pointer to the found address.
+
+**Example Usage:**
+```lua
+pointer = memory.get_module_base_address(module_name (optional))
+```
+
+### `scan_pattern_from_module(module_name, pattern)`
+
+Scans the specified memory pattern within the target main module and returns a pointer to the found address. Returns a pointer:is_null() == true pointer otherwise.
+
+- **Parameters:**
+  - `module_name` (string): module name. Example: "ntdll.dll"
+  - `pattern` (string): byte pattern (IDA format)
+
+- **Returns:**
+  - `pointer`: A pointer to the found address.
+
+**Example Usage:**
+```lua
+pointer = memory.scan_pattern_from_module(module_name, pattern)
+```
 
 ### `scan_pattern(pattern)`
 
-Scans the specified memory pattern within the target main module and returns a pointer to the found address.
+Scans the specified memory pattern within the target main module and returns a pointer to the found address. Returns a pointer:is_null() == true pointer otherwise.
 
 - **Parameters:**
   - `pattern` (string): byte pattern (IDA format)
@@ -87,6 +118,7 @@ number = memory.dynamic_hook(hook_name, return_type, param_types, target_func_pt
 local ptr = memory.scan_pattern("some ida sig")
 gm.dynamic_hook_mid("test_hook", {"rax", "rcx", "[rcx+rdx*4+11]"}, {"int", "RValue*", "int"}, 0, ptr, function(args)
      log.info("trigger", args[1]:get(), args[2].value, args[3]:set(1))
+     return ptr:add(246)
 end)
 ```
 But scan_pattern may be affected by the other hooks.
@@ -100,11 +132,11 @@ But scan_pattern may be affected by the other hooks.
   - `mid_callback` (function): The function that will be called when the program reaches the position. The callback must match the following signature: ( args (can be a value_wrapper, or a lua usertype directly, depending if you used `add_type_info_from_string` through some c++ code and exposed it to the lua vm) ) -> Returns memory.pointer if you want to customize the jump location. Be careful when customizing the jump location, you need to restore the registers and the stack before the jump.
 
 - **Returns:**
-  - `add(246)`: Unique identifier for later disabling / enabling the hook on the fly.
+  - `number`: Unique identifier for later disabling / enabling the hook on the fly.
 
 **Example Usage:**
 ```lua
-add(246) = memory.dynamic_hook_mid(hook_name, param_captures_targets, param_captures_types, stack_restore_offset, target_func_ptr, mid_callback)
+number = memory.dynamic_hook_mid(hook_name, param_captures_targets, param_captures_types, stack_restore_offset, target_func_ptr, mid_callback)
 ```
 
 ### `dynamic_hook_enable(identifier)`
