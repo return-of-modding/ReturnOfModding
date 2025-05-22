@@ -254,7 +254,7 @@ namespace big::lua_manager_extension
 	void init_lua_api(sol::state_view& state, sol::table& lua_ext)
 	{
 		// Let's keep that list sorted the same as the solution file explorer
-		lua::game_maker::bind(lua_ext);
+		lua::game_maker::bind(lua_ext, state);
 		lua::gui_ext::bind(lua_ext);
 	}
 
