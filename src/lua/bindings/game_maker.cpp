@@ -1062,7 +1062,7 @@ namespace lua::game_maker
 		}
 	}
 
-	void bind(sol::table& state)
+	void bind(sol::table& state, sol::state_view& L)
 	{
 		auto ns = state["gm"].get_or_create<sol::table>();
 
@@ -1750,7 +1750,7 @@ namespace lua::game_maker
 			    "RefDynamicArrayOfRValue",
 			    sol::base_classes,
 			    sol::bases<YYObjectBase>(),
-			    sol::meta_function::index,
+			    "__index_raw",
 			    [](sol::this_state this_state_, RefDynamicArrayOfRValue& self, sol::stack_object position_) -> sol::reference
 			    {
 				    if (position_.get_type() != sol::type::number)
@@ -2120,5 +2120,12 @@ namespace lua::game_maker
 			                     return luaL_error(L, "Can't define new game maker functions this way");
 		                     });
 		state["gm"][sol::metatable_key] = meta_gm;
+
+		// it seems sol2's __index binding mess up something
+		// I'm really confused about what happened here.
+		L.script(R"(
+			local arr = gm.array_create()
+			local mt = getmetatable(arr)
+			mt.__index = mt.__index_raw)");
 	}
 } // namespace lua::game_maker
