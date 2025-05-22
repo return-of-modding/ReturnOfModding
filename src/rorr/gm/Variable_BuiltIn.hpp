@@ -79,15 +79,9 @@ namespace gm
 			}
 		}
 
-		const auto global_exists = gm::call("variable_global_exists", variable_name.data()).asBoolean();
-		if (global_exists)
-		{
-			game_defined_cache.insert(variable_name.data());
+		game_defined_cache.insert(variable_name.data());
 
-			return gm::call("variable_global_set", std::to_array<RValue, 2>({variable_name.data(), new_value}));
-		}
-
-		return false;
+		return gm::call("variable_global_set", std::to_array<RValue, 2>({variable_name.data(), new_value}));
 	}
 
 	inline void print_all_builtin_variables()
