@@ -3,5 +3,5 @@
 
 namespace lua::game_maker
 {
-	void bind(sol::table& state, sol::state_view& L);
+	void bind(sol::table& state);
 }
