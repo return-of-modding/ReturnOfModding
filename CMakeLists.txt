@@ -44,7 +44,7 @@ target_include_directories(ReturnOfModding PRIVATE
 
 target_precompile_headers(ReturnOfModding PRIVATE "${SRC_DIR}/common.hpp")
 
-target_link_libraries(ReturnOfModding PRIVATE ReturnOfModdingBase)
+target_link_libraries(ReturnOfModding PRIVATE ReturnOfModdingBase libluajit)
 
 # Warnings as errors
 set_property(TARGET ReturnOfModding PROPERTY COMPILE_WARNING_AS_ERROR ON)

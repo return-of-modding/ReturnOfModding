@@ -13,6 +13,281 @@
 
 #include <ankerl/unordered_dense.h>
 
+extern "C"
+{
+#undef WIN32_LEAN_AND_MEAN
+#include "lj_err.h"
+
+#include <lj_frame.h>
+#include <lj_func.h>
+#include <lj_state.h>
+#include <lj_vm.h>
+
+#if LJ_TARGET_X86
+	typedef void* UndocumentedDispatcherContext; /* Unused on x86. */
+#else
+	/* Taken from: http://www.nynaeve.net/?p=99 */
+	typedef struct UndocumentedDispatcherContext
+	{
+		ULONG64 ControlPc;
+		ULONG64 ImageBase;
+		PRUNTIME_FUNCTION FunctionEntry;
+		ULONG64 EstablisherFrame;
+		ULONG64 TargetIp;
+		PCONTEXT ContextRecord;
+		void (*LanguageHandler)(void);
+		PVOID HandlerData;
+		PUNWIND_HISTORY_TABLE HistoryTable;
+		ULONG ScopeIndex;
+		ULONG Fill0;
+	} UndocumentedDispatcherContext;
+#endif
+
+	LJ_FUNCA int lj_err_unwind_win(EXCEPTION_RECORD* rec, void* f, CONTEXT* ctx, UndocumentedDispatcherContext* dispatch);
+
+#define LJ_MSVC_EXCODE ((DWORD)0xe0'6d'73'63)
+#define LJ_GCC_EXCODE  ((DWORD)0x20'47'43'43)
+
+#define LJ_EXCODE             ((DWORD)0xe2'4c'4a'00)
+#define LJ_EXCODE_CHECK(cl)   (((cl) ^ LJ_EXCODE) <= 0xff)
+#define LJ_EXCODE_ERRCODE(cl) ((int)((cl) & 0xff))
+
+	extern void __DestructExceptionObject(EXCEPTION_RECORD* rec, int nothrow);
+
+	LJ_NOINLINE static void unwindstack(lua_State* L, TValue* top)
+	{
+		lj_func_closeuv(L, top);
+		if (top < L->top - 1)
+		{
+			copyTV(L, top, L->top - 1);
+			L->top = top + 1;
+		}
+		lj_state_relimitstack(L);
+	}
+
+	static void* err_unwind(lua_State* L, void* stopcf, int errcode)
+	{
+		TValue* frame = L->base - 1;
+		void* cf      = L->cframe;
+		while (cf)
+		{
+			int32_t nres = cframe_nres(cframe_raw(cf));
+			if (nres < 0)
+			{ /* C frame without Lua frame? */
+				TValue* top = restorestack(L, -nres);
+				if (frame < top)
+				{ /* Frame reached? */
+					if (errcode)
+					{
+						L->base   = frame + 1;
+						L->cframe = cframe_prev(cf);
+						unwindstack(L, top);
+					}
+					return cf;
+				}
+			}
+			if (frame <= tvref(L->stack) + LJ_FR2)
+			{
+				break;
+			}
+			switch (frame_typep(frame))
+			{
+			case FRAME_LUA: /* Lua frame. */
+			case FRAME_LUAP: frame = frame_prevl(frame); break;
+			case FRAME_C: /* C frame. */
+			unwind_c:
+#if LJ_UNWIND_EXT
+				if (errcode)
+				{
+					L->base   = frame_prevd(frame) + 1;
+					L->cframe = cframe_prev(cf);
+					unwindstack(L, frame - LJ_FR2);
+				}
+				else if (cf != stopcf)
+				{
+					cf    = cframe_prev(cf);
+					frame = frame_prevd(frame);
+					break;
+				}
+				return NULL; /* Continue unwinding. */
+#else
+				UNUSED(stopcf);
+				cf    = cframe_prev(cf);
+				frame = frame_prevd(frame);
+				break;
+#endif
+			case FRAME_CP: /* Protected C frame. */
+				if (cframe_canyield(cf))
+				{ /* Resume? */
+					if (errcode)
+					{
+						hook_leave(G(L)); /* Assumes nobody uses coroutines inside hooks. */
+						L->cframe = NULL;
+						L->status = (uint8_t)errcode;
+					}
+					return cf;
+				}
+				if (errcode)
+				{
+					L->base   = frame_prevd(frame) + 1;
+					L->cframe = cframe_prev(cf);
+					unwindstack(L, frame - LJ_FR2);
+				}
+				return cf;
+			case FRAME_CONT: /* Continuation frame. */
+				if (frame_iscont_fficb(frame))
+				{
+					goto unwind_c;
+				}
+				/* fallthrough */
+			case FRAME_VARG: /* Vararg frame. */ frame = frame_prevd(frame); break;
+			case FRAME_PCALL:  /* FF pcall() frame. */
+			case FRAME_PCALLH: /* FF pcall() frame inside hook. */
+				if (errcode)
+				{
+					global_State* g;
+					if (errcode == LUA_YIELD)
+					{
+						frame = frame_prevd(frame);
+						break;
+					}
+					g = G(L);
+					setgcref(g->cur_L, obj2gco(L));
+					if (frame_typep(frame) == FRAME_PCALL)
+					{
+						hook_leave(g);
+					}
+					L->base   = frame_prevd(frame) + 1;
+					L->cframe = cf;
+					unwindstack(L, L->base);
+				}
+				return (void*)((intptr_t)cf | CFRAME_UNWIND_FF);
+			}
+		}
+		/* No C frame. */
+		if (errcode)
+		{
+			L->base   = tvref(L->stack) + 1 + LJ_FR2;
+			L->cframe = NULL;
+			unwindstack(L, L->base);
+			if (G(L)->panic)
+			{
+				G(L)->panic(L);
+			}
+			exit(EXIT_FAILURE);
+		}
+		return L; /* Anything non-NULL will do. */
+	}
+
+	LJ_FUNCA int lj_err_unwind_win_VERBOSE(EXCEPTION_RECORD* rec, void* f, CONTEXT* ctx, UndocumentedDispatcherContext* dispatch)
+	{
+#if LJ_TARGET_X86
+		void* cf = (char*)f - CFRAME_OFS_SEH;
+#elif LJ_TARGET_ARM64
+		void* cf = (char*)f - CFRAME_SIZE;
+#else
+		void* cf = f;
+#endif
+		lua_State* L = cframe_L(cf);
+		int errcode  = LJ_EXCODE_CHECK(rec->ExceptionCode) ? LJ_EXCODE_ERRCODE(rec->ExceptionCode) : LUA_ERRRUN;
+		if ((rec->ExceptionFlags & 6))
+		{ /* EH_UNWINDING|EH_EXIT_UNWIND */
+			if (rec->ExceptionCode == STATUS_LONGJUMP && rec->ExceptionRecord && LJ_EXCODE_CHECK(rec->ExceptionRecord->ExceptionCode))
+			{
+				errcode = LJ_EXCODE_ERRCODE(rec->ExceptionRecord->ExceptionCode);
+				if ((rec->ExceptionFlags & 0x20))
+				{ /* EH_TARGET_UNWIND */
+					/* Unwinding is about to finish; revert the ExceptionCode so that
+	** RtlRestoreContext does not try to restore from a _JUMP_BUFFER.
+	*/
+					rec->ExceptionCode = 0;
+				}
+			}
+			/* Unwind internal frames. */
+			err_unwind(L, cf, errcode);
+		}
+		else
+		{
+			void* cf2 = err_unwind(L, cf, 0);
+			if (cf2)
+			{ /* We catch it, so start unwinding the upper frames. */
+#if !LJ_TARGET_X86
+				EXCEPTION_RECORD rec2;
+#endif
+				if (rec->ExceptionCode == LJ_MSVC_EXCODE || rec->ExceptionCode == LJ_GCC_EXCODE)
+				{
+#if !LJ_TARGET_CYGWIN
+					__DestructExceptionObject(rec, 1);
+#endif
+					constexpr auto msvc_exception_code = 0xE0'6D'73'63;
+					if (rec->ExceptionCode == msvc_exception_code && rec->NumberParameters > 2)
+					{
+						struct _ThrowInfo
+						{
+							int attributes;
+							int pmfnUnwind;
+							int pForwardCompat;
+							int pCatchableTypeArray;
+						};
+
+						constexpr auto yygml_exception_code = 0x1'E1'80'28;
+						const auto yygmlexception_id        = (_ThrowInfo*)rec->ExceptionInformation[2];
+						if (yygmlexception_id && yygmlexception_id->pCatchableTypeArray == yygml_exception_code)
+						{
+							gm::gml_exception_handler(((YYGMLException*)rec->ExceptionInformation[1])->GetExceptionObject());
+						}
+					}
+
+					setstrV(L, L->top++, lj_err_str(L, LJ_ERR_ERRCPP));
+				}
+				else if (!LJ_EXCODE_CHECK(rec->ExceptionCode))
+				{
+					/* Don't catch access violations etc. */
+					return 1; /* ExceptionContinueSearch */
+				}
+#if LJ_TARGET_X86
+				UNUSED(ctx);
+				UNUSED(dispatch);
+				/* Call all handlers for all lower C frames (including ourselves) again
+      ** with EH_UNWINDING set. Then call the specified function, passing cf
+      ** and errcode.
+      */
+				lj_vm_rtlunwind(cf, (void*)rec, (cframe_unwind_ff(cf2) && errcode != LUA_YIELD) ? (void*)lj_vm_unwind_ff : (void*)lj_vm_unwind_c, errcode);
+				/* lj_vm_rtlunwind does not return. */
+#else
+				if (LJ_EXCODE_CHECK(rec->ExceptionCode))
+				{
+					/* For unwind purposes, wrap the EXCEPTION_RECORD in something that
+	** looks like a longjmp, so that MSVC will execute C++ destructors in
+	** the frames we unwind over. ExceptionInformation[0] should really
+	** contain a _JUMP_BUFFER*, but hopefully nobody is looking too closely
+	** at this point.
+	*/
+					rec2.ExceptionCode           = STATUS_LONGJUMP;
+					rec2.ExceptionRecord         = rec;
+					rec2.ExceptionAddress        = 0;
+					rec2.NumberParameters        = 1;
+					rec2.ExceptionInformation[0] = (ULONG_PTR)ctx;
+					rec                          = &rec2;
+				}
+				/* Unwind the stack and call all handlers for all lower C frames
+      ** (including ourselves) again with EH_UNWINDING set. Then set
+      ** stack pointer = f, result = errcode and jump to the specified target.
+      */
+				RtlUnwindEx(f,
+				            (void*)((cframe_unwind_ff(cf2) && errcode != LUA_YIELD) ? lj_vm_unwind_ff_eh : lj_vm_unwind_c_eh),
+				            rec,
+				            (void*)(uintptr_t)errcode,
+				            dispatch->ContextRecord,
+				            dispatch->HistoryTable);
+				/* RtlUnwindEx should never return. */
+#endif
+			}
+		}
+		return 1; /* ExceptionContinueSearch */
+	}
+}
+
 #pragma warning(push, 0)
 #include <asmjit/asmjit.h>
 #pragma warning(pop)
@@ -2092,5 +2367,8 @@ namespace lua::game_maker
 		ns_memory["game_base_address"] = (uintptr_t)GetModuleHandleA(0);
 
 		gm::generate_gmf_ffi();
+
+		// hook the luajit exception handler and log potential GM exceptions instead of silencing them
+		big::hooking::detour_hook_helper::add<lj_err_unwind_win_VERBOSE>("lj_err_unwind_win_VERBOSE", lj_err_unwind_win);
 	}
 } // namespace lua::game_maker
