@@ -23,7 +23,7 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 	if (reason == DLL_PROCESS_ATTACH)
 	{
 		bool use_steam = true;
-		wchar_t exe_path[MAX_PATH * 2];
+		wchar_t exe_path[1024];
 		if (GetModuleFileNameW(nullptr, exe_path, sizeof(exe_path)) > 0)
 		{
 			std::filesystem::path steam_appid_file_path(exe_path);
