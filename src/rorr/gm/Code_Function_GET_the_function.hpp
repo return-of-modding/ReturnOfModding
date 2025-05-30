@@ -140,6 +140,13 @@ namespace gm
 
 	inline LONG double_exception_handler(EXCEPTION_POINTERS* exception_info)
 	{
+		constexpr DWORD SetThreadName_exception_code = 0x40'6D'13'88;
+		if (exception_info->ExceptionRecord->ExceptionCode == SetThreadName_exception_code)
+		{
+			LOG(INFO) << "SetThreadName Exception.";
+			return EXCEPTION_CONTINUE_SEARCH;
+		}
+
 		big::big_exception_handler(exception_info);
 
 		if (g_last_call)
