@@ -234,6 +234,17 @@ extern "C"
 						const auto yygmlexception_id        = (_ThrowInfo*)rec->ExceptionInformation[2];
 						if (yygmlexception_id && yygmlexception_id->pCatchableTypeArray == yygml_exception_code)
 						{
+							if (gm::g_last_call)
+							{
+								LOG(ERROR) << "last gm.call: " << gm::g_last_call;
+							}
+							if (gm::g_last_code_execute)
+							{
+								LOG(ERROR) << "last code_execute: " << gm::g_last_code_execute;
+							}
+
+							gm::lua_print_traceback();
+
 							gm::gml_exception_handler(((YYGMLException*)rec->ExceptionInformation[1])->GetExceptionObject());
 						}
 					}
