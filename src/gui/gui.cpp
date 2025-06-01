@@ -214,6 +214,13 @@ namespace big
 					ImGui::EndMenu();
 				}
 
+				if (ImGui::BeginMenu("Config"))
+				{
+					toml_v2::config_file::imgui_config_file();
+
+					ImGui::EndMenu();
+				}
+
 				if (ImGui::BeginMenu("Windows"))
 				{
 					for (auto& [mod_guid, windows] : lua::window::is_open)
