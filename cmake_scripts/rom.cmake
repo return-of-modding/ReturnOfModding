@@ -6,6 +6,6 @@ set(LUA_GIT_HASH 5d708c3f9cae12820e415d4f89c9eacbe2ab964b) # https://github.com/
 FetchContent_Declare(
 	rom
 	GIT_REPOSITORY https://github.com/xiaoxiao921/ReturnOfModdingBase.git
-	GIT_TAG 2baafbac6f99d48432a17aec82add599cf748365
+	GIT_TAG 4e66bfbb444ad552441fcf34c638903baf97fdbe
 )
 FetchContent_MakeAvailable(rom)
