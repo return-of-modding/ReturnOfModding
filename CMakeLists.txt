@@ -53,7 +53,6 @@ add_compile_definitions(ReturnOfModding
     "_CRT_SECURE_NO_WARNINGS"
     "NOMINMAX"
     "WIN32_LEAN_AND_MEAN"
-    "IMGUI_USER_CONFIG=\"${PROJECT_SOURCE_DIR}/src/gui/imgui_config.hpp\""
 )
 
 if (MSVC)
