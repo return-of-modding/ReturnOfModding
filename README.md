@@ -6,7 +6,7 @@
 
 Return Of Modding is a modding plugin / framework for Risk of Rain Returns.
 
-(A game made with GameMaker 2023.6 ultimately transpiled from GML to C++ with the GameMaker YYC compiler)
+(A game made with GameMaker 2024.13 ultimately transpiled from GML to C++ with the GameMaker YYC compiler)
 
 It's using [ReturnOfModding](https://github.com/xiaoxiao921/ReturnOfModdingBase) as a base. You can check its README for more information on how it works.
 
