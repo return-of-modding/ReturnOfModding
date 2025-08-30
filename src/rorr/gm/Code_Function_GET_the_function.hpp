@@ -29,13 +29,13 @@ namespace gm
 
 		exception_log << "stacktrace:\n";
 
-		if (((e_stacktrace.type & MASK_TYPE_RVALUE) == ARRAY) && e_stacktrace.ref_array && e_stacktrace.ref_array->m_Array
+		if (((e_stacktrace.type & MASK_TYPE_RVALUE) == ARRAY) && e_stacktrace.ref_array && e_stacktrace.ref_array->pArray
 		    && e_stacktrace.ref_array->length > 0)
 		{
 			const auto thelen{e_stacktrace.ref_array->length};
 			for (auto i{0}; i < thelen; ++i)
 			{
-				const auto& item{e_stacktrace.ref_array->m_Array[i]};
+				const auto& item{e_stacktrace.ref_array->pArray[i]};
 				if ((item.type & MASK_TYPE_RVALUE) == STRING)
 				{
 					exception_log << item.ref_string->get() << "\n";

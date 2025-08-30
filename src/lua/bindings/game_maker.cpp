@@ -1748,9 +1748,7 @@ namespace lua::game_maker
 		{
 			sol::usertype<RefDynamicArrayOfRValue> type = state.new_usertype<RefDynamicArrayOfRValue>(
 			    "RefDynamicArrayOfRValue",
-			    sol::base_classes,
-			    sol::bases<YYObjectBase>(),
-			    "__index_raw",
+				sol::meta_function::index,
 			    [](sol::this_state this_state_, RefDynamicArrayOfRValue& self, sol::stack_object position_) -> sol::reference
 			    {
 				    if (position_.get_type() != sol::type::number)
@@ -1766,16 +1764,22 @@ namespace lua::game_maker
 					    return sol::lua_nil;
 				    }
 
-				    RValue& val = self.m_Array[pos];
+				    RValue& val = self.pArray[pos];
 
 				    return RValue_to_lua(val, this_state_);
 			    },
+			    //}
 			    sol::meta_function::garbage_collect,
 			    sol::destructor(
 			        [](RefDynamicArrayOfRValue& inst)
 			        {
 				        YYObjectPinMap::unpin(&inst);
-			        }));
+			        })
+			);
+
+			type["type"] = sol::property([](){
+				return YYObjectBaseType::ARRAY;	
+			});
 
 			sol::protected_function ipairs_func = type[sol::meta_function::ipairs];
 			type[sol::meta_function::pairs]     = ipairs_func;
@@ -2121,11 +2125,8 @@ namespace lua::game_maker
 		                     });
 		state["gm"][sol::metatable_key] = meta_gm;
 
-		// it seems sol2's __index binding mess up something
-		// I'm really confused about what happened here.
 		L.script(R"(
-			local arr = gm.array_create()
-			local mt = getmetatable(arr)
-			mt.__index = mt.__index_raw)");
+local arr = gm.array_create()
+)");
 	}
 } // namespace lua::game_maker

@@ -3,7 +3,7 @@
 
 struct YYObjectPinMap
 {
-	inline static ankerl::unordered_dense::map<YYObjectBase*, size_t> m_refcounts;
+	inline static ankerl::unordered_dense::map<void*, size_t> m_refcounts;
 
 	// a ds map for pinnable objects.
 	inline static RValue m_pin_map{};
@@ -14,7 +14,7 @@ struct YYObjectPinMap
 		gm::call("variable_global_set", std::to_array<RValue, 2>({"__returnofmodding_gc_pin_ds_map_index", YYObjectPinMap::m_pin_map}));
 	}
 
-	inline static void pin(YYObjectBase* obj)
+	inline static void pin(void* obj)
 	{
 		if (!m_refcounts.contains(obj) || m_refcounts[obj] <= 0)
 		{
@@ -33,7 +33,7 @@ struct YYObjectPinMap
 		//LOG(ERROR) << "pin() map size: " << gm::call("ds_map_size", YYObjectPinMap::m_pin_map).value << " | " << m_refcounts.size();
 	}
 
-	inline static void unpin(YYObjectBase* obj)
+	inline static void unpin(void* obj)
 	{
 		if (m_refcounts.contains(obj))
 		{

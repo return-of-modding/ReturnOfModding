@@ -29,16 +29,16 @@ void CInstance::imgui_dump_instance_variables()
 {
 	RValue instance_variable_names = gm::call("variable_instance_get_names", id);
 	ImGui::Text("Var Count: %d", instance_variable_names.ref_array->length);
-	ImGui::Text("Ref Count: %d", instance_variable_names.ref_array->m_refCount);
-	ImGui::Text("Flags: %d", instance_variable_names.ref_array->m_flags);
-	ImGui::Text("Owner: %d", instance_variable_names.ref_array->m_Owner);
+	ImGui::Text("Ref Count: %d", instance_variable_names.ref_array->refcount);
+	ImGui::Text("Flags: %d", instance_variable_names.ref_array->flags);
+	ImGui::Text("Owner: %d", instance_variable_names.ref_array->owner);
 	ImGui::Text("Visited: %d", instance_variable_names.ref_array->visited);
 	for (int i = 0; i < instance_variable_names.ref_array->length; i++)
 	{
-		if (instance_variable_names.ref_array->m_Array[i].type == RValueType::STRING)
+		if (instance_variable_names.ref_array->pArray[i].type == RValueType::STRING)
 		{
-			const auto& var_name = instance_variable_names.ref_array->m_Array[i].ref_string->m_thing;
-			ImGui::Text("%d: %s (Ref: %d)", i, var_name, instance_variable_names.ref_array->m_Array[i].ref_string->m_refCount);
+			const auto& var_name = instance_variable_names.ref_array->pArray[i].ref_string->m_thing;
+			ImGui::Text("%d: %s (Ref: %d)", i, var_name, instance_variable_names.ref_array->pArray[i].ref_string->m_refCount);
 			ImGui::SameLine();
 			static ankerl::unordered_dense::map<std::string, std::array<char, 256>> var_to_input_texts;
 			ImGui::InputText(std::format("##{}", var_name).c_str(), var_to_input_texts[var_name].data(), 256);

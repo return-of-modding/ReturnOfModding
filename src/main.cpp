@@ -14,7 +14,7 @@
 #include "threads/util.hpp"
 #include "version.hpp"
 
-//#include "debug/debug.hpp"
+#include "debug/debug.hpp"
 
 BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 {
@@ -22,6 +22,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 
 	if (reason == DLL_PROCESS_ATTACH)
 	{
+		//big::debug::wait_until_debugger();
+
 		bool use_steam = true;
 		wchar_t exe_path[1024];
 		if (GetModuleFileNameW(nullptr, exe_path, sizeof(exe_path)) > 0)
@@ -103,6 +105,8 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		// Purposely leak it, we are not unloading this module in any case.
 		auto byte_patch_manager_instance = new byte_patch_manager();
 		LOG(INFO) << "Byte Patch Manager initialized.";
+
+		Logger::FlushQueue();
 
 		rorr::init_hooks();
 

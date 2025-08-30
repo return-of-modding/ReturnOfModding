@@ -52,55 +52,55 @@ namespace big
 		// CRoom
         {
             "CR",
-            "7D 3C 48 8B 80",
+            "48 B8 ? ? ? ? ? ? ? ? 41 C7 40 ? ? ? ? ? 49 89 00 48 8B 05",
             [](memory::handle ptr)
             {
-                g_pointers->m_rorr.m_croom = ptr.sub(19).rip().as<gm::CRoom**>();
+                g_pointers->m_rorr.m_croom = ptr.add(23).rip().as<gm::CRoom**>();
             }
         },
 		// CInstance constructor
         {
             "CIC",
-            "33 F6 48 89 70",
+            "48 89 5C 24 ? 48 89 74 24 ? 48 89 4C 24 ? 57 48 83 EC ? 0F 29 74 24 ? 0F 29 7C 24",
             [](memory::handle ptr)
             {
-				g_pointers->m_rorr.m_cinstance_ctor = ptr.sub(94).as<gm::CInstance_ctor>();
+				g_pointers->m_rorr.m_cinstance_ctor = ptr.as<gm::CInstance_ctor>();
             }
         },
 		// CInstance deconstructor
         {
             "CID",
-            "33 ED 48 85 FF 74 1A",
+            "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC ? 8B F2",
             [](memory::handle ptr)
             {
-				g_pointers->m_rorr.m_cinstance_dctor = ptr.sub(0x2F).as<gm::CInstance_dctor>();
+				g_pointers->m_rorr.m_cinstance_dctor = ptr.as<gm::CInstance_dctor>();
             }
         },
 		// CObjectGM Add Instance
         {
             "COGMAI",
-            "75 0E 48 89 4B",
+            "48 89 5C 24 ? 57 48 83 EC ? 48 8B D9 48 8B FA 48 83 C1 ? E8 ? ? ? ? 48 85 DB 74 ? 48 89 74 24",
             [](memory::handle ptr)
             {
-				g_pointers->m_rorr.m_cobjectgm_add_instance = ptr.sub(0x5A).as<gm::CObjectGM_AddInstance>();
+				g_pointers->m_rorr.m_cobjectgm_add_instance = ptr.as<gm::CObjectGM_AddInstance>();
             }
         },
 		// CObjectGM Remove Instance
         {
             "COGMRI",
-            "48 85 DB 74 5E",
+            "48 89 5C 24 ? 57 48 83 EC ? 48 8B D9 48 8B FA 48 83 C1 ? E8 ? ? ? ? 48 85 DB 74 ? 66 90",
             [](memory::handle ptr)
             {
-				g_pointers->m_rorr.m_cobjectgm_remove_instance = ptr.sub(0x19).as<gm::CObjectGM_RemoveInstance>();
+				g_pointers->m_rorr.m_cobjectgm_remove_instance = ptr.as<gm::CObjectGM_RemoveInstance>();
             }
         },
         // YYSetString
         {
             "YYSS",
-            "48 8B FA 48 8B D9 B9 10 00 00 00",
+            "48 89 5C 24 ? 48 89 6C 24 ? 56 57 41 56 48 83 EC ? 48 8B FA 4C 8B F1 B9",
             [](memory::handle ptr)
             {
-				g_pointers->m_rorr.m_yysetstring = ptr.sub(0xA).as<YYSetStr>();
+				g_pointers->m_rorr.m_yysetstring = ptr.as<YYSetStr>();
             }
         },
         // FREE_RValue_Pre
@@ -115,10 +115,18 @@ namespace big
         // COPY_RValue_do__Post
         {
             "CRDP",
-            "83 F8 04 75 66",
+            "E9 ? ? ? ? 48 8B 02 49 89 00",
             [](memory::handle ptr)
             {
-				g_pointers->m_rorr.m_copy_rvalue_do_post = ptr.sub(0x22).as<COPY_RValue_do__Post_t>();
+				g_pointers->m_rorr.m_copy_rvalue_do_post = ptr.add(1).rip().as<COPY_RValue_do__Post_t>();
+            }
+        },
+        {
+            "GCCH",
+            "48 85 C9 74 ? 8B 49 ? 8B 05",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_GCCollectHint = ptr.as<GCCollectHint_t>();
             }
         },
         // Debug Console Output
@@ -180,7 +188,7 @@ namespace big
         // MemoryManager::ReAlloc
         {
             "MMRA",
-            "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 56 41 57 48 83 EC 40 41 8B E9",
+            "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 54 41 55 41 56 41 57 48 83 EC ? 45 8B F9 4D 8B E0 4C 8B F2",
             [](memory::handle ptr)
             {
 				g_pointers->m_rorr.m_memorymanager_realloc = ptr.as<gm::MemoryManager::ReAlloc>();
@@ -189,7 +197,7 @@ namespace big
         // MemoryManager::Free
         {
             "MMF",
-            "48 85 C9 0F 84 ? ? ? ? 53 48 83 EC 30 48 8B D9",
+            "48 85 C9 0F 84 ? ? ? ? 53 48 83 EC ? 48 8B D9 80 F2",
             [](memory::handle ptr)
             {
                 g_pointers->m_rorr.m_memorymanager_free = ptr.as<gm::MemoryManager::Free>();
@@ -198,7 +206,7 @@ namespace big
         // MemoryManager::Alloc
         {
             "MMA",
-            "40 53 56 57 48 81 EC 70 04 00 00",
+            "48 89 5C 24 ? 57 48 81 EC ? ? ? ? 0F 29 B4 24 ? ? ? ? 48 8B 05 ? ? ? ? 48 33 C4 48 89 84 24 ? ? ? ? 48 8B D9",
             [](memory::handle ptr)
             {
                 g_pointers->m_rorr.m_memorymanager_alloc = ptr.as<gm::MemoryManager::Alloc>();
@@ -221,16 +229,16 @@ namespace big
         // GetSaveFileName
         {
             "GSFN",
-            "44 8B E8 8D 50",
+            "40 55 41 54 41 55 41 56 41 57 48 83 EC ? 48 8D 6C 24 ? 48 89 5D ? 48 89 75 ? 48 89 7D ? 48 8B 05 ? ? ? ? 48 33 C5 48 89 45 ? 4D 8B E0",
             [](memory::handle ptr)
             {
-				g_pointers->m_rorr.m_get_save_file_name = ptr.sub(0x18A).as<gm::GetSaveFileName_t>();
+				g_pointers->m_rorr.m_get_save_file_name = ptr.as<gm::GetSaveFileName_t>();
             }
         },
         // save_file_serialize
         {
             "SFS",
-            "4C 89 44 24 18 48 89 54 24 10 55 53 56 57 41 54 41 55 41 56 41 57 48 8D AC 24 48 FD",
+            "48 89 5C 24 ? 48 89 74 24 ? 48 89 7C 24 ? 4C 89 44 24 ? 55 41 54 41 55 41 56 41 57 48 8D AC 24 ? ? ? ? 48 81 EC ? ? ? ? 45 8B E9 49 8B D8",
             [](memory::handle ptr)
             {
 				g_pointers->m_rorr.m_save_file_serialize = ptr.as<gm::save_file_serialize_t>();
@@ -239,7 +247,7 @@ namespace big
         // save_file_deserialize
         {
             "SFD",
-            "4C 8B DC 4D 89 43 18 49 89 53 10 49 89 4B 08 53 56 57 41 54 41 55 41 56 41 57 48 81 EC 10",
+            "48 8B C4 44 89 48 ? 4C 89 40 ? 48 89 50 ? 48 89 48 ? 53 56 57 41 54 41 55 41 56 41 57 48 81 EC ? ? ? ? 0F 29 70 ? 49 8B D8",
             [](memory::handle ptr)
             {
 				g_pointers->m_rorr.m_save_file_deserialize = ptr.as<gm::save_file_deserialize_t>();
@@ -248,7 +256,7 @@ namespace big
         // json_parse
         {
             "JP",
-            "40 57 48 83 EC 20 48 8B F9 48 8B 4C 24",
+            "41 57 48 83 EC ? 4C 8B F9 48 8B 4C 24",
             [](memory::handle ptr)
             {
 				g_pointers->m_rorr.m_json_parse = ptr.as<gm::json_parse_t>();
@@ -275,10 +283,10 @@ namespace big
         // CreateSwapChain
         {
             "CSC",
-            "E8 ? ? ? ? 80 3D ? ? ? ? ? 74 70",
+            "4C 8B DC 55 53 48 8D 6C 24 ? 48 81 EC ? ? ? ? 48 8B 05",
             [](memory::handle ptr)
             {
-				g_pointers->m_rorr.m_CreateSwapChain = ptr.add(1).rip().as<void*>();
+				g_pointers->m_rorr.m_CreateSwapChain = ptr.as<void*>();
             }
         }
         >(); // don't leave a trailing comma at the end

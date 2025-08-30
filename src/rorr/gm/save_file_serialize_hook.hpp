@@ -82,9 +82,9 @@ namespace gm
 		return res;
 	}
 
-	inline RValue* hook_save_file_deserialize(CInstance* a1, CInstance* a2, RValue* a3, int a4)
+	inline RValue* hook_save_file_deserialize(CInstance* a1, CInstance* a2, RValue* a3, int a4, RValue** a5)
 	{
-		const auto res = big::g_hooking->get_original<hook_save_file_deserialize>()(a1, a2, a3, a4);
+		const auto res = big::g_hooking->get_original<hook_save_file_deserialize>()(a1, a2, a3, a4, a5);
 
 		return res;
 	}

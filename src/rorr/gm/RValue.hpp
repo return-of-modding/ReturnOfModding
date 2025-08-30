@@ -50,6 +50,7 @@ typedef void (*DetPotRoot)(YYObjectBase* _pContainer, YYObjectBase* _yy_object_b
 struct RValue;
 typedef void (*FREE_RVal_Pre)(RValue* p);
 typedef void (*COPY_RValue_do__Post_t)(RValue* dest, RValue* src);
+typedef void (*GCCollectHint_t)(YYObjectBase* _pObj);
 typedef void (*YYSetStr)(RValue* _pVal, const char* _pS);
 typedef void (*YYCreStr)(RValue* _pVal, const char* _pS);
 typedef char* (*YYDupStr)(const char* _pStr);
@@ -269,12 +270,15 @@ struct RValue
 
 #pragma pack(pop)
 
-struct RefDynamicArrayOfRValue : YYObjectBase
+struct RefDynamicArrayOfRValue
 {
-	int m_refCount;
-	int m_flags; // flag set = is readonly for example
-	RValue* m_Array;
-	void* m_Owner;
+	YYObjectBase* pObjThing;
+	RValue* pArray;
+	// copy on write only
+	int64_t owner;
+	int refcount;
+	//
+	int flags;
 	int visited;
 	int length;
 
@@ -285,12 +289,12 @@ struct RefDynamicArrayOfRValue : YYObjectBase
 
 	iterator begin()
 	{
-		return iterator(m_Array);
+		return iterator(pArray);
 	}
 
 	iterator end()
 	{
-		return iterator(m_Array + length);
+		return iterator(pArray + length);
 	}
 
 	size_type size() const noexcept
@@ -309,11 +313,3 @@ struct RefDynamicArrayOfRValue : YYObjectBase
 	}
 };
 
-// 136
-static constexpr auto RefDynamicArrayOfRValue_offset_ref_count = offsetof(RefDynamicArrayOfRValue, m_refCount);
-// 144
-static constexpr auto RefDynamicArrayOfRValue_offset_array = offsetof(RefDynamicArrayOfRValue, m_Array);
-// 152
-static constexpr auto RefDynamicArrayOfRValue_offset_owner = offsetof(RefDynamicArrayOfRValue, m_Owner);
-// 164
-static constexpr auto RefDynamicArrayOfRValue_offset_length = offsetof(RefDynamicArrayOfRValue, length);

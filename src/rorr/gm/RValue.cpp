@@ -24,48 +24,50 @@ void RValue::__localFree()
 	}
 }
 
-static void COPY_RValue__Post(RValue* dest, const RValue* source)
+static bool IsGCKind(int _kind)
 {
-	dest->type  = source->type;
-	dest->flags = source->flags;
+	_kind &= 0x1f;
+	return (((1 << RValueType::ACCESSOR) | (1 << RValueType::OBJECT) | (1 << RValueType::ARRAY)) & (1 << _kind)) != 0;
+}
 
-	if (YYFree_valid_vkind(source->type))
+static void COPY_RValue__Post(RValue* _pDest, const RValue* _pSource)
+{
+	unsigned int skind = _pSource->type;
+	unsigned int dkind = _pDest->type;
+
+	_pDest->type  = _pSource->type;
+	_pDest->flags = _pSource->flags;
+
+	if (YYFree_valid_vkind(skind))
 	{
-		big::g_pointers->m_rorr.m_copy_rvalue_do_post(dest, (RValue*)source);
+		big::g_pointers->m_rorr.m_copy_rvalue_do_post(_pDest, (RValue*)_pSource);
 	}
 	else
 	{
-		dest->i64 = source->i64;
-	}
+		if ((skind & MASK_TYPE_RVALUE) == RValueType::UNDEFINED)
+		{
+			dkind &= MASK_TYPE_RVALUE;
+
+			if (dkind == RValueType::ARRAY)
+			{
+				if (_pDest->ref_array != NULL)
+				{
+					big::g_pointers->m_rorr.m_GCCollectHint(_pDest->ref_array->pObjThing);
+				}
+			}
+			else if (IsGCKind((int)(dkind)))
+			{
+				big::g_pointers->m_rorr.m_GCCollectHint(_pDest->yy_object_base);
+			}
+		}
+
+		_pDest->i64 = _pSource->i64;
+	} 
 }
 
 void RValue::__localCopy(const RValue& other)
 {
-	if (&other != this)
-	{
-		DValue tmp{};
-		memcpy(&tmp, &other, sizeof(RValue));
-
-		bool is_array{(tmp.type & MASK_TYPE_RVALUE) == ARRAY};
-		if (is_array)
-		{
-			++(reinterpret_cast<RValue*>(&tmp)->ref_array->m_refCount);
-		}
-
-		__localFree();
-
-		if (is_array)
-		{
-			--(reinterpret_cast<RValue*>(&tmp)->ref_array->m_refCount);
-		}
-
-		COPY_RValue__Post(this, &other);
-
-		if (is_array)
-		{
-			YYObjectPinMap::pin(this->yy_object_base);
-		}
-	}
+	COPY_RValue__Post(this, &other);
 }
 
 RValue::~RValue()
@@ -371,7 +373,7 @@ RValue* RValue::DoArrayIndex(const int _index)
 {
 	if ((type & MASK_TYPE_RVALUE) == ARRAY && (ref_array != nullptr) && _index < ref_array->length)
 	{
-		return &ref_array->m_Array[_index];
+		return &ref_array->pArray[_index];
 	}
 	else
 	{
@@ -402,7 +404,7 @@ std::string RValue::asString()
 	}
 	case ARRAY:
 	{
-		if (this->ref_array->m_Array == nullptr)
+		if (this->ref_array->pArray == nullptr)
 		{
 			return "{ <null array pointer> }";
 		}
