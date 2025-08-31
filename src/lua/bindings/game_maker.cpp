@@ -294,7 +294,16 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 		{
 			return sol::make_object<RValue>(this_state_, res);
 		}
+		// room global variable, the bitset can be verified through the Variable_BuiltIn_Add -> room getter function
+		else if (res.i64 & 0x1'00'00'03'00'00'00'00LL)
+		{
+			// This is correct, but for backwards compatibility, we return the number like before.
+			//return sol::make_object<RValue>(this_state_, res);
 
+			return sol::make_object<double>(this_state_, res.asReal());
+		}
+
+		LOG(ERROR) << "Unknown REF type: " << HEX_TO_UPPER(res.i64) << ". Please report to me if you see this!";
 		return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
 	case PTR: return sol::make_object<uintptr_t>(this_state_, (uintptr_t)res.ptr);
 	case OBJECT:
