@@ -18,9 +18,9 @@ namespace gm
 
 		auto* res = big::g_hooking->get_original<hook_CInstance_ctor>()(this_, a2, a3, a4, a5, a6);
 
-		CInstances_all.push_back(res);
+		CInstances_all.push_back(this_);
 
-		CInstance_id_to_CInstance[res->id] = res;
+		CInstance_id_to_CInstance[this_->id] = this_;
 
 		return res;
 	}

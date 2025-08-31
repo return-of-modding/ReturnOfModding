@@ -9,6 +9,7 @@ struct CInstance : YYObjectBase
 	void* m_pPhysicsObject;
 	void* m_pSkeletonAnimation;
 	void* m_pControllingSeqInst;
+	uint64_t m_unk_1;
 	unsigned int m_Instflags;
 	int id;
 	int object_index;
@@ -17,6 +18,7 @@ struct CInstance : YYObjectBase
 	float i_lastSequencePos;
 	float i_sequenceDir;
 	float image_index;
+	unsigned int m_unk_2;
 	float image_speed;
 	float image_xscale;
 	float image_yscale;
@@ -42,6 +44,7 @@ struct CInstance : YYObjectBase
 	CCode* i_initcode;
 	CCode* i_precreatecode;
 	void* m_pOldObject;
+	void* m_unk_3;
 	int layer;
 	int mask_index;
 	__int16 m_nMouseOver;
