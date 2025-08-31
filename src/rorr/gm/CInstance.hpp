@@ -2,6 +2,8 @@
 
 #include "YYObjectBase.hpp"
 
+// To update this check the YYC internal function that assign the getters and setters of the builtin variables
+// In the binary just look for the strings like hspeed, vspeed etc
 struct CInstance : YYObjectBase
 {
 	__int64 m_CreateCounter;

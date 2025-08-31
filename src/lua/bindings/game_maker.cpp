@@ -283,7 +283,19 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 	case ARRAY:
 		YYObjectPinMap::pin(res.ref_array);
 		return sol::make_object<RefDynamicArrayOfRValue*>(this_state_, res.ref_array);
-	case REF: return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
+	case REF: 
+		// CInstance, the bitset can be verified through the instance_create_depth function
+		if (res.i64 & 0x4'00'00'00'00'00'00'00LL)
+		{
+			return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
+		}
+		// DS List, the bitset can be verified through the ds_list_create function
+		else if (res.i64 & 0x2'00'00'00'00'00'00'00LL)
+		{
+			return sol::make_object<RValue>(this_state_, res);
+		}
+
+		return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
 	case PTR: return sol::make_object<uintptr_t>(this_state_, (uintptr_t)res.ptr);
 	case OBJECT:
 		if (res.yy_object_base->type == YYObjectBaseType::CINSTANCE)
