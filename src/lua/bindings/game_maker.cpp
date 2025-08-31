@@ -289,22 +289,8 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 		{
 			return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
 		}
-		// DS List, the bitset can be verified through the ds_list_create function
-		else if (res.i64 & 0x2'00'00'00'00'00'00'00LL)
-		{
-			return sol::make_object<RValue>(this_state_, res);
-		}
-		// room global variable, the bitset can be verified through the Variable_BuiltIn_Add -> room getter function
-		else if (res.i64 & 0x1'00'00'03'00'00'00'00LL)
-		{
-			// This is correct, but for backwards compatibility, we return the number like before.
-			//return sol::make_object<RValue>(this_state_, res);
 
-			return sol::make_object<double>(this_state_, res.asReal());
-		}
-
-		LOG(ERROR) << "Unknown REF type: " << HEX_TO_UPPER(res.i64) << ". Please report to me if you see this!";
-		return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
+		return sol::make_object<double>(this_state_, res.asReal());
 	case PTR: return sol::make_object<uintptr_t>(this_state_, (uintptr_t)res.ptr);
 	case OBJECT:
 		if (res.yy_object_base->type == YYObjectBaseType::CINSTANCE)
@@ -2145,9 +2131,5 @@ namespace lua::game_maker
 			                     return luaL_error(L, "Can't define new game maker functions this way");
 		                     });
 		state["gm"][sol::metatable_key] = meta_gm;
-
-		L.script(R"(
-local arr = gm.array_create()
-)");
 	}
 } // namespace lua::game_maker
