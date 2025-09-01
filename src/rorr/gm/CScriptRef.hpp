@@ -6,13 +6,13 @@ struct CScript;
 
 class CScriptRef : public YYObjectBase
 {
-private:
+public:
 	void* m_unk;
 	void* m_unk2;
 	void* m_unk3;
 	void* m_unk4;
 	void* m_unk5;
-	void* m_unk6;
+	void* m_self;
 	void* m_unk7;
 
 public:

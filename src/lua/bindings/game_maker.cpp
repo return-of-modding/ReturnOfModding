@@ -26,6 +26,11 @@
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "dxguid.lib")
 
+bool string_starts_with(const char* pre, const char* str)
+{
+	return strncmp(pre, str, strlen(pre)) == 0;
+}
+
 namespace qstd
 {
 	class runtime_func : public PLH::MemAccessor
@@ -343,6 +348,11 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 	}
 }
 
+struct YYObjectBaseLuaWrapper
+{
+	YYObjectBase* ptr;
+};
+
 static RValue parse_sol_object(sol::object arg)
 {
 	if (arg.get_type() == sol::type::number)
@@ -376,6 +386,10 @@ static RValue parse_sol_object(sol::object arg)
 	else if (arg.is<YYObjectBase*>())
 	{
 		return RValue(arg.as<YYObjectBase*>());
+	}
+	else if (arg.is<YYObjectBaseLuaWrapper*>())
+	{
+		return RValue(arg.as<YYObjectBaseLuaWrapper*>()->ptr);
 	}
 	else if (arg.is<RValue>())
 	{
@@ -826,10 +840,6 @@ namespace lua::game_maker
 	{
 		return RValue_to_lua(gm::call(name, parse_variadic_args(args)), this_state_);
 	}
-
-	struct YYObjectBaseLuaWrapper {
-		YYObjectBase* ptr;
-	};
 
 	// Lua API: Function
 	// Table: gm
@@ -1568,6 +1578,8 @@ namespace lua::game_maker
 		{
 			static sol::usertype<CInstance> type = state.new_usertype<CInstance>(
 			    "CInstance",
+			    sol::base_classes,
+			    sol::bases<YYObjectBase>(),
 			    sol::meta_function::index,
 			    [&](sol::this_state this_state_, sol::object self, sol::stack_object key) -> sol::reference
 			    {
@@ -1583,30 +1595,40 @@ namespace lua::game_maker
 						    return sol::lua_nil;
 					    }
 
-					    const char* key_str = key.as<const char*>();
+					    const auto yyobject = self.as<CInstance*>();
 
-					    const auto var_get_args = std::to_array<RValue, 2>({self.as<CInstance&>().id, key_str});
-					    const auto var_exists   = gm::call("variable_instance_exists", var_get_args);
-					    if (var_exists.asBoolean())
-					    {
-						    const auto res = gm::call("variable_instance_get", var_get_args);
-						    return RValue_to_lua(res, this_state_);
-					    }
-					    else
-					    {
-						    if (!gm::is_valid_call(key_str))
-						    {
-							    return sol::lua_nil;
-						    }
+						if (yyobject->type == YYObjectBaseType::CINSTANCE)
+						{
+						    const char* key_str = key.as<const char*>();
 
-						    const std::string key_str_copy = key_str;
-						    type[key_str] = [key_str_copy](sol::this_state this_state_, sol::stack_object key, sol::variadic_args args)
+						    const auto var_get_args = std::to_array<RValue, 2>({self.as<CInstance&>().id, key_str});
+						    const auto var_exists   = gm::call("variable_instance_exists", var_get_args);
+						    if (var_exists.asBoolean())
 						    {
-							    const auto res = gm::call(key_str_copy, key.as<CInstance*>(), nullptr, parse_variadic_args(args));
+							    const auto res = gm::call("variable_instance_get", var_get_args);
 							    return RValue_to_lua(res, this_state_);
-						    };
-						    return type[key_str];
-					    }
+						    }
+						    else
+						    {
+							    if (!gm::is_valid_call(key_str))
+							    {
+								    return sol::lua_nil;
+							    }
+
+							    const std::string key_str_copy = key_str;
+							    type[key_str] = [key_str_copy](sol::this_state this_state_, sol::stack_object key, sol::variadic_args args)
+							    {
+								    const auto res = gm::call(key_str_copy, key.as<CInstance*>(), nullptr, parse_variadic_args(args));
+								    return RValue_to_lua(res, this_state_);
+							    };
+							    return type[key_str];
+						    }
+						}
+						else 
+						{
+						    const auto res = gm::call("struct_get", std::to_array<RValue, 2>({(YYObjectBase*)yyobject, key.as<const char*>()}));
+						    return RValue_to_lua(res, this_state_);
+						}
 				    }
 			    },
 			    sol::meta_function::new_index,
@@ -1624,7 +1646,16 @@ namespace lua::game_maker
 						    return;
 					    }
 
-					    gm::call("variable_instance_set", std::to_array<RValue, 3>({self.as<CInstance&>().id, key.as<const char*>(), parse_sol_object(value)}));
+					    const auto yyobject = self.as<CInstance*>();
+
+						if (yyobject->type == YYObjectBaseType::CINSTANCE)
+						{
+						    gm::call("variable_instance_set", std::to_array<RValue, 3>({yyobject->id, key.as<const char*>(), parse_sol_object(value)}));
+					    }
+						else
+						{
+						    gm::call("struct_set", std::to_array<RValue, 3>({(YYObjectBase*)yyobject, key.as<const char*>(), parse_sol_object(value)}));
+						}
 				    }
 			    });
 
@@ -1855,9 +1886,24 @@ namespace lua::game_maker
 
 				    auto args = parse_variadic_args(args_);
 
-				    const auto scriptref_index = self->m_call_script->m_script_name;
+				    auto scriptref_index = self->m_call_script->m_script_name;
+				    if (string_starts_with("gml_Script_", scriptref_index))
+					{
+						scriptref_index += 11;
+					}
 
-				    const auto res = gm::call(scriptref_index, (CInstance*)args[0].yy_object_base, (CInstance*)args[1].yy_object_base, &args[2], args.size() - 2);
+				    self->m_self = args[0].yy_object_base;
+
+					const int arg_count = (int)args.size() - 2;
+				    RValue res;
+				    if (arg_count > 0)
+					{
+					    res = gm::call(scriptref_index, (CInstance*)args[0].yy_object_base, (CInstance*)args[1].yy_object_base, &args[2], arg_count);
+					}
+					else
+					{
+					    res = gm::call(scriptref_index, (CInstance*)args[0].yy_object_base, (CInstance*)args[1].yy_object_base, nullptr, 0);
+					}
 
 				    return RValue_to_lua(res, this_state_);
 			    });
