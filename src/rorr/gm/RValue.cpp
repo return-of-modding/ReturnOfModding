@@ -16,11 +16,6 @@ void RValue::__localFree()
 	if (YYFree_valid_vkind(type))
 	{
 		big::g_pointers->m_rorr.m_free_rvalue_pre(this);
-
-		if ((type & MASK_TYPE_RVALUE) == ARRAY)
-		{
-			YYObjectPinMap::unpin(this->yy_object_base);
-		}
 	}
 }
 

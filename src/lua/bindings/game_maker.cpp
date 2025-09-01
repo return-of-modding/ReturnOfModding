@@ -271,6 +271,40 @@ namespace qstd
 
 #define BIND_USERTYPE(lua_variable, type_name, field_name) lua_variable[#field_name] = &type_name::field_name;
 
+struct RefDynamicArrayOfRValueLuaWrapper {
+	RefDynamicArrayOfRValue* ptr;
+
+	using value_type = RValue;
+	using iterator   = RValue*;
+	using reference  = RValue&;
+	using size_type  = int;
+
+	iterator begin()
+	{
+		return iterator(ptr->pArray);
+	}
+
+	iterator end()
+	{
+		return iterator(ptr->pArray + ptr->length);
+	}
+
+	size_type size() const noexcept
+	{
+		return ptr->length;
+	}
+
+	size_type max_size() const noexcept
+	{
+		return ptr->length;
+	}
+
+	bool empty() const noexcept
+	{
+		return ptr->length == 0;
+	}
+};
+
 static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 {
 	switch (res.type & MASK_TYPE_RVALUE)
@@ -281,8 +315,9 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 	case _INT32:
 	case _INT64: return sol::make_object<double>(this_state_, res.asReal());
 	case ARRAY:
-		YYObjectPinMap::pin(res.ref_array);
-		return sol::make_object<RefDynamicArrayOfRValue*>(this_state_, res.ref_array);
+		YYObjectPinMap::pin(res.ref_array->pObjThing);
+		
+		return sol::make_object<RefDynamicArrayOfRValueLuaWrapper>(this_state_, {.ptr = res.ref_array});
 	case REF: 
 		// CInstance, the bitset can be verified through the instance_create_depth function
 		if (res.i64 & 0x4'00'00'00'00'00'00'00LL)
@@ -321,6 +356,10 @@ static RValue parse_sol_object(sol::object arg)
 	else if (arg.get_type() == sol::type::boolean)
 	{
 		return RValue(arg.as<bool>());
+	}
+	else if (arg.is<RefDynamicArrayOfRValueLuaWrapper*>())
+	{
+		return RValue(arg.as<RefDynamicArrayOfRValueLuaWrapper*>()->ptr);
 	}
 	else if (arg.is<RefDynamicArrayOfRValue*>())
 	{
@@ -788,15 +827,20 @@ namespace lua::game_maker
 		return RValue_to_lua(gm::call(name, parse_variadic_args(args)), this_state_);
 	}
 
+	struct YYObjectBaseLuaWrapper {
+		YYObjectBase* ptr;
+	};
+
 	// Lua API: Function
 	// Table: gm
 	// Name: struct_create
-	// Returns: YYObjectBase*: The freshly made empty struct
-	static YYObjectBase* lua_struct_create()
+	// Returns: YYObjectBaseLuaWrapper: The freshly made empty struct
+	static YYObjectBaseLuaWrapper lua_struct_create()
 	{
 		RValue out_res;
 		big::g_pointers->m_rorr.m_struct_create(&out_res);
-		return out_res.yy_object_base;
+		YYObjectPinMap::pin(out_res.yy_object_base);
+		return {.ptr=out_res.yy_object_base};
 	}
 
 	// based on https://github.com/YAL-GameMaker/shader_replace_unsafe/blob/main/shader_replace_unsafe/shader_add.cpp
@@ -1246,6 +1290,76 @@ namespace lua::game_maker
 			    {
 				    return inst.type == YYObjectBaseType::SCRIPTREF ?
 				               sol::make_object(this_state_, ((CScriptRef*)&inst)->m_call_script->m_script_name) :
+				               sol::lua_nil;
+			    });
+		}
+		{
+			sol::usertype<YYObjectBaseLuaWrapper> type = state.new_usertype<YYObjectBaseLuaWrapper>(
+			    "YYObjectBaseLuaWrapper",
+			    sol::meta_function::index,
+			    [](sol::this_state this_state_, sol::object self, sol::stack_object key) -> sol::reference
+			    {
+				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
+				    if (v)
+				    {
+					    return v.value();
+				    }
+				    else
+				    {
+					    const auto yyobject = self.as<YYObjectBaseLuaWrapper*>();
+					    if (!key.is<const char*>() || yyobject->ptr->type != YYObjectBaseType::YYOBJECTBASE)
+					    {
+						    return sol::lua_nil;
+					    }
+
+					    const auto res = gm::call("struct_get", std::to_array<RValue, 2>({yyobject, key.as<const char*>()}));
+
+					    return RValue_to_lua(res, this_state_);
+				    }
+			    },
+			    sol::meta_function::new_index,
+			    [](sol::object self, sol::stack_object key, sol::stack_object value)
+			    {
+				    auto v = self.as<sol::table&>().raw_get<sol::optional<sol::reference>>(key);
+				    if (v)
+				    {
+					    self.as<sol::table&>().raw_set(key, value);
+				    }
+				    else
+				    {
+					    const auto yyobject = self.as<YYObjectBaseLuaWrapper*>();
+					    if (!key.is<const char*>() || yyobject->ptr->type != YYObjectBaseType::YYOBJECTBASE)
+					    {
+						    return;
+					    }
+
+					    gm::call("struct_set", std::to_array<RValue, 3>({yyobject->ptr, key.as<const char*>(), parse_sol_object(value)}));
+				    }
+			    },
+				sol::meta_function::garbage_collect, sol::destructor(
+			        [](YYObjectBaseLuaWrapper& inst)
+			    {
+				    YYObjectPinMap::unpin(inst.ptr);
+			    })
+			);
+
+			type["type"] = sol::property(
+			    [](YYObjectBaseLuaWrapper& inst, sol::this_state this_state_)
+			    {
+				    return inst.ptr->type;
+			    });
+
+			type["cinstance"] = sol::property(
+			    [](YYObjectBaseLuaWrapper& inst, sol::this_state this_state_)
+			    {
+				    return inst.ptr->type == YYObjectBaseType::CINSTANCE ? sol::make_object(this_state_, (CInstance*)&inst.ptr) : sol::lua_nil;
+			    });
+
+			type["script_name"] = sol::property(
+			    [](YYObjectBaseLuaWrapper& inst, sol::this_state this_state_)
+			    {
+				    return inst.ptr->type == YYObjectBaseType::SCRIPTREF ?
+				               sol::make_object(this_state_, ((CScriptRef*)&inst.ptr)->m_call_script->m_script_name) :
 				               sol::lua_nil;
 			    });
 		}
@@ -1753,10 +1867,10 @@ namespace lua::game_maker
 		// Name: RefDynamicArrayOfRValue
 		// Class representing a game maker RValue array
 		{
-			sol::usertype<RefDynamicArrayOfRValue> type = state.new_usertype<RefDynamicArrayOfRValue>(
+			sol::usertype<RefDynamicArrayOfRValueLuaWrapper> type = state.new_usertype<RefDynamicArrayOfRValueLuaWrapper>(
 			    "RefDynamicArrayOfRValue",
 				sol::meta_function::index,
-			    [](sol::this_state this_state_, RefDynamicArrayOfRValue& self, sol::stack_object position_) -> sol::reference
+			    [](sol::this_state this_state_, RefDynamicArrayOfRValueLuaWrapper& self, sol::stack_object position_) -> sol::reference
 			    {
 				    if (position_.get_type() != sol::type::number)
 				    {
@@ -1766,21 +1880,21 @@ namespace lua::game_maker
 				    int pos = (int)position_.as<double>();
 				    // lua index adjustment
 				    pos -= 1;
-				    if (pos < 0 || pos >= self.length)
+				    if (pos < 0 || pos >= self.ptr->length)
 				    {
 					    return sol::lua_nil;
 				    }
 
-				    RValue& val = self.pArray[pos];
+				    RValue& val = self.ptr->pArray[pos];
 
 				    return RValue_to_lua(val, this_state_);
 			    },
 			    //}
 			    sol::meta_function::garbage_collect,
 			    sol::destructor(
-			        [](RefDynamicArrayOfRValue& inst)
+			        [](RefDynamicArrayOfRValueLuaWrapper& inst)
 			        {
-				        YYObjectPinMap::unpin(&inst);
+				        YYObjectPinMap::unpin(inst.ptr->pObjThing);
 			        })
 			);
 

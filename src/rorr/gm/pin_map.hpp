@@ -14,16 +14,14 @@ struct YYObjectPinMap
 		gm::call("variable_global_set", std::to_array<RValue, 2>({"__returnofmodding_gc_pin_ds_map_index", YYObjectPinMap::m_pin_map}));
 	}
 
-	inline static void pin(void* obj)
+	inline static void pin(YYObjectBase* obj)
 	{
 		if (!m_refcounts.contains(obj) || m_refcounts[obj] <= 0)
 		{
 			gm::call("ds_map_replace", std::to_array<RValue, 3>({YYObjectPinMap::m_pin_map, (void*)obj, obj}));
 
 			//LOG(ERROR) << "pin(): first " << HEX_TO_UPPER(obj);
-
-			// TODO: Can't figure a nice way to do it cleanly.
-			m_refcounts[obj]++;
+			//LOG(ERROR) << "pin() map size: " << gm::call("ds_map_size", YYObjectPinMap::m_pin_map).value << " | " << (m_refcounts.size() + 1);
 		}
 
 		m_refcounts[obj]++;
@@ -33,7 +31,7 @@ struct YYObjectPinMap
 		//LOG(ERROR) << "pin() map size: " << gm::call("ds_map_size", YYObjectPinMap::m_pin_map).value << " | " << m_refcounts.size();
 	}
 
-	inline static void unpin(void* obj)
+	inline static void unpin(YYObjectBase* obj)
 	{
 		if (m_refcounts.contains(obj))
 		{
@@ -48,6 +46,7 @@ struct YYObjectPinMap
 				gm::call("ds_map_delete", std::to_array<RValue, 2>({YYObjectPinMap::m_pin_map, (void*)obj}));
 
 				//LOG(ERROR) << "unpin(): delete " << HEX_TO_UPPER(obj);
+				//LOG(ERROR) << "unpin() map size: " << gm::call("ds_map_size", YYObjectPinMap::m_pin_map).value << " | " << (m_refcounts.size() - 1);
 
 				m_refcounts.erase(obj);
 			}
