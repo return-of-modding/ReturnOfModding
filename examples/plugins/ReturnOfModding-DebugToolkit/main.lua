@@ -5,8 +5,6 @@ print("Initializing", nil, 5, "", 5.00000)
 
 demo.hello()
 
--- local myArray = gm.array_create(1, 1)
-
 local new_room = 0
 local show_debug_overlay = true
 
@@ -35,7 +33,7 @@ function imgui_dump_instance_variables(cinstance)
     ImGui.Text("Instance Variable Count: " .. #instance_variable_names)
 
     for i = 1, #instance_variable_names do
-        local variable_name = instance_variable_names[i].value
+        local variable_name = instance_variable_names[i]
         local variable_identifier = variable_name .. cinstance.id
 
         if instance_var_to_input[variable_identifier] == nil then
@@ -57,6 +55,7 @@ end
 gui.add_imgui(function()
     local mouse_x = gm.variable_global_get("mouse_x")
     local mouse_y = gm.variable_global_get("mouse_y")
+    -- print(mouse_x, mouse_y)
     if ImGui.Begin("Instance Under Cursor") then
         local instance_nearest = gm.instance_nearest(mouse_x, mouse_y, EVariableType.ALL)
         if instance_nearest ~= nil then
@@ -99,7 +98,7 @@ gui.add_imgui(function()
         end
 
         if ImGui.Button("Lua Error On Purpose") then
-            local ab= 5
+            local ab = 5
             ab(10)
         end
 
@@ -143,25 +142,68 @@ gui.add_imgui(function()
         if ImGui.Button("Test GML CRASH") then
             gm.survivor_create(41561151.0)
         end
+
+        if ImGui.Button("Test ScriptRef and Struct") then
+            local OwO = gm["@@NewGMLObject@@"](gm.constants.AttackInfo)
+            local callable = gm.method(OwO, gm.constants.function_dummy)
+            print(callable)
+            gm.variable_global_set("pin_test", OwO)
+            gm.variable_global_set("pin_test2", callable)
+
+            callable_ref = nil
+            gm.pre_script_hook(gm.constants.callable_call, function(self, other, result, args)
+                if callable_ref then
+                if args[1].value == callable_ref then
+                        print("GenericCallable ran")
+                    end
+                end
+            end)
+            gm.post_code_execute("gml_Object_pAttack_Create_0", function(self, other)
+                gm.instance_callback_set(self.on_hit, gm.get_script_ref(gm.constants.function_dummy))
+                callable_ref = self.on_hit.callables[#self.on_hit.callables]
+            end)
+
+            gm.post_code_execute("gml_Object_pAttack_Create_0", function(self)
+                print("create hook:", self, self.id, self.object_index, self.object_name)
+                gm.instance_callback_set(self.on_end, callable)
+            end)
+
+            gm.post_script_hook(gm.constants.function_dummy, function(self, other, result, args)
+                print("dummy hook:", self, self.id, self.object_index, self.object_name)
+            end)
+
+            if not myStruct then
+                myStruct = gm.struct_create()
+            end
+            myStruct.someField = "SomeText"
+            print(myStruct.someField)
+        end
+
+        if ImGui.Button("Test Array Clear") then
+            myArray = nil
+        end
 		
 		if ImGui.Button("Test Array") then
-            local localArray = gm.array_create(2, 4)
-            log.info(localArray)
+            print(myArray)
+            if not myArray then
+                print("Creating new array")
+                myArray = gm.array_create(1, 1)
+                -- gm.variable_global_set("myArrayDebugPin", myArray)
+            end
 
             gm.gc_collect()
 
-            log.info(localArray)
+            
 
-			-- log.info(myArray)
             -- print(collectgarbage("count"))
             -- print(collectgarbage("collect"))
             -- print(collectgarbage("count"))
-            -- print(tostring(myArray))
 			gm.array_push(myArray, 8)
-			log.info(myArray)
+            log.info(gm.array_length(myArray))
 
-            -- local bla = gm.array_create(2, 2)
-            -- log.info(bla)
+            local test_list = gm.ds_list_create()
+            gm.ds_list_add(test_list, 69)
+            print(gm.ds_list_find_value(test_list, 0))
         end
 
         if ImGui.Button("Dump Constants") then
@@ -263,7 +305,7 @@ local selected_elem_values = {}
 local ui_shared_state = nil
 
 -- gm.post_script_hook(gm.constants._ui_check_selected, function(self, other, result, args)
-gm.post_script_hook(gm.constants.anon_gml_Object_oLogMenu_Other_14_55112214_gml_Object_oLogMenu_Other_14, function(self, other, result, args)
+gm.post_script_hook(gm.constants["anon@5511@gml_Object_oLogMenu_Other_14"], function(self, other, result, args)
     self_names = gm.variable_instance_get_names(args[1].value)
     if self_names then
         for i = 1, #self_names do
@@ -401,3 +443,6 @@ print(documentOrErrorMessage)
 mods.on_all_mods_loaded(function ()
     print("all mod loaded.")
 end)
+
+print(gm.constants.oP, 0)
+print(gm.instance_find(gm.constants.oP, 0))
