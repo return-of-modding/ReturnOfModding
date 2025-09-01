@@ -1312,7 +1312,7 @@ namespace lua::game_maker
 						    return sol::lua_nil;
 					    }
 
-					    const auto res = gm::call("struct_get", std::to_array<RValue, 2>({yyobject, key.as<const char*>()}));
+					    const auto res = gm::call("struct_get", std::to_array<RValue, 2>({yyobject->ptr, key.as<const char*>()}));
 
 					    return RValue_to_lua(res, this_state_);
 				    }
