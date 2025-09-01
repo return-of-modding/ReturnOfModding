@@ -3,6 +3,8 @@
 
 struct YYObjectPinMap
 {
+	inline static constexpr bool g_debug_logging = _DEBUG;
+
 	inline static ankerl::unordered_dense::map<void*, size_t> m_refcounts;
 
 	// a ds map for pinnable objects.
@@ -20,15 +22,15 @@ struct YYObjectPinMap
 		{
 			gm::call("ds_map_replace", std::to_array<RValue, 3>({YYObjectPinMap::m_pin_map, (void*)obj, obj}));
 
-			//LOG(ERROR) << "pin(): first " << HEX_TO_UPPER(obj);
-			//LOG(ERROR) << "pin() map size: " << gm::call("ds_map_size", YYObjectPinMap::m_pin_map).value << " | " << (m_refcounts.size() + 1);
+			if (g_debug_logging)
+			{
+				LOG(ERROR) << "pin(): first " << HEX_TO_UPPER(obj);
+				LOG(ERROR) << "pin() map size: " << gm::call("ds_map_size", YYObjectPinMap::m_pin_map).value << " | "
+				           << (m_refcounts.size() + 1);
+			}
 		}
 
 		m_refcounts[obj]++;
-
-		//LOG(ERROR) << "pin() refcount " << m_refcounts[obj];
-
-		//LOG(ERROR) << "pin() map size: " << gm::call("ds_map_size", YYObjectPinMap::m_pin_map).value << " | " << m_refcounts.size();
 	}
 
 	inline static void unpin(YYObjectBase* obj)
@@ -39,20 +41,20 @@ struct YYObjectPinMap
 
 			refcount--;
 
-			//LOG(ERROR) << "unpin() refcount " << refcount;
-
 			if (refcount <= 0)
 			{
 				gm::call("ds_map_delete", std::to_array<RValue, 2>({YYObjectPinMap::m_pin_map, (void*)obj}));
 
-				//LOG(ERROR) << "unpin(): delete " << HEX_TO_UPPER(obj);
-				//LOG(ERROR) << "unpin() map size: " << gm::call("ds_map_size", YYObjectPinMap::m_pin_map).value << " | " << (m_refcounts.size() - 1);
-
 				m_refcounts.erase(obj);
+
+				if (g_debug_logging)
+				{
+					LOG(ERROR) << "unpin(): delete " << HEX_TO_UPPER(obj);
+					LOG(ERROR) << "unpin() map size: " << gm::call("ds_map_size", YYObjectPinMap::m_pin_map).value << " | "
+					           << (m_refcounts.size());
+				}
 			}
 		}
-
-		//LOG(ERROR) << "unpin() map size: " << gm::call("ds_map_size", YYObjectPinMap::m_pin_map).value << " | " << m_refcounts.size();
 	}
 
 	inline static void cleanup_pin_map()
