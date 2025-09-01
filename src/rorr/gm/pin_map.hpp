@@ -3,7 +3,11 @@
 
 struct YYObjectPinMap
 {
-	inline static constexpr bool g_debug_logging = _DEBUG;
+#ifdef _DEBUG
+	inline static constexpr bool g_debug_logging = true;
+#else
+	inline static constexpr bool g_debug_logging = false;
+#endif
 
 	inline static ankerl::unordered_dense::map<void*, size_t> m_refcounts;
 
