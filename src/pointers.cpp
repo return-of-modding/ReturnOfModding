@@ -275,10 +275,10 @@ namespace big
         // YYSetScriptRef
         {
             "YYSSR",
-            "E8 ? ? ? ? 90 48 8D 55 17",
+            "48 89 5C 24 ? 48 89 74 24 ? 48 89 7C 24 ? 41 56 48 83 EC ? 49 8B F8 48 8B F2",
             [](memory::handle ptr)
             {
-				g_pointers->m_rorr.m_YYSetScriptRef = ptr.add(1).rip().as<YYSetScriptRef_t>();
+				g_pointers->m_rorr.m_YYSetScriptRef = ptr.as<YYSetScriptRef_t>();
             }
         },
         // CreateSwapChain
