@@ -2,6 +2,11 @@ name: Nightly Build
 
 on:
   workflow_dispatch:
+    inputs:
+      custom_version:
+        description: "Custom version number (leave empty to auto-increment)"
+        required: false
+        default: ""
 
 jobs:
   build_nightly:
@@ -10,6 +15,7 @@ jobs:
     outputs:
       full_sha: ${{ steps.var.outputs.full_sha }}
       short_sha: ${{ steps.var.outputs.short_sha }}
+      version_number: ${{ steps.set_version.outputs.version_number }}
     steps:
       - uses: actions/checkout@v4
       
@@ -21,31 +27,38 @@ jobs:
       - name: Generate CMake project
         run: cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo -D FINAL=YES -S. -Bbuild -G Ninja
 
-      - name: Prepare 64bit release DLL
+      - name: Determine Version Number
+        id: set_version
         shell: bash
         run: |
           set -x
-
+          
           namespace="ReturnOfModding"
           mod_name="ReturnOfModding"
 
-          # Get latest version number from thunderstore
+          if [ -n "${{ github.event.inputs.custom_version }}" ]; then
+            version_number="${{ github.event.inputs.custom_version }}"
+          else
+          # Get latest version number from thunderstore  
           version_number=$(curl --compressed -s "https://thunderstore.io/c/risk-of-rain-returns/api/v1/package/" | jq --arg package_name "$namespace-$mod_name" '.[]? | select(.full_name|startswith($package_name)) | .versions[0]?.version_number' || true)
 
-          # If version_number is empty, set it to "1.0.0"
+          # If version_number is empty, set it to "1.0.0"  
           if [ -z "$version_number" ]; then
-            version_number="1.0.0"
+              version_number="1.0.0"
+            fi
+
+            # Remove quotes from output
+            version_number=$(echo "$version_number" | tr -d '"')
+            
+            # Increment the patch version number
+            version_number=$(echo $version_number | awk -F. -v OFS=. 'NF==1{print ++$NF}; NF>1{$NF=sprintf("%0*d", length($NF), ($NF+1)); print}')
           fi
 
-          # Remove quotes from output
-          version_number=$(echo "$version_number" | tr -d '"')
+          echo "version_number=$version_number" >> $GITHUB_OUTPUT
 
-          # Increment the patch version number
-          version_number=$(echo $version_number | awk -F. -v OFS=. 'NF==1{print ++$NF}; NF>1{$NF=sprintf("%0*d", length($NF), ($NF+1)); print}')
-
-          # For the FILEVERSION we want a , format
+          # For the FILEVERSION file we want a , format
           version_number_comma=$(echo $version_number | tr . ,)
-
+          
           cd src
           sed -i 's/FILEVERSION .*/FILEVERSION '"$version_number_comma"'/' resources.rc
           sed -i 's/"ProductVersion", *"[^"]*"/"ProductVersion", "'"$version_number"'"/g' resources.rc
@@ -138,6 +151,8 @@ jobs:
             **This release has been built by Github Actions**
             [Link to build](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
+            Version: `${{ needs.build_nightly.outputs.version_number }}`
+
             Build SHA256:
             ```
             ${{ steps.build_sha.outputs.build_sha }}
@@ -165,25 +180,7 @@ jobs:
       - name: Thunderstore Release
         run: |
           set -x
-
-          namespace="ReturnOfModding"
-          mod_name="ReturnOfModding"
-
-          # Get latest version number from thunderstore
-          version_number=$(curl --compressed -s "https://thunderstore.io/c/risk-of-rain-returns/api/v1/package/" | jq --arg package_name "$namespace-$mod_name" '.[]? | select(.full_name|startswith($package_name)) | .versions[0]?.version_number' || true)
-
-          # If version_number is empty, set it to "1.0.0"
-          if [ -z "$version_number" ]; then
-            version_number="1.0.0"
-          fi
-
-          # Remove quotes from output
-          version_number=$(echo "$version_number" | tr -d '"')
-
-          # Increment the patch version number
-          version_number=$(echo $version_number | awk -F. -v OFS=. 'NF==1{print ++$NF}; NF>1{$NF=sprintf("%0*d", length($NF), ($NF+1)); print}')
-
+          version_number="${{ needs.build_nightly.outputs.version_number }}"
           cd thunderstore
           sed -i 's/versionNumber = ".*"/versionNumber = "'"$version_number"'"/' thunderstore.toml
-          
           tcli publish --token ${{ secrets.TCLI_AUTH_TOKEN }}
