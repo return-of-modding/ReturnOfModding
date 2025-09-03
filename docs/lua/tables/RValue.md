@@ -12,11 +12,11 @@ Creates an RValue of type PTR from a number that will be used as a pointer.
   - `v` (number): The number that will be used as a pointer.
 
 - **Returns:**
-  - `rvalue`: The freshly made RValue of type PTR.
+  - `RValue`: The freshly made RValue of type PTR.
 
 **Example Usage:**
 ```lua
-rvalue = RValue.from_ptr(v)
+RValue = RValue.from_ptr(v)
 ```
 
 
