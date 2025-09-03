@@ -2022,16 +2022,18 @@ namespace lua::game_maker
 				{
 					for (i = start; true; ++i)
 					{
-#ifdef FINAL
 						// Bandaid fix for shader potential hard crash when going outside the maximum shader asset count limit.
 						// Will need manual update if the game ever receive more / less shaders.
-						// The game maker engine message is Illegal shader index 27
-						if (type == "shader" && i == 27)
+						// The game maker engine message is Illegal shader index 28
+						if (type == "shader" && i == 28)
 						{
+#ifdef FINAL
 							LOG(INFO) << "Stopping at shader " << i;
 							break;
-						}
+#else
+							LOG(DEBUG) << "Looping over " << type << " " << i;
 #endif
+						}
 
 						RValue asset = gm::call(routine_name, i);
 						if (asset.type == RValueType::STRING)
