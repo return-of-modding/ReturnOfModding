@@ -1424,10 +1424,14 @@ namespace lua::game_maker
 			// Lua API: Table
 			// Name: RValue
 			// Class representing a value coming from the game maker engine
-			// Lua API: Field
-			// Table: RValue
-			// Field: from_ptr: RValue representing a pointer
 			sol::table rvalue_table = state["RValue"];
+
+			// Lua API: Function
+			// Table: RValue
+			// Name: from_ptr
+			// Param: v: number: The number that will be used as a pointer.
+			// Returns: RValue: The freshly made RValue of type PTR.
+			// Creates an RValue of type PTR from a number that will be used as a pointer.
 			rvalue_table.set_function("from_ptr",
 				[](double v) -> RValue
 				{
