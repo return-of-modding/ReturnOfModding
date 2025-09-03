@@ -162,7 +162,7 @@ namespace gm
 				int pCatchableTypeArray;
 			};
 
-			constexpr auto yygml_exception_code = 0x1'E1'80'28;
+			constexpr auto yygml_exception_code = 0x23'49'FD'0;
 			const auto yygmlexception_id        = (_ThrowInfo*)exception_info->ExceptionRecord->ExceptionInformation[2];
 			if (yygmlexception_id && yygmlexception_id->pCatchableTypeArray == yygml_exception_code)
 			{
