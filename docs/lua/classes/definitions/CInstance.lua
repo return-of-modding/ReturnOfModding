@@ -4,7 +4,7 @@
 --
 --You can use most if not all of the builtin game maker variables (For example `myCInstance.x`) [listed here](https://manual.gamemaker.io/monthly/en/GameMaker_Language/GML_Reference/Asset_Management/Instances/Instance_Variables/Instance_Variables.htm).
 --
---To know the specific instance variables of a given object defined by the game call dump_vars() on the instance
+--To know the specific instance variables of a given object defined by the game, call gm.variable_instance_get_names(someCInstance)
 ---@class (exact) CInstance
 ---@field id number
 ---@field object_index number

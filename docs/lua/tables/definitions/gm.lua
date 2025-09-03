@@ -41,7 +41,7 @@ function gm.variable_global_set(name, new_value) end
 ---@return value # The actual value behind the RValue, or RValue if the type is not handled yet.
 function gm.call(name, self, other, args) end
 
----@return YYObjectBase* # The freshly made empty struct
+---@return YYObjectBaseLuaWrapper # The freshly made empty struct
 function gm.struct_create() end
 
 ---@param shader_name string the name of shader.

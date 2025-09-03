@@ -113,11 +113,11 @@ value = gm.call(name, self, other, args)
 ### `struct_create()`
 
 - **Returns:**
-  - `YYObjectBase*`: The freshly made empty struct
+  - `YYObjectBaseLuaWrapper`: The freshly made empty struct
 
 **Example Usage:**
 ```lua
-YYObjectBase* = gm.struct_create()
+YYObjectBaseLuaWrapper = gm.struct_create()
 ```
 
 ### `find_shader_by_name(shader_name)`
