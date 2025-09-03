@@ -26,11 +26,6 @@
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "dxguid.lib")
 
-bool string_starts_with(const char* pre, const char* str)
-{
-	return strncmp(pre, str, strlen(pre)) == 0;
-}
-
 namespace qstd
 {
 	class runtime_func : public PLH::MemAccessor
@@ -1904,7 +1899,7 @@ namespace lua::game_maker
 				    auto args = parse_variadic_args(args_);
 
 				    auto scriptref_index = self->m_call_script->m_script_name;
-				    if (string_starts_with("gml_Script_", scriptref_index))
+				    if (big::string::starts_with("gml_Script_", scriptref_index))
 					{
 						scriptref_index += 11;
 					}
