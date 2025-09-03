@@ -1420,6 +1420,19 @@ namespace lua::game_maker
 			    {
 				    return inst.asString();
 			    });
+
+			// Lua API: Table
+			// Name: RValue
+			// Class representing a value coming from the game maker engine
+			// Lua API: Field
+			// Table: RValue
+			// Field: from_ptr: RValue representing a pointer
+			sol::table rvalue_table = state["RValue"];
+			rvalue_table.set_function("from_ptr",
+				[](double v) -> RValue
+				{
+					return RValue((void*)(uintptr_t)v);
+				});
 		}
 
 		// Lua API: Table
