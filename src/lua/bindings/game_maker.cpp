@@ -1118,6 +1118,131 @@ namespace lua::game_maker
 		}
 	}
 
+	static void hook_backcompat_draw_sprite(RValue* a1, uintptr_t cinstance_self, CInstance* a3, __int64 a4, RValue* a5)
+	{
+		if (!cinstance_self)
+		{
+			cinstance_self = (uintptr_t)alloca(sizeof(CInstance));
+			*(uint32_t*)(cinstance_self + offsetof(CInstance, type)) = 0;
+		}
+
+		big::g_hooking->get_original<hook_backcompat_draw_sprite>()(a1, cinstance_self, a3, a4, a5);
+	}
+
+	static void hook_backcompat_draw_sprite_ext(RValue* a1, uintptr_t cinstance_self, CInstance* a3, __int64 a4, RValue* a5)
+	{
+		if (!cinstance_self)
+		{
+			cinstance_self                                           = (uintptr_t)alloca(sizeof(CInstance));
+			*(uint32_t*)(cinstance_self + offsetof(CInstance, type)) = 0;
+		}
+
+		big::g_hooking->get_original<hook_backcompat_draw_sprite_ext>()(a1, cinstance_self, a3, a4, a5);
+	}
+
+	static void hook_backcompat_draw_sprite_pos(RValue* a1, uintptr_t cinstance_self, CInstance* a3, __int64 a4, RValue* a5)
+	{
+		if (!cinstance_self)
+		{
+			cinstance_self                                           = (uintptr_t)alloca(sizeof(CInstance));
+			*(uint32_t*)(cinstance_self + offsetof(CInstance, type)) = 0;
+		}
+
+		big::g_hooking->get_original<hook_backcompat_draw_sprite_pos>()(a1, cinstance_self, a3, a4, a5);
+	}
+
+	static void hook_backcompat_draw_sprite_stretched(RValue* a1, uintptr_t cinstance_self, CInstance* a3, __int64 a4, RValue* a5)
+	{
+		if (!cinstance_self)
+		{
+			cinstance_self                                           = (uintptr_t)alloca(sizeof(CInstance));
+			*(uint32_t*)(cinstance_self + offsetof(CInstance, type)) = 0;
+		}
+
+		big::g_hooking->get_original<hook_backcompat_draw_sprite_stretched>()(a1, cinstance_self, a3, a4, a5);
+	}
+
+	static void hook_backcompat_draw_sprite_stretched_ext(RValue* a1, uintptr_t cinstance_self, CInstance* a3, __int64 a4, RValue* a5)
+	{
+		if (!cinstance_self)
+		{
+			cinstance_self                                           = (uintptr_t)alloca(sizeof(CInstance));
+			*(uint32_t*)(cinstance_self + offsetof(CInstance, type)) = 0;
+		}
+
+		big::g_hooking->get_original<hook_backcompat_draw_sprite_stretched_ext>()(a1, cinstance_self, a3, a4, a5);
+	}
+
+	static void hook_backcompat_draw_sprite_part(RValue* a1, uintptr_t cinstance_self, CInstance* a3, __int64 a4, RValue* a5)
+	{
+		if (!cinstance_self)
+		{
+			cinstance_self                                           = (uintptr_t)alloca(sizeof(CInstance));
+			*(uint32_t*)(cinstance_self + offsetof(CInstance, type)) = 0;
+		}
+
+		big::g_hooking->get_original<hook_backcompat_draw_sprite_part>()(a1, cinstance_self, a3, a4, a5);
+	}
+
+	static void hook_backcompat_draw_sprite_part_ext(RValue* a1, uintptr_t cinstance_self, CInstance* a3, __int64 a4, RValue* a5)
+	{
+		if (!cinstance_self)
+		{
+			cinstance_self                                           = (uintptr_t)alloca(sizeof(CInstance));
+			*(uint32_t*)(cinstance_self + offsetof(CInstance, type)) = 0;
+		}
+
+		big::g_hooking->get_original<hook_backcompat_draw_sprite_part_ext>()(a1, cinstance_self, a3, a4, a5);
+	}
+
+	static void hook_backcompat_draw_sprite_general(RValue* a1, uintptr_t cinstance_self, CInstance* a3, __int64 a4, RValue* a5)
+	{
+		if (!cinstance_self)
+		{
+			cinstance_self                                           = (uintptr_t)alloca(sizeof(CInstance));
+			*(uint32_t*)(cinstance_self + offsetof(CInstance, type)) = 0;
+		}
+
+		big::g_hooking->get_original<hook_backcompat_draw_sprite_general>()(a1, cinstance_self, a3, a4, a5);
+	}
+
+	static void hook_backcompat_draw_sprite_tiled(RValue* a1, uintptr_t cinstance_self, CInstance* a3, __int64 a4, RValue* a5)
+	{
+		if (!cinstance_self)
+		{
+			cinstance_self                                           = (uintptr_t)alloca(sizeof(CInstance));
+			*(uint32_t*)(cinstance_self + offsetof(CInstance, type)) = 0;
+		}
+
+		big::g_hooking->get_original<hook_backcompat_draw_sprite_tiled>()(a1, cinstance_self, a3, a4, a5);
+	}
+
+	static void hook_backcompat_draw_sprite_tiled_ext(RValue* a1, uintptr_t cinstance_self, CInstance* a3, __int64 a4, RValue* a5)
+	{
+		if (!cinstance_self)
+		{
+			cinstance_self                                           = (uintptr_t)alloca(sizeof(CInstance));
+			*(uint32_t*)(cinstance_self + offsetof(CInstance, type)) = 0;
+		}
+
+		big::g_hooking->get_original<hook_backcompat_draw_sprite_tiled_ext>()(a1, cinstance_self, a3, a4, a5);
+	}
+
+	template<auto hook_func>
+	static void hook_backcompat_add(const char* name)
+	{
+		const auto& func_info = gm::get_code_function(name);
+		if (func_info.function_ptr)
+		{
+			const std::string hook_name = std::string("backcompat_") + name;
+			big::hooking::detour_hook_helper::add<hook_func>(hook_name, func_info.function_ptr);
+		}
+		else
+		{
+			LOG(ERROR) << "Could not find " << name << " function for backcompat hook.";
+		}
+	}
+
 	void bind(sol::table& state, sol::state_view& L)
 	{
 		auto ns = state["gm"].get_or_create<sol::table>();
@@ -2158,6 +2283,20 @@ namespace lua::game_maker
 		ns["post_script_hook"] = post_script_hook;
 
 		ns["call"] = sol::overload(lua_gm_call, lua_gm_call_global);
+
+		// Backcompat hooks for draw_sprite functions
+		{
+			hook_backcompat_add<hook_backcompat_draw_sprite>("draw_sprite");
+			hook_backcompat_add<hook_backcompat_draw_sprite_ext>("draw_sprite_ext");
+			hook_backcompat_add<hook_backcompat_draw_sprite_pos>("draw_sprite_pos");
+			hook_backcompat_add<hook_backcompat_draw_sprite_stretched>("draw_sprite_stretched");
+			hook_backcompat_add<hook_backcompat_draw_sprite_stretched_ext>("draw_sprite_stretched_ext");
+			hook_backcompat_add<hook_backcompat_draw_sprite_part>("draw_sprite_part");
+			hook_backcompat_add<hook_backcompat_draw_sprite_part_ext>("draw_sprite_part_ext");
+			hook_backcompat_add<hook_backcompat_draw_sprite_general>("draw_sprite_general");
+			hook_backcompat_add<hook_backcompat_draw_sprite_tiled>("draw_sprite_tiled");
+			hook_backcompat_add<hook_backcompat_draw_sprite_tiled_ext>("draw_sprite_tiled_ext");
+		}
 
 		// Lua API: Function
 		// Table: gm
