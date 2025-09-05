@@ -305,6 +305,9 @@ struct RefDynamicArrayOfRValueLuaWrapper {
 	}
 };
 
+// CInstance, the bitset can be verified through the instance_create_depth function
+static constexpr auto cinstance_mask = 0x4'00'00'01'00'00'00'00LL;
+
 static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 {
 	switch (res.type & MASK_TYPE_RVALUE)
@@ -319,8 +322,7 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 		
 		return sol::make_object<RefDynamicArrayOfRValueLuaWrapper>(this_state_, {.ptr = res.ref_array});
 	case REF: 
-		// CInstance, the bitset can be verified through the instance_create_depth function
-		if (res.i64 & 0x4'00'00'00'00'00'00'00LL)
+		if ((res.i64 & cinstance_mask) == cinstance_mask)
 		{
 			return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
 		}
