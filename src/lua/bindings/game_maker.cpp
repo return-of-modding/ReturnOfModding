@@ -322,7 +322,7 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 		
 		return sol::make_object<RefDynamicArrayOfRValueLuaWrapper>(this_state_, {.ptr = res.ref_array});
 	case REF: 
-		if ((res.i64 & cinstance_mask) == cinstance_mask)
+		if ((res.i64 & cinstance_mask) == cinstance_mask && res.i32 != -4 /* Global Instance */)
 		{
 			return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
 		}
