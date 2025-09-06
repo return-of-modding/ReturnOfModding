@@ -2286,7 +2286,7 @@ namespace lua::game_maker
 
 		ns["call"] = sol::overload(lua_gm_call, lua_gm_call_global);
 
-		// Backcompat hooks for draw_sprite functions
+		// Backcompat hooks for a bunch of gm functions that now doesn't null check CInstance self anymore.
 		{
 			hook_backcompat_add<hook_backcompat_draw_sprite>("draw_sprite");
 			hook_backcompat_add<hook_backcompat_draw_sprite_ext>("draw_sprite_ext");
@@ -2429,12 +2429,10 @@ namespace lua::game_maker
 				                     self.raw_set(key,
 				                                  // TODO: Both of these wrapper should ideally early return nil if the function name doesn't exist.
 				                                  sol::overload(
-				                                      // TODO: Comment this out for now, the ordering of the two overloads below were wrong
-				                                      // and it's unsure if some existing mods relied on this overload never triggering.
-				                                      /*[key, this_state_](CInstance* self, CInstance* other, sol::variadic_args args)
+				                                      [key, this_state_](CInstance* self, CInstance* other, sol::variadic_args args)
 				                                      {
 					                                      return RValue_to_lua(gm::call(key, self, other, parse_variadic_args(args)), this_state_);
-				                                      },*/
+				                                      },
 				                                      [key, this_state_](sol::variadic_args args)
 				                                      {
 					                                      return RValue_to_lua(gm::call(key, parse_variadic_args(args)), this_state_);
