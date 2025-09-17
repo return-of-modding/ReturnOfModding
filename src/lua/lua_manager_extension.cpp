@@ -54,7 +54,7 @@ namespace big::lua_manager_extension
 		// If no match is found with the folder path then we just set the same env as the require caller.
 		// TODO: This is hacked together, need to be cleaned up at some point.
 		// TODO: sub folders are not supported currently.
-		state["require"] = [](std::string relative_path_to_lua_or_dll, sol::variadic_args args, sol::this_environment this_env) -> sol::object
+		state["require"] = [](std::string relative_path_to_lua_or_dll, sol::variadic_args args, sol::this_environment this_env) -> sol::variadic_results
 		{
 			// Example of a non local require (mod is requiring a file from another mod/package):
 			// require "ReturnOfModding-DebugToolkit/lib_debug"
@@ -118,7 +118,7 @@ namespace big::lua_manager_extension
 					return {};
 				}
 
-				static ankerl::unordered_dense::map<std::string, sol::object> required_module_cache;
+				static ankerl::unordered_dense::map<std::string, std::vector<sol::object>> required_module_cache;
 
 				if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
 				{
@@ -134,35 +134,44 @@ namespace big::lua_manager_extension
 						return {};
 					}
 
-					sol::protected_function res_function = fresh_result.get<sol::protected_function>();
+					auto res = fresh_result.get<sol::protected_function>();
 
-					this_env.env.value().set_on(res_function);
+					this_env.env.value().set_on(res);
 
-					auto res = res_function(args);
-					if (res.valid())
+					sol::protected_function_result ress = res(args);
+
+					std::vector<sol::object> results;
+					if (!res.valid() || !ress.valid())
 					{
-						required_module_cache[full_path] = res;
+						LOG(ERROR) << "Failed require";
+						Logger::FlushQueue();
+						return {};
 					}
-					else
+					int returncount = ress.return_count();
+					for (int i = 0; i < returncount; i++)
 					{
-						required_module_cache[full_path] = sol::table(state, sol::create);
+						// pass offset to get the object that was returned
+						sol::object obj = ress.get<sol::object>(i);
+						results.push_back(obj);
 					}
-				}
 
-				bool found_the_other_module = false;
-				for (const auto& mod : g_lua_manager->m_modules)
-				{
-					if (guid_from_path.value().m_guid == mod->guid())
+					required_module_cache[full_path] = results;
+
+					bool found_the_other_module = false;
+					for (const auto& mod : g_lua_manager->m_modules)
 					{
-						found_the_other_module = true;
+						if (guid_from_path.value().m_guid == mod->guid())
+						{
+							found_the_other_module = true;
 
-						break;
+							break;
+						}
 					}
-				}
 
-				if (!found_the_other_module && is_non_local_require)
-				{
-					LOG(ERROR) << "You require'd a module called " << full_path << " but did not have a package manifest.json level dependency on it. Which lead to the owning package of that module to not be properly init yet. Expect unstable behaviors related to your dependencies.";
+					if (!found_the_other_module && is_non_local_require && !full_path.contains("ReturnOfModding-GLOBAL"))
+					{
+						LOG(ERROR) << "You require'd a module called " << full_path << " but did not have a package manifest.json level dependency on it. Which lead to the owning package of that module to not be properly init yet. Expect unstable behaviors related to your dependencies.";
+					}
 				}
 
 				return required_module_cache[full_path];
@@ -172,7 +181,7 @@ namespace big::lua_manager_extension
 				const std::string full_path = (char*)required_module_path.u8string().c_str();
 				const auto path_stem        = required_module_path.stem();
 
-				static ankerl::unordered_dense::map<std::string, sol::object> required_module_cache;
+				static ankerl::unordered_dense::map<std::string, std::vector<sol::object>> required_module_cache;
 
 				if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
 				{
@@ -204,20 +213,28 @@ namespace big::lua_manager_extension
 						return {};
 					}
 
-					sol::protected_function res_function = fresh_result.get<sol::protected_function>();
+					auto res = fresh_result.get<sol::protected_function>();
 
-					// Not putting env on dlls cause???
-					// this_env.env.value().set_on(res_function);
+					this_env.env.value().set_on(res);
 
-					auto res = res_function(args);
-					if (res.valid())
+					sol::protected_function_result ress = res(args);
+
+					std::vector<sol::object> results;
+					if (!res.valid() || !ress.valid())
 					{
-						required_module_cache[full_path] = res;
+						LOG(ERROR) << "Failed require";
+						Logger::FlushQueue();
+						return {};
 					}
-					else
+					int returncount = ress.return_count();
+					for (int i = 0; i < returncount; i++)
 					{
-						required_module_cache[full_path] = sol::table(state, sol::create);
+						// pass offset to get the object that was returned
+						sol::object obj = ress.get<sol::object>(i);
+						results.push_back(obj);
 					}
+
+					required_module_cache[full_path] = results;
 				}
 
 				return required_module_cache[full_path];
