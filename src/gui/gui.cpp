@@ -134,12 +134,11 @@ namespace big
 
 		if (!m_onboarded->ref<bool>())
 		{
-			static bool onboarding_open = false;
-			if (!onboarding_open)
+			if (!m_onboarding_open)
 			{
 				toggle(true);
 				ImGui::OpenPopup("Welcome to Return Of Modding");
-				onboarding_open = true;
+				m_onboarding_open = true;
 			}
 
 			const auto window_size = ImVec2{600, 400};

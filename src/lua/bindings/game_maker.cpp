@@ -2409,6 +2409,21 @@ namespace lua::game_maker
 		ns["find_shader_by_name"] = lua_find_shader_by_name;
 		ns["shader_dump"]         = lua_shader_dump;
 
+		ns["_rom_internal_json_lang"] = []()
+		{
+			return R"rom(
+{
+    "ui": {
+        "options": {
+            "mods_rom_group_header": "RETURN OF MODDING",
+            "mods_rom_gui_keybind": "Change Open GUI Keybind",
+            "mods_rom_gui_keybind.desc": "Select this option to change the key for opening the main user interface of the mod loader."
+        }
+    }
+}
+)rom";
+		};
+
 		auto meta_gm = state.create();
 		// Wrapper so that users can do gm.room_goto(new_room) for example instead of gm.call("room_goto", new_room)
 		meta_gm.set_function(sol::meta_function::index,

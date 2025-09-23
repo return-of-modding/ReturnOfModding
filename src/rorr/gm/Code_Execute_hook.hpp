@@ -59,6 +59,51 @@ namespace gm
 		}
 	}
 
+	static void rom_in_game_ui()
+	{
+		sol::state_view(big::g_lua_manager->lua_state()).script(R"rom_in_game_ui(
+gm.post_script_hook(gm.constants.translate_load_active_language, function(self, other, result, args)
+	print("translate_load_active_language")
+    gm.translate_load_file_internal(gm.variable_global_get("_language_map"), gm.json_parse(gm._rom_internal_json_lang()), "")
+end)
+
+gm.post_code_execute("gml_Object_oOptionsMenu_Create_0", function(self, other)
+   gm.event_user(2) 
+   local new_header_button = gm.struct_create()
+   new_header_button.name = "MODS"
+   new_header_button.show_new = false
+   gm.array_push(self.header_buttons, new_header_button)
+end)
+
+gm.post_code_execute("gml_Object_oOptionsMenu_Other_11", function(self, other)
+    local new_option_tab = gm.struct_create()
+
+    new_option_tab.page_header_name_token = "MODS"
+    new_option_tab.options = gm.array_create()
+
+    local mods_rom_group_header = gm["@@NewGMLObject@@"](gm.constants.UIOptionsGroupHeader, "mods_rom_group_header")
+    gm.array_push(new_option_tab.options, mods_rom_group_header)
+
+    local my_button = gm.struct_create()
+    my_button.mod_id = math.random()
+    my_button_ui_object = gm["@@NewGMLObject@@"](gm.constants.UIOptionsButton2, "mods_rom_gui_keybind",
+        gm.method(my_button, gm.constants.function_dummy)
+    )
+    gm.array_push(new_option_tab.options, my_button_ui_object)
+    gm.pre_script_hook(gm.constants.function_dummy, function(self, other, result, args)
+        if self.mod_id == my_button.mod_id then
+            gui.reshow_onboarding()
+
+            return false
+        end
+    end)
+
+    gm.array_push(other.menu_pages, new_option_tab)
+end)
+
+)rom_in_game_ui");
+	}
+
 	inline bool hook_Code_Execute(CInstance* self, CInstance* other, CCode* code, RValue* result, int flags)
 	{
 		g_last_code_execute = code->name;
@@ -97,6 +142,8 @@ namespace gm
 			g_is_gml_safe_to_init = true;
 
 			init_lua_manager();
+
+			rom_in_game_ui();
 		}
 
 		g_last_code_execute = nullptr;

@@ -15,6 +15,9 @@ namespace big
 		ImU32 frame_color      = 2'942'518'340;
 		float scale            = 1.0f;
 
+		toml::node* m_onboarded;
+		bool m_onboarding_open{};
+
 	public:
 		gui();
 		virtual ~gui();
@@ -50,7 +53,6 @@ namespace big
 	private:
 		bool m_is_open;
 		toml::node* m_is_open_at_startup;
-		toml::node* m_onboarded;
 
 		ImGuiStyle m_default_config;
 	};

@@ -19,9 +19,18 @@ namespace lua::gui_ext
 		}
 	}
 
+	static void reshow_onboarding()
+	{
+		big::g_gui->m_onboarding_open        = false;
+		big::g_gui->m_onboarded->ref<bool>() = false;
+	}
+
 	void bind(sol::table& state)
 	{
 		lua::gui::g_on_is_open = is_open;
 		lua::gui::g_on_toggle  = toggle;
+
+		auto ns = state["gui"].get_or_create<sol::table>();
+		ns["reshow_onboarding"] = reshow_onboarding;
 	}
 } // namespace lua::gui_ext
