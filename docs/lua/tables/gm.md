@@ -16,7 +16,7 @@ Table containing helpers for interacting with the game maker engine.
 
 - Type: `constants_type_sorted[type_name][i] = constant_name`
 
-## Functions (15)
+## Functions (19)
 
 ### `pre_code_execute(function_name, callback)`
 
@@ -26,9 +26,12 @@ Registers a callback that will be called right before any object function is cal
   - `function_name` (string (optional)): Function name to hook. If you pass a valid name, the hook will be a lot faster to execute. Example valid function name: `gml_Object_oStartMenu_Step_2`
   - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance) ) for **fast** overload and ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) ) for **non fast** overload.
 
+- **Returns:**
+  - `number`: Unique identifier for later disabling / enabling the hook on the fly.
+
 **Example Usage:**
 ```lua
-gm.pre_code_execute(function_name, callback)
+number = gm.pre_code_execute(function_name, callback)
 ```
 
 ### `post_code_execute(function_name, callback)`
@@ -39,9 +42,12 @@ Registers a callback that will be called right after any object function is call
   - `function_name` (string (optional)): Function name to hook. If you pass a valid name, the hook will be a lot faster to execute. Example valid function name: `gml_Object_oStartMenu_Step_2`
   - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance) ) for **fast** overload and ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) ) for **non fast** overload.
 
+- **Returns:**
+  - `number`: Unique identifier for later disabling / enabling the hook on the fly.
+
 **Example Usage:**
 ```lua
-gm.post_code_execute(function_name, callback)
+number = gm.post_code_execute(function_name, callback)
 ```
 
 ### `pre_script_hook(function_index, callback)`
@@ -52,9 +58,12 @@ Registers a callback that will be called right before any script function is cal
   - `function_index` (number): index of the game script / builtin game maker function to hook, for example `gm.constants.callback_execute`
   - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance), result (RValue), args (RValue array) ) -> Return true or false depending on if you want the orig method to be called.
 
+- **Returns:**
+  - `number`: Unique identifier for later disabling / enabling the hook on the fly.
+
 **Example Usage:**
 ```lua
-gm.pre_script_hook(function_index, callback)
+number = gm.pre_script_hook(function_index, callback)
 ```
 
 ### `post_script_hook(function_index, callback)`
@@ -65,9 +74,68 @@ Registers a callback that will be called right after any script function is call
   - `function_index` (number): index of the game script / builtin game maker function to hook, for example `gm.constants.callback_execute`
   - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance), result (RValue), args (RValue array) )
 
+- **Returns:**
+  - `number`: Unique identifier for later disabling / enabling the hook on the fly.
+
 **Example Usage:**
 ```lua
-gm.post_script_hook(function_index, callback)
+number = gm.post_script_hook(function_index, callback)
+```
+
+### `code_execute_hook_enable(identifier)`
+
+- **Parameters:**
+  - `identifier` (number): The identifier returned by the `hook` family functions.
+
+- **Returns:**
+  - `boolean`: Returns true if the code execute hook is now enabled.
+
+**Example Usage:**
+```lua
+boolean = gm.code_execute_hook_enable(identifier)
+```
+
+### `script_hook_enable(identifier)`
+
+- **Parameters:**
+  - `identifier` (number): The identifier returned by the `hook` family functions.
+
+- **Returns:**
+  - `boolean`: Returns true if the code execute hook is now enabled.
+
+**Example Usage:**
+```lua
+boolean = gm.script_hook_enable(identifier)
+```
+
+### `code_execute_hook_disable(identifier)`
+
+The hook can only be disabled if there is no other mods hooking the same function.
+
+- **Parameters:**
+  - `identifier` (number): The identifier returned by the `hook` family functions.
+
+- **Returns:**
+  - `boolean`: Returns true if the code execute hook is now disabled.
+
+**Example Usage:**
+```lua
+boolean = gm.code_execute_hook_disable(identifier)
+```
+
+### `script_hook_disable(identifier)`
+
+The hook can only be disabled if there is no other mods hooking the same function.
+
+- **Parameters:**
+  - `identifier` (number): The identifier returned by the `hook` family functions.
+
+- **Returns:**
+  - `boolean`: Returns true if the script hook is now disabled.
+
+**Example Usage:**
+```lua
+boolean = gm.script_hook_disable(identifier)
 ```
 
 ### `variable_global_get(name)`
