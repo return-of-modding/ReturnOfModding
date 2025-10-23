@@ -4,6 +4,9 @@
 
 #include <lua/lua_manager_extension.hpp>
 #include <string/string.hpp>
+#include <tlsf/tlsf.hpp>
+
+inline tlsf_t g_lua_tlsf_pool;
 
 static void* lua_custom_alloc(void* ud, void* ptr, size_t osize, size_t nsize)
 {
@@ -12,13 +15,15 @@ static void* lua_custom_alloc(void* ud, void* ptr, size_t osize, size_t nsize)
 	if (nsize == 0)
 	{
 		//mi_free(ptr);
-		free(ptr);
+		//free(ptr);
+		tlsf_free(g_lua_tlsf_pool, ptr);
 		return NULL;
 	}
 	else
 	{
 		//return mi_realloc_aligned(ptr, nsize, 16);
-		return realloc(ptr, nsize);
+		//return realloc(ptr, nsize);
+		return tlsf_realloc(g_lua_tlsf_pool, ptr, nsize);
 	}
 }
 
@@ -34,6 +39,9 @@ namespace gm
 		}
 
 		big::g_running = true;
+
+		constexpr size_t tlsf_pool_size = 1ULL * 1024 * 1024 * 1024; // 1 GB
+		g_lua_tlsf_pool                 = tlsf_create_with_pool(malloc(tlsf_pool_size), tlsf_pool_size);
 
 		lua_State* L = lua_newstate(lua_custom_alloc, NULL);
 		//lua_State* L = luaL_newstate();
