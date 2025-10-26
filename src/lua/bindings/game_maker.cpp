@@ -35,6 +35,7 @@ namespace qstd
 
 	public:
 		std::unique_ptr<big::detour_hook> m_detour;
+		size_t m_active_callback_count{};
 
 		struct parameters_t
 		{
@@ -270,6 +271,28 @@ namespace qstd
 } // namespace qstd
 
 #define BIND_USERTYPE(lua_variable, type_name, field_name) lua_variable[#field_name] = &type_name::field_name;
+
+enum GMHookType : int16_t
+{
+	NONE,
+
+	PRE_CODE,
+	POST_CODE,
+
+	PRE_BUILTIN,
+	POST_BUILTIN,
+
+	PRE_SCRIPT,
+	POST_SCRIPT
+};
+
+struct GMHookHandle
+{
+	void* m_original_func_ptr{};
+	big::lua_module_ext* m_module{};
+	GMHookType m_type{};
+	size_t m_lua_function_id{};
+};
 
 struct RefDynamicArrayOfRValueLuaWrapper {
 	RefDynamicArrayOfRValue* ptr;
@@ -705,17 +728,25 @@ namespace lua::game_maker
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance) ) for **fast** overload and ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) ) for **non fast** overload.
 	// Returns: number: Unique identifier for later disabling / enabling the hook on the fly.
 	// Registers a callback that will be called right before any object function is called. Note: for script functions, use pre_script_hook / post_script_hook
-	static uintptr_t pre_code_execute_fast(const std::string& function_name, sol::protected_function cb, sol::this_environment env)
+	static GMHookHandle pre_code_execute_fast(const std::string& function_name, sol::protected_function cb, sol::this_environment env)
 	{
 		const auto res = make_central_object_function_hook(function_name, env, true);
 		if (res.m_this_lua_module && res.m_original_func_ptr)
 		{
-			res.m_this_lua_module->m_data_ext.m_pre_code_execute_fast_callbacks[res.m_original_func_ptr].push_back(cb);
+			const auto id = big::lua_function_data_ext::g_last_id++;
 
-			return (uintptr_t)res.m_original_func_ptr;
+			res.m_this_lua_module->m_data_ext.m_pre_code_execute_fast_callbacks[res.m_original_func_ptr].push_back({.m_cb = cb, .m_id = id});
+
+			hooks_original_func_ptr_to_info[(uintptr_t)res.m_original_func_ptr]->m_active_callback_count++;
+
+			return {
+			    .m_original_func_ptr = res.m_original_func_ptr,
+				.m_module = res.m_this_lua_module, .m_type = GMHookType::PRE_CODE,
+				.m_lua_function_id = id
+			};
 		}
 
-		return 0;
+		return {};
 	}
 
 	static constexpr auto slow_code_execute_warning =
@@ -741,17 +772,21 @@ namespace lua::game_maker
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance) ) for **fast** overload and ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) ) for **non fast** overload.
 	// Returns: number: Unique identifier for later disabling / enabling the hook on the fly.
 	// Registers a callback that will be called right after any object function is called. Note: for script functions, use pre_script_hook / post_script_hook
-	static uintptr_t post_code_execute_fast(const std::string& function_name, sol::protected_function cb, sol::this_environment env)
+	static GMHookHandle post_code_execute_fast(const std::string& function_name, sol::protected_function cb, sol::this_environment env)
 	{
 		const auto res = make_central_object_function_hook(function_name, env, true);
 		if (res.m_this_lua_module && res.m_original_func_ptr)
 		{
-			res.m_this_lua_module->m_data_ext.m_post_code_execute_fast_callbacks[res.m_original_func_ptr].push_back(cb);
+			const auto id = big::lua_function_data_ext::g_last_id++;
 
-			return (uintptr_t)res.m_original_func_ptr;
+			res.m_this_lua_module->m_data_ext.m_post_code_execute_fast_callbacks[res.m_original_func_ptr].push_back({.m_cb = cb, .m_id = id});
+
+			hooks_original_func_ptr_to_info[(uintptr_t)res.m_original_func_ptr]->m_active_callback_count++;
+
+			return {.m_original_func_ptr = res.m_original_func_ptr, .m_module = res.m_this_lua_module, .m_type = GMHookType::POST_CODE, .m_lua_function_id = id};
 		}
 
-		return 0;
+		return {};
 	}
 
 	static void post_code_execute(sol::protected_function cb, sol::this_environment env)
@@ -772,24 +807,31 @@ namespace lua::game_maker
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), args (RValue array) ) -> Return true or false depending on if you want the orig method to be called.
 	// Returns: number: Unique identifier for later disabling / enabling the hook on the fly.
 	// Registers a callback that will be called right before any script function is called. Note: for object functions, use pre_code_execute / post_code_execute
-	static uintptr_t pre_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
+	static GMHookHandle pre_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
 	{
 		const auto res = make_central_script_hook(script_function_index_double, env, true);
 		if (res.m_this_lua_module && res.m_original_func_ptr)
 		{
+			const auto id  = big::lua_function_data_ext::g_last_id++;
+			auto hook_type = GMHookType::NONE;
+
 			if (res.m_is_game_script_func)
 			{
-				res.m_this_lua_module->m_data_ext.m_pre_script_execute_callbacks[res.m_original_func_ptr].push_back(cb);
+				hook_type = GMHookType::PRE_SCRIPT;
+				res.m_this_lua_module->m_data_ext.m_pre_script_execute_callbacks[res.m_original_func_ptr].push_back({.m_cb = cb, .m_id = id});
 			}
 			else
 			{
-				res.m_this_lua_module->m_data_ext.m_pre_builtin_execute_callbacks[res.m_original_func_ptr].push_back(cb);
+				hook_type = GMHookType::PRE_BUILTIN;
+				res.m_this_lua_module->m_data_ext.m_pre_builtin_execute_callbacks[res.m_original_func_ptr].push_back({.m_cb = cb, .m_id = id});
 			}
 
-			return (uintptr_t)res.m_original_func_ptr;
+			hooks_original_func_ptr_to_info[(uintptr_t)res.m_original_func_ptr]->m_active_callback_count++;
+
+			return {.m_original_func_ptr = res.m_original_func_ptr, .m_module = res.m_this_lua_module, .m_type = hook_type, .m_lua_function_id = id};
 		}
 
-		return 0;
+		return {};
 	}
 
 	// Lua API: Function
@@ -799,40 +841,40 @@ namespace lua::game_maker
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), args (RValue array) )
 	// Returns: number: Unique identifier for later disabling / enabling the hook on the fly.
 	// Registers a callback that will be called right after any script function is called. Note: for object functions, use pre_code_execute / post_code_execute
-	static uintptr_t post_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
+	static GMHookHandle post_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
 	{
 		const auto res = make_central_script_hook(script_function_index_double, env, false);
 		if (res.m_this_lua_module && res.m_original_func_ptr)
 		{
+			const auto id  = big::lua_function_data_ext::g_last_id++;
+			auto hook_type = GMHookType::NONE;
+
 			if (res.m_is_game_script_func)
 			{
-				res.m_this_lua_module->m_data_ext.m_post_script_execute_callbacks[res.m_original_func_ptr].push_back(cb);
+				hook_type = GMHookType::POST_SCRIPT;
+				res.m_this_lua_module->m_data_ext.m_post_script_execute_callbacks[res.m_original_func_ptr].push_back({.m_cb = cb, .m_id = id});
 			}
 			else
 			{
-				res.m_this_lua_module->m_data_ext.m_post_builtin_execute_callbacks[res.m_original_func_ptr].push_back(cb);
+				hook_type = GMHookType::POST_BUILTIN;
+				res.m_this_lua_module->m_data_ext.m_post_builtin_execute_callbacks[res.m_original_func_ptr].push_back({.m_cb = cb, .m_id = id});
 			}
 
-			return (uintptr_t)res.m_original_func_ptr;
+			hooks_original_func_ptr_to_info[(uintptr_t)res.m_original_func_ptr]->m_active_callback_count++;
+
+			return {.m_original_func_ptr = res.m_original_func_ptr, .m_module = res.m_this_lua_module, .m_type = hook_type, .m_lua_function_id = id};
 		}
 
-		return 0;
+		return {};
 	}
 
 	// Lua API: Function
 	// Table: gm
-	// Name: code_execute_hook_enable
-	// Param: identifier: number: The identifier returned by the `hook` family functions.
-	// Returns: boolean: Returns true if the code execute hook is now enabled.
-
-	// Lua API: Function
-	// Table: gm
-	// Name: script_hook_enable
-	// Param: identifier: number: The identifier returned by the `hook` family functions.
-	// Returns: boolean: Returns true if the code execute hook is now enabled.
-	static bool code_execute_and_script_hook_enable(uintptr_t identifier, sol::this_environment env)
+	// Name: hook_enable
+	// Param: identifier: GMHookHandle: The identifier returned by the `hook` family functions.
+	static bool hook_enable(GMHookHandle& identifier)
 	{
-		auto it = hooks_original_func_ptr_to_info.find(identifier);
+		auto it = hooks_original_func_ptr_to_info.find((uintptr_t)identifier.m_original_func_ptr);
 		if (it == hooks_original_func_ptr_to_info.end())
 		{
 			return false;
@@ -840,26 +882,66 @@ namespace lua::game_maker
 
 		std::lock_guard guard(big::g_lua_manager->m_module_lock);
 
-		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
-		if (!mdl)
+		auto add_callback_to_active_vec = [](std::vector<big::lua_function_data_ext>& vec, qstd::runtime_func* detour, const GMHookHandle& identifier)
 		{
-			return false;
+			for (auto& fn : vec)
+			{
+				if (fn.m_id == identifier.m_lua_function_id && !fn.m_enabled)
+				{
+					fn.m_enabled = true;
+					detour->m_active_callback_count++;
+					return;
+				}
+			}
+		};
+
+		const auto hook_type = identifier.m_type;
+		if (hook_type == GMHookType::PRE_CODE)
+		{
+			auto& vec = identifier.m_module->m_data_ext.m_pre_code_execute_fast_callbacks[identifier.m_original_func_ptr];
+			add_callback_to_active_vec(vec, it->second.get(), identifier);
+		}
+		else if (hook_type == GMHookType::POST_CODE)
+		{
+			auto& vec = identifier.m_module->m_data_ext.m_post_code_execute_fast_callbacks[identifier.m_original_func_ptr];
+			add_callback_to_active_vec(vec, it->second.get(), identifier);
+		}
+		else if (hook_type == GMHookType::PRE_BUILTIN)
+		{
+			auto& vec = identifier.m_module->m_data_ext.m_pre_builtin_execute_callbacks[identifier.m_original_func_ptr];
+			add_callback_to_active_vec(vec, it->second.get(), identifier);
+		}
+		else if (hook_type == GMHookType::POST_BUILTIN)
+		{
+			auto& vec = identifier.m_module->m_data_ext.m_post_builtin_execute_callbacks[identifier.m_original_func_ptr];
+			add_callback_to_active_vec(vec, it->second.get(), identifier);
+		}
+		else if (hook_type == GMHookType::PRE_SCRIPT)
+		{
+			auto& vec = identifier.m_module->m_data_ext.m_pre_script_execute_callbacks[identifier.m_original_func_ptr];
+			add_callback_to_active_vec(vec, it->second.get(), identifier);
+		}
+		else if (hook_type == GMHookType::POST_SCRIPT)
+		{
+			auto& vec = identifier.m_module->m_data_ext.m_post_script_execute_callbacks[identifier.m_original_func_ptr];
+			add_callback_to_active_vec(vec, it->second.get(), identifier);
 		}
 
-		it->second->m_detour->enable();
+		if (it->second->m_active_callback_count > 0)
+		{
+			it->second->m_detour->enable();
+		}
 
 		return true;
 	}
 
 	// Lua API: Function
 	// Table: gm
-	// Name: code_execute_hook_disable
-	// Param: identifier: number: The identifier returned by the `hook` family functions.
-	// Returns: boolean: Returns true if the code execute hook is now disabled.
-	// The hook can only be disabled if there is no other mods hooking the same function.
-	static bool code_execute_hook_disable(uintptr_t identifier, sol::this_environment env)
+	// Name: hook_disable
+	// Param: identifier: GMHookHandle: The identifier returned by the `hook` family functions.
+	static bool hook_disable(GMHookHandle& identifier)
 	{
-		auto it = hooks_original_func_ptr_to_info.find(identifier);
+		auto it = hooks_original_func_ptr_to_info.find((uintptr_t)identifier.m_original_func_ptr);
 		if (it == hooks_original_func_ptr_to_info.end())
 		{
 			return false;
@@ -867,90 +949,57 @@ namespace lua::game_maker
 
 		std::lock_guard guard(big::g_lua_manager->m_module_lock);
 
-		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
-		if (!mdl)
+		auto remove_callback_from_active_vec = [](std::vector<big::lua_function_data_ext>& vec, qstd::runtime_func* detour, const GMHookHandle& identifier)
 		{
-			return false;
+			for (auto& fn : vec)
+			{
+				if (fn.m_id == identifier.m_lua_function_id && fn.m_enabled)
+				{
+					fn.m_enabled = false;
+					detour->m_active_callback_count--;
+					return;
+				}
+			}
+		};
+
+		const auto hook_type = identifier.m_type;
+		if (hook_type == GMHookType::PRE_CODE)
+		{
+			auto& vec = identifier.m_module->m_data_ext.m_pre_code_execute_fast_callbacks[identifier.m_original_func_ptr];
+			remove_callback_from_active_vec(vec, it->second.get(), identifier);
+		}
+		else if (hook_type == GMHookType::POST_CODE)
+		{
+			auto& vec = identifier.m_module->m_data_ext.m_post_code_execute_fast_callbacks[identifier.m_original_func_ptr];
+			remove_callback_from_active_vec(vec, it->second.get(), identifier);
+		}
+		else if (hook_type == GMHookType::PRE_BUILTIN)
+		{
+			auto& vec = identifier.m_module->m_data_ext.m_pre_builtin_execute_callbacks[identifier.m_original_func_ptr];
+			remove_callback_from_active_vec(vec, it->second.get(), identifier);
+		}
+		else if (hook_type == GMHookType::POST_BUILTIN)
+		{
+			auto& vec = identifier.m_module->m_data_ext.m_post_builtin_execute_callbacks[identifier.m_original_func_ptr];
+			remove_callback_from_active_vec(vec, it->second.get(), identifier);
+		}
+		else if (hook_type == GMHookType::PRE_SCRIPT)
+		{
+			auto& vec = identifier.m_module->m_data_ext.m_pre_script_execute_callbacks[identifier.m_original_func_ptr];
+			remove_callback_from_active_vec(vec, it->second.get(), identifier);
+		}
+		else if (hook_type == GMHookType::POST_SCRIPT)
+		{
+			auto& vec = identifier.m_module->m_data_ext.m_post_script_execute_callbacks[identifier.m_original_func_ptr];
+			remove_callback_from_active_vec(vec, it->second.get(), identifier);
 		}
 
-		bool can_disable_hook = true;
-
-		for (const auto& module_ : big::g_lua_manager->m_modules)
-		{
-			auto mod = (big::lua_module_ext*)module_.get();
-
-			if (mdl == mod)
-			{
-				continue;
-			}
-
-			if (mod->m_data_ext.m_pre_code_execute_fast_callbacks[(void*)identifier].size()
-			    || mod->m_data_ext.m_post_code_execute_fast_callbacks[(void*)identifier].size())
-			{
-				can_disable_hook = false;
-				break;
-			}
-		}
-
-		if (can_disable_hook)
+		if (it->second->m_active_callback_count == 0)
 		{
 			it->second->m_detour->disable();
-
-			return true;
 		}
 
-		return false;
-	}
-
-	// Lua API: Function
-	// Table: gm
-	// Name: script_hook_disable
-	// Param: identifier: number: The identifier returned by the `hook` family functions.
-	// Returns: boolean: Returns true if the script hook is now disabled.
-	// The hook can only be disabled if there is no other mods hooking the same function.
-	static bool script_hook_disable(uintptr_t identifier, sol::this_environment env)
-	{
-		auto it = hooks_original_func_ptr_to_info.find(identifier);
-		if (it == hooks_original_func_ptr_to_info.end())
-		{
-			return false;
-		}
-
-		std::lock_guard guard(big::g_lua_manager->m_module_lock);
-
-		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
-		if (!mdl)
-		{
-			return false;
-		}
-
-		bool can_disable_hook = true;
-
-		for (const auto& module_ : big::g_lua_manager->m_modules)
-		{
-			auto mod = (big::lua_module_ext*)module_.get();
-
-			if (mdl == mod)
-			{
-				continue;
-			}
-
-			if (mod->m_data_ext.m_pre_script_execute_callbacks[(void*)identifier].size() ||
-				mod->m_data_ext.m_post_script_execute_callbacks[(void*)identifier].size())
-			{
-				can_disable_hook = false;
-				break;
-			}
-		}
-
-		if (can_disable_hook)
-		{
-			it->second->m_detour->disable();
-
-			return true;
-		}
-
-		return false;
+		return true;
 	}
 
 	// Lua API: Function
@@ -2432,16 +2481,20 @@ namespace lua::game_maker
 			ns["_returnofmodding_constants_internal_"].get_or_create<sol::table>()["update_room_cache"] = room_loop_over;
 		}
 
+		{
+			sol::usertype<GMHookHandle> type = state.new_usertype<GMHookHandle>(
+			    "GMHookHandle"
+			);
+		}
+
 		ns["pre_code_execute"]  = sol::overload(pre_code_execute, pre_code_execute_fast);
 		ns["post_code_execute"] = sol::overload(post_code_execute, post_code_execute_fast);
 
 		ns["pre_script_hook"]  = pre_script_hook;
 		ns["post_script_hook"] = post_script_hook;
 
-		ns["code_execute_hook_enable"] = code_execute_and_script_hook_enable;
-		ns["code_execute_hook_disable"] = code_execute_hook_disable;
-		ns["script_hook_enable"]        = code_execute_and_script_hook_enable;
-		ns["script_hook_disable"] = script_hook_disable;
+		ns["hook_enable"] = hook_enable;
+		ns["hook_disable"] = hook_disable;
 
 		ns["call"] = sol::overload(lua_gm_call, lua_gm_call_global);
 

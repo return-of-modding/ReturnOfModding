@@ -4,19 +4,28 @@
 
 namespace big
 {
+	struct lua_function_data_ext
+	{
+		static inline size_t g_last_id = 0;
+
+		sol::protected_function m_cb;
+		size_t m_id{};
+		bool m_enabled{true};
+	};
+
 	struct lua_module_data_ext
 	{
 		std::vector<sol::protected_function> m_pre_code_execute_callbacks;
 		std::vector<sol::protected_function> m_post_code_execute_callbacks;
 
-		ankerl::unordered_dense::map<void*, std::vector<sol::protected_function>> m_pre_code_execute_fast_callbacks;
-		ankerl::unordered_dense::map<void*, std::vector<sol::protected_function>> m_post_code_execute_fast_callbacks;
+		ankerl::unordered_dense::map<void*, std::vector<lua_function_data_ext>> m_pre_code_execute_fast_callbacks;
+		ankerl::unordered_dense::map<void*, std::vector<lua_function_data_ext>> m_post_code_execute_fast_callbacks;
 
-		ankerl::unordered_dense::map<void*, std::vector<sol::protected_function>> m_pre_builtin_execute_callbacks;
-		ankerl::unordered_dense::map<void*, std::vector<sol::protected_function>> m_post_builtin_execute_callbacks;
+		ankerl::unordered_dense::map<void*, std::vector<lua_function_data_ext>> m_pre_builtin_execute_callbacks;
+		ankerl::unordered_dense::map<void*, std::vector<lua_function_data_ext>> m_post_builtin_execute_callbacks;
 
-		ankerl::unordered_dense::map<void*, std::vector<sol::protected_function>> m_pre_script_execute_callbacks;
-		ankerl::unordered_dense::map<void*, std::vector<sol::protected_function>> m_post_script_execute_callbacks;
+		ankerl::unordered_dense::map<void*, std::vector<lua_function_data_ext>> m_pre_script_execute_callbacks;
+		ankerl::unordered_dense::map<void*, std::vector<lua_function_data_ext>> m_post_script_execute_callbacks;
 	};
 
 	class lua_module_ext : public lua_module

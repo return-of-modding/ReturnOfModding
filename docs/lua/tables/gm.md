@@ -16,7 +16,7 @@ Table containing helpers for interacting with the game maker engine.
 
 - Type: `constants_type_sorted[type_name][i] = constant_name`
 
-## Functions (19)
+## Functions (17)
 
 ### `pre_code_execute(function_name, callback)`
 
@@ -82,60 +82,24 @@ Registers a callback that will be called right after any script function is call
 number = gm.post_script_hook(function_index, callback)
 ```
 
-### `code_execute_hook_enable(identifier)`
+### `hook_enable(identifier)`
 
 - **Parameters:**
-  - `identifier` (number): The identifier returned by the `hook` family functions.
-
-- **Returns:**
-  - `boolean`: Returns true if the code execute hook is now enabled.
+  - `identifier` (GMHookHandle): The identifier returned by the `hook` family functions.
 
 **Example Usage:**
 ```lua
-boolean = gm.code_execute_hook_enable(identifier)
+gm.hook_enable(identifier)
 ```
 
-### `script_hook_enable(identifier)`
+### `hook_disable(identifier)`
 
 - **Parameters:**
-  - `identifier` (number): The identifier returned by the `hook` family functions.
-
-- **Returns:**
-  - `boolean`: Returns true if the code execute hook is now enabled.
+  - `identifier` (GMHookHandle): The identifier returned by the `hook` family functions.
 
 **Example Usage:**
 ```lua
-boolean = gm.script_hook_enable(identifier)
-```
-
-### `code_execute_hook_disable(identifier)`
-
-The hook can only be disabled if there is no other mods hooking the same function.
-
-- **Parameters:**
-  - `identifier` (number): The identifier returned by the `hook` family functions.
-
-- **Returns:**
-  - `boolean`: Returns true if the code execute hook is now disabled.
-
-**Example Usage:**
-```lua
-boolean = gm.code_execute_hook_disable(identifier)
-```
-
-### `script_hook_disable(identifier)`
-
-The hook can only be disabled if there is no other mods hooking the same function.
-
-- **Parameters:**
-  - `identifier` (number): The identifier returned by the `hook` family functions.
-
-- **Returns:**
-  - `boolean`: Returns true if the script hook is now disabled.
-
-**Example Usage:**
-```lua
-boolean = gm.script_hook_disable(identifier)
+gm.hook_disable(identifier)
 ```
 
 ### `variable_global_get(name)`

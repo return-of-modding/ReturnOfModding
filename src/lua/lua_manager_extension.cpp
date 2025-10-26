@@ -309,12 +309,16 @@ namespace big::lua_manager_extension
 			auto mod = (lua_module_ext*)module_.get();
 			for (const auto& cb : mod->m_data_ext.m_pre_code_execute_fast_callbacks[original_func_ptr])
 			{
-				const auto new_call_orig_if_true = cb(self, other);
-				if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
-				    && new_call_orig_if_true.get<bool>() == false)
+				if (cb.m_enabled)
 				{
-					call_orig_if_true = false;
+					const auto new_call_orig_if_true = cb.m_cb(self, other);
+					if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
+					    && new_call_orig_if_true.get<bool>() == false)
+					{
+						call_orig_if_true = false;
+					}
 				}
+				
 			}
 		}
 
@@ -330,7 +334,10 @@ namespace big::lua_manager_extension
 			auto mod = (lua_module_ext*)module_.get();
 			for (const auto& cb : mod->m_data_ext.m_post_code_execute_fast_callbacks[original_func_ptr])
 			{
-				cb(self, other);
+				if (cb.m_enabled)
+				{
+					cb.m_cb(self, other);
+				}
 			}
 		}
 	}
@@ -360,12 +367,16 @@ namespace big::lua_manager_extension
 			auto mod = (lua_module_ext*)module_.get();
 			for (const auto& cb : mod->m_data_ext.m_pre_builtin_execute_callbacks[original_func_ptr])
 			{
-				const auto new_call_orig_if_true = cb(self, other, result, std::span(args, arg_count));
-				if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
-				    && new_call_orig_if_true.get<bool>() == false)
+				if (cb.m_enabled)
 				{
-					call_orig_if_true = false;
+					const auto new_call_orig_if_true = cb.m_cb(self, other, result, std::span(args, arg_count));
+					if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
+					    && new_call_orig_if_true.get<bool>() == false)
+					{
+						call_orig_if_true = false;
+					}
 				}
+				
 			}
 		}
 
@@ -381,7 +392,10 @@ namespace big::lua_manager_extension
 			auto mod = (lua_module_ext*)module_.get();
 			for (const auto& cb : mod->m_data_ext.m_post_builtin_execute_callbacks[original_func_ptr])
 			{
-				cb(self, other, result, std::span(args, arg_count));
+				if (cb.m_enabled)
+				{
+					cb.m_cb(self, other, result, std::span(args, arg_count));
+				}
 			}
 		}
 	}
@@ -397,12 +411,16 @@ namespace big::lua_manager_extension
 			auto mod = (lua_module_ext*)module_.get();
 			for (const auto& cb : mod->m_data_ext.m_pre_script_execute_callbacks[original_func_ptr])
 			{
-				const auto new_call_orig_if_true = cb(self, other, result, std::span(args, arg_count));
-				if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
-				    && new_call_orig_if_true.get<bool>() == false)
+				if (cb.m_enabled)
 				{
-					call_orig_if_true = false;
+					const auto new_call_orig_if_true = cb.m_cb(self, other, result, std::span(args, arg_count));
+					if (call_orig_if_true && new_call_orig_if_true.valid() && new_call_orig_if_true.get_type() == sol::type::boolean
+					    && new_call_orig_if_true.get<bool>() == false)
+					{
+						call_orig_if_true = false;
+					}
 				}
+				
 			}
 		}
 
@@ -418,7 +436,10 @@ namespace big::lua_manager_extension
 			auto mod = (lua_module_ext*)module_.get();
 			for (const auto& cb : mod->m_data_ext.m_post_script_execute_callbacks[original_func_ptr])
 			{
-				cb(self, other, result, std::span(args, arg_count));
+				if (cb.m_enabled)
+				{
+					cb.m_cb(self, other, result, std::span(args, arg_count));
+				}
 			}
 		}
 	}

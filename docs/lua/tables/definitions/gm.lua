@@ -30,23 +30,11 @@ function gm.pre_script_hook(function_index, callback) end
 ---@return number # Unique identifier for later disabling / enabling the hook on the fly.
 function gm.post_script_hook(function_index, callback) end
 
----@param identifier number The identifier returned by the `hook` family functions.
----@return boolean # Returns true if the code execute hook is now enabled.
-function gm.code_execute_hook_enable(identifier) end
+---@param identifier GMHookHandle The identifier returned by the `hook` family functions.
+function gm.hook_enable(identifier) end
 
----@param identifier number The identifier returned by the `hook` family functions.
----@return boolean # Returns true if the code execute hook is now enabled.
-function gm.script_hook_enable(identifier) end
-
--- The hook can only be disabled if there is no other mods hooking the same function.
----@param identifier number The identifier returned by the `hook` family functions.
----@return boolean # Returns true if the code execute hook is now disabled.
-function gm.code_execute_hook_disable(identifier) end
-
--- The hook can only be disabled if there is no other mods hooking the same function.
----@param identifier number The identifier returned by the `hook` family functions.
----@return boolean # Returns true if the script hook is now disabled.
-function gm.script_hook_disable(identifier) end
+---@param identifier GMHookHandle The identifier returned by the `hook` family functions.
+function gm.hook_disable(identifier) end
 
 ---@param name string name of the variable
 ---@return value # The actual value behind the RValue, or RValue if the type is not handled yet.
