@@ -1803,11 +1803,14 @@ namespace lua::game_maker
 		// Name: CInstance
 		// Class representing a game maker object instance.
 		//
-		// You can use most if not all of the builtin game maker variables (For example `myCInstance.x`) [listed here](https://manual.gamemaker.io/monthly/en/GameMaker_Language/GML_Reference/Asset_Management/Instances/Instance_Variables/Instance_Variables.htm).
+		// You can use most if not all of the builtin game maker variables (For example `someCInstance.x`) [listed here](https://manual.gamemaker.io/monthly/en/GameMaker_Language/GML_Reference/Asset_Management/Instances/Instance_Variables/Instance_Variables.htm).
 		// 
-		// You can call on the `CInstance` any game maker function that would normally be called with `self` as the instance, for example `myCInstance:instance_destroy()`. Object instance methods also work, like Step, Draw, Alarm, KeyPress etc. Note that `other` will always be null when using that syntax.
+		// As an alternative of using the `gm.call("function name", ...)` or gm.function_name(...)` syntax, you can also call game maker functions directly on the `CInstance` object.
+		// For example `someCInstance:instance_destroy()`. 
+		// Object instance methods also work, like Step, Draw, Alarm, KeyPress etc. 
+		// Note that `other` will always be null when using that syntax.
 		//
-		// To know the specific instance variables of a given object defined by the game, call someCInstance:variable_instance_get_names()
+		// To know the specific instance variables of a given object defined by the game, you can use `local variable_names = someCInstance:variable_instance_get_names()`
 		{
 			static sol::usertype<CInstance> type = state.new_usertype<CInstance>(
 			    "CInstance",
