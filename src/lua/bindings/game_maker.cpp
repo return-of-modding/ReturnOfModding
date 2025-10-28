@@ -913,7 +913,11 @@ namespace lua::game_maker
 	// Param: other: CInstance: (optional)
 	// Param: args: any: Optional. Variadic amount of arguments to pass to the function.
 	// Returns: value: The actual value behind the RValue, or RValue if the type is not handled yet.
-	// Note: gm.SomeFunction(someCInstance1, someCInstance2) is equivalent to gm.call("SomeFunction", someCInstance1, someCInstance2), meaning that if you pass cinstances they'll be passed as self and other.
+	// There is 3 ways of calling game maker functions, we'll take `instance_destroy` as an example:
+	// - `gm.call("instance_destroy", someCInstance)`
+	// - gm.instance_destroy(someCInstance)
+	// - `self` being a `CInstance`, you can do `self:instance_destroy()`
+	// Note: gm.SomeFunction(someCInstance1, someCInstance2) is equivalent to gm.call("SomeFunction", someCInstance1, someCInstance2), meaning that the CInstances will be passed as `self` and `other`.
 	static sol::object lua_gm_call(sol::this_state this_state_, std::string_view name, CInstance* self, CInstance* other, sol::variadic_args args)
 	{
 		return RValue_to_lua(gm::call(name, self, other, parse_variadic_args(args)), this_state_);
@@ -1801,7 +1805,7 @@ namespace lua::game_maker
 		//
 		// You can use most if not all of the builtin game maker variables (For example `myCInstance.x`) [listed here](https://manual.gamemaker.io/monthly/en/GameMaker_Language/GML_Reference/Asset_Management/Instances/Instance_Variables/Instance_Variables.htm).
 		// 
-		// You can call on the CInstance any game maker function that would normally be called with `self` as the instance, for example `myCInstance:instance_destroy()`. Object instance methods also work, like Step, Draw, Alarm, KeyPress etc.
+		// You can call on the `CInstance` any game maker function that would normally be called with `self` as the instance, for example `myCInstance:instance_destroy()`. Object instance methods also work, like Step, Draw, Alarm, KeyPress etc. Note that `other` will always be null when using that syntax.
 		//
 		// To know the specific instance variables of a given object defined by the game, call someCInstance:variable_instance_get_names()
 		{

@@ -44,7 +44,11 @@ function gm.variable_global_get(name) end
 ---@param new_value any new value
 function gm.variable_global_set(name, new_value) end
 
--- Note: gm.SomeFunction(someCInstance1, someCInstance2) is equivalent to gm.call("SomeFunction", someCInstance1, someCInstance2), meaning that if you pass cinstances they'll be passed as self and other.
+-- There is 3 ways of calling game maker functions, we'll take `instance_destroy` as an example:
+--- `gm.call("instance_destroy", someCInstance)`
+--- gm.instance_destroy(someCInstance)
+--- `self` being a `CInstance`, you can do `self:instance_destroy()`
+--Note: gm.SomeFunction(someCInstance1, someCInstance2) is equivalent to gm.call("SomeFunction", someCInstance1, someCInstance2), meaning that the CInstances will be passed as `self` and `other`.
 ---@param name string Name of the function to call, can be a Game Maker built-in function, a game-defined script or an object instance method, like Draw, Step, Alarm, KeyPress etc.
 ---@param self CInstance (optional)
 ---@param other CInstance (optional)
