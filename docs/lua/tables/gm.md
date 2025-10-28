@@ -128,11 +128,13 @@ gm.variable_global_set(name, new_value)
 
 ### `call(name, self, other, args)`
 
+Note: gm.SomeFunction(someCInstance1, someCInstance2) is equivalent to gm.call("SomeFunction", someCInstance1, someCInstance2), meaning that if you pass cinstances they'll be passed as self and other.
+
 - **Parameters:**
-  - `name` (string): name of the function to call
+  - `name` (string): Name of the function to call, can be a Game Maker built-in function, a game-defined script or an object instance method, like Draw, Step, Alarm, KeyPress etc.
   - `self` (CInstance): (optional)
   - `other` (CInstance): (optional)
-  - `args` (any): (optional)
+  - `args` (any): Optional. Variadic amount of arguments to pass to the function.
 
 - **Returns:**
   - `value`: The actual value behind the RValue, or RValue if the type is not handled yet.

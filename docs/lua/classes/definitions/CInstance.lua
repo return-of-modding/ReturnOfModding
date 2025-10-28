@@ -4,7 +4,9 @@
 --
 --You can use most if not all of the builtin game maker variables (For example `myCInstance.x`) [listed here](https://manual.gamemaker.io/monthly/en/GameMaker_Language/GML_Reference/Asset_Management/Instances/Instance_Variables/Instance_Variables.htm).
 --
---To know the specific instance variables of a given object defined by the game, call gm.variable_instance_get_names(someCInstance)
+--You can call on the CInstance any game maker function that would normally be called with `self` as the instance, for example `myCInstance:instance_destroy()`. Object instance methods also work, like Step, Draw, Alarm, KeyPress etc.
+--
+--To know the specific instance variables of a given object defined by the game, call someCInstance:variable_instance_get_names()
 ---@class (exact) CInstance
 ---@field id number
 ---@field object_index number

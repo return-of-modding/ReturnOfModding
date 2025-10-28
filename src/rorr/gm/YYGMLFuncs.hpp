@@ -14,7 +14,7 @@ struct YYGMLFuncs
 	union
 	{
 		PFUNC_YYGMLScript m_script_function;
-		PFUNC_YYGML m_function;
+		PFUNC_YYGML m_object_function;
 	};
 
 	YYVAR* m_func_var;

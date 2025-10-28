@@ -44,10 +44,11 @@ function gm.variable_global_get(name) end
 ---@param new_value any new value
 function gm.variable_global_set(name, new_value) end
 
----@param name string name of the function to call
+-- Note: gm.SomeFunction(someCInstance1, someCInstance2) is equivalent to gm.call("SomeFunction", someCInstance1, someCInstance2), meaning that if you pass cinstances they'll be passed as self and other.
+---@param name string Name of the function to call, can be a Game Maker built-in function, a game-defined script or an object instance method, like Draw, Step, Alarm, KeyPress etc.
 ---@param self CInstance (optional)
 ---@param other CInstance (optional)
----@param args any (optional)
+---@param args any Optional. Variadic amount of arguments to pass to the function.
 ---@return value # The actual value behind the RValue, or RValue if the type is not handled yet.
 function gm.call(name, self, other, args) end
 

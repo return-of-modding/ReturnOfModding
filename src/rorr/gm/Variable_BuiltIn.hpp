@@ -6,10 +6,10 @@
 
 namespace gm
 {
-	static ankerl::unordered_dense::map<std::string, gm::RVariableRoutineGetter, big::string::transparent_string_hash, std::equal_to<>> builtin_getter_cache;
-	static ankerl::unordered_dense::map<std::string, gm::RVariableRoutineSetter, big::string::transparent_string_hash, std::equal_to<>> builtin_setter_cache;
+	inline ankerl::unordered_dense::map<std::string, gm::RVariableRoutineGetter, big::string::transparent_string_hash, std::equal_to<>> builtin_getter_cache;
+	inline ankerl::unordered_dense::map<std::string, gm::RVariableRoutineSetter, big::string::transparent_string_hash, std::equal_to<>> builtin_setter_cache;
 
-	static ankerl::unordered_dense::set<std::string, big::string::transparent_string_hash, std::equal_to<>> game_defined_cache;
+	inline ankerl::unordered_dense::set<std::string, big::string::transparent_string_hash, std::equal_to<>> game_global_variable_cache;
 
 	inline RValue variable_global_get(std::string_view variable_name)
 	{
@@ -20,7 +20,7 @@ namespace gm
 			return result;
 		}
 
-		if (const auto it = game_defined_cache.find(variable_name.data()); it != game_defined_cache.end())
+		if (const auto it = game_global_variable_cache.find(variable_name.data()); it != game_global_variable_cache.end())
 		{
 			return gm::call("variable_global_get", variable_name.data());
 		}
@@ -44,7 +44,7 @@ namespace gm
 		const auto global_exists = gm::call("variable_global_exists", variable_name.data()).asBoolean();
 		if (global_exists)
 		{
-			game_defined_cache.insert(variable_name.data());
+			game_global_variable_cache.insert(variable_name.data());
 
 			return gm::call("variable_global_get", variable_name.data());
 		}
@@ -60,7 +60,7 @@ namespace gm
 			return it->second(nullptr, nullptr, &result);
 		}
 
-		if (const auto it = game_defined_cache.find(variable_name.data()); it != game_defined_cache.end())
+		if (const auto it = game_global_variable_cache.find(variable_name.data()); it != game_global_variable_cache.end())
 		{
 			return gm::call("variable_global_set", std::to_array<RValue, 2>({variable_name.data(), new_value}));
 		}
@@ -79,7 +79,7 @@ namespace gm
 			}
 		}
 
-		game_defined_cache.insert(variable_name.data());
+		game_global_variable_cache.insert(variable_name.data());
 
 		return gm::call("variable_global_set", std::to_array<RValue, 2>({variable_name.data(), new_value}));
 	}

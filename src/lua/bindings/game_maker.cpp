@@ -35,6 +35,8 @@ namespace qstd
 
 	public:
 		std::unique_ptr<big::detour_hook> m_detour;
+
+		// Used for tracking whether or not we need to disable / enable the backing jit hook when there is no active callbacks
 		size_t m_active_callback_count{};
 
 		struct parameters_t
@@ -505,7 +507,7 @@ namespace lua::game_maker
 		}
 		else
 		{
-			gm::code_function_info result{};
+			gm::gml_builtin_function_info result{};
 			big::g_pointers->m_rorr.m_code_function_GET_the_function(function_index,
 			                                                         &result.function_name,
 			                                                         &result.function_ptr,
@@ -603,43 +605,6 @@ namespace lua::game_maker
 		return {};
 	}
 
-	static uintptr_t get_object_function_ptr(const std::string& function_name)
-	{
-		static auto lazy_init_gml_func_cache = []()
-		{
-			ankerl::unordered_dense::map<std::string, uintptr_t> gml_func_cache;
-
-			auto gml_funcs = big::g_pointers->m_rorr.m_GMLFuncs;
-
-			const auto game_base_address = (uintptr_t)GetModuleHandleA(0);
-
-			while (true)
-			{
-				if (gml_funcs->m_name &&
-				    //stupid bound check, better check would be to check if function ptr is inside module .text range begin / end
-				    ((uintptr_t)gml_funcs->m_script_function - game_base_address) < 0xF'F0'00'00'00)
-				{
-					gml_func_cache[gml_funcs->m_name] = (uintptr_t)gml_funcs->m_script_function;
-
-					gml_funcs++;
-				}
-				else
-				{
-					break;
-				}
-			}
-
-			return gml_func_cache;
-		}();
-		const auto ptr_it = lazy_init_gml_func_cache.find(function_name);
-		if (ptr_it == lazy_init_gml_func_cache.end())
-		{
-			LOG(ERROR) << "Could not find a corresponding object function pointer (" << function_name << ")";
-			return 0;
-		}
-		return ptr_it->second;
-	}
-
 	static make_central_script_result make_central_object_function_hook(const std::string& function_name, sol::this_environment& env, bool is_pre_hook)
 	{
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
@@ -648,7 +613,7 @@ namespace lua::game_maker
 			return {};
 		}
 
-		const auto original_func_ptr = get_object_function_ptr(function_name);
+		const auto original_func_ptr = gm::gml_object_get_function(function_name);
 		if (original_func_ptr == 0)
 		{
 			LOG(ERROR) << "Could not find a corresponding object function pointer (" << function_name << ")";
@@ -943,11 +908,12 @@ namespace lua::game_maker
 	// Lua API: Function
 	// Table: gm
 	// Name: call
-	// Param: name: string: name of the function to call
+	// Param: name: string: Name of the function to call, can be a Game Maker built-in function, a game-defined script or an object instance method, like Draw, Step, Alarm, KeyPress etc.
 	// Param: self: CInstance: (optional)
 	// Param: other: CInstance: (optional)
-	// Param: args: any: (optional)
+	// Param: args: any: Optional. Variadic amount of arguments to pass to the function.
 	// Returns: value: The actual value behind the RValue, or RValue if the type is not handled yet.
+	// Note: gm.SomeFunction(someCInstance1, someCInstance2) is equivalent to gm.call("SomeFunction", someCInstance1, someCInstance2), meaning that if you pass cinstances they'll be passed as self and other.
 	static sol::object lua_gm_call(sol::this_state this_state_, std::string_view name, CInstance* self, CInstance* other, sol::variadic_args args)
 	{
 		return RValue_to_lua(gm::call(name, self, other, parse_variadic_args(args)), this_state_);
@@ -1353,7 +1319,7 @@ namespace lua::game_maker
 	template<auto hook_func>
 	static void hook_backcompat_add(const char* name)
 	{
-		const auto& func_info = gm::get_code_function(name);
+		const auto& func_info = gm::gml_builtin_get_function(name);
 		if (func_info.function_ptr)
 		{
 			const std::string hook_name = std::string("backcompat_") + name;
@@ -1364,6 +1330,8 @@ namespace lua::game_maker
 			LOG(ERROR) << "Could not find " << name << " function for backcompat hook.";
 		}
 	}
+
+	static ankerl::unordered_dense::map<std::string, int, big::string::transparent_string_hash, std::equal_to<>> g_script_asset_cache;
 
 	void bind(sol::table& state, sol::state_view& L)
 	{
@@ -1832,8 +1800,10 @@ namespace lua::game_maker
 		// Class representing a game maker object instance.
 		//
 		// You can use most if not all of the builtin game maker variables (For example `myCInstance.x`) [listed here](https://manual.gamemaker.io/monthly/en/GameMaker_Language/GML_Reference/Asset_Management/Instances/Instance_Variables/Instance_Variables.htm).
+		// 
+		// You can call on the CInstance any game maker function that would normally be called with `self` as the instance, for example `myCInstance:instance_destroy()`. Object instance methods also work, like Step, Draw, Alarm, KeyPress etc.
 		//
-		// To know the specific instance variables of a given object defined by the game, call gm.variable_instance_get_names(someCInstance)
+		// To know the specific instance variables of a given object defined by the game, call someCInstance:variable_instance_get_names()
 		{
 			static sol::usertype<CInstance> type = state.new_usertype<CInstance>(
 			    "CInstance",
@@ -2367,7 +2337,7 @@ namespace lua::game_maker
 							constant_types[asset_name]                                 = type;
 							constants_type_sorted[type].get_or_create<sol::table>()[i] = asset_name;
 							script_index_to_name[i]                                    = asset_name;
-							gm::script_asset_cache[asset_name]                         = i;
+							g_script_asset_cache[asset_name]                           = i;
 						}
 						else
 						{
@@ -2494,7 +2464,7 @@ namespace lua::game_maker
 		// ```
 		ns["get_object_function_address"] = [](const std::string& function_name, sol::this_state this_state_) -> sol::object
 		{
-			uintptr_t ptr = get_object_function_ptr(function_name);
+			uintptr_t ptr = gm::gml_object_get_function(function_name);
 			if (ptr == 0)
 			{
 				return sol::lua_nil;

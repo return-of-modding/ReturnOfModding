@@ -15,6 +15,8 @@ namespace gm
 	{
 		if (!big::g_abort)
 		{
+			gm::init_function_caches();
+
 			YYObjectPinMap::init_pin_map();
 		}
 

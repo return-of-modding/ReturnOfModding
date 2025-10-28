@@ -51,79 +51,100 @@ namespace gm
 		Logger::FlushQueue();
 	}
 
-	struct code_function_info
+	struct gml_builtin_function_info
 	{
 		const char* function_name = nullptr;
 		TRoutine function_ptr     = nullptr;
 		int function_arg_count    = 0;
 	};
 
-	inline code_function_info dummy{};
-	inline ankerl::unordered_dense::map<std::string, code_function_info, big::string::transparent_string_hash, std::equal_to<>> code_function_cache;
+	inline gml_builtin_function_info g_builtin_function_dummy{};
 
-	inline code_function_info& get_code_function(std::string_view name)
+	inline ankerl::unordered_dense::map<std::string, gml_builtin_function_info, big::string::transparent_string_hash, std::equal_to<>> gml_builtin_function_cache;
+	inline ankerl::unordered_dense::map<std::string, uintptr_t, big::string::transparent_string_hash, std::equal_to<>> gml_object_function_cache;
+	inline ankerl::unordered_dense::map<std::string, uintptr_t, big::string::transparent_string_hash, std::equal_to<>> gml_script_function_cache;
+
+	inline gml_builtin_function_info& gml_builtin_get_function(std::string_view name)
 	{
-		if (const auto it = code_function_cache.find(name.data()); it != code_function_cache.end())
+		if (const auto it = gml_builtin_function_cache.find(name.data()); it != gml_builtin_function_cache.end())
 		{
 			return it->second;
 		}
 
+		return g_builtin_function_dummy;
+	}
+
+	inline uintptr_t gml_object_get_function(std::string_view name)
+	{
+		if (const auto it = gml_object_function_cache.find(name.data()); it != gml_object_function_cache.end())
+		{
+			return it->second;
+		}
+
+		return 0;
+	}
+
+	inline void init_function_caches()
+	{
 		// Builtin GML Functions
 		const auto size = *big::g_pointers->m_rorr.m_code_function_GET_the_function_function_count;
 		for (int i = 0; i < size; i++)
 		{
-			code_function_info result{};
+			gml_builtin_function_info result{};
 
 			big::g_pointers->m_rorr.m_code_function_GET_the_function(i,
 			                                                         &result.function_name,
 			                                                         &result.function_ptr,
 			                                                         &result.function_arg_count);
 
-			const auto same_name = !strcmp(result.function_name, name.data());
-			if (same_name)
+			if (result.function_name && result.function_ptr)
 			{
-				code_function_cache[name.data()] = result;
-				return code_function_cache[name.data()];
+				gml_builtin_function_cache[result.function_name] = result;
 			}
 		}
 
-		return dummy;
+		auto gml_funcs = big::g_pointers->m_rorr.m_GMLFuncs;
+
+		const auto game_base_address = (uintptr_t)GetModuleHandleA(0);
+
+		while (true)
+		{
+			if (gml_funcs->m_name && ((uintptr_t)gml_funcs->m_script_function - game_base_address) < 0xF'F0'00'00'00 /* stupid bound check */)
+			{
+				if (strstr(gml_funcs->m_name, "gml_Script_"))
+				{
+					gml_script_function_cache[gml_funcs->m_name + 11] = (uintptr_t)gml_funcs->m_script_function;
+				}
+				else if (strstr(gml_funcs->m_name, "gml_Object_"))
+				{
+					gml_object_function_cache[gml_funcs->m_name] = (uintptr_t)gml_funcs->m_object_function;
+				}
+
+				gml_funcs++;
+			}
+			else
+			{
+				break;
+			}
+		}
 	}
 
 	inline bool is_valid_call(std::string_view name)
 	{
-		const auto& func_info = get_code_function(name);
+		const auto& func_info = gm::gml_builtin_get_function(name);
 		if (func_info.function_ptr)
 		{
 			return true;
 		}
 
-		if (const auto it = gm::script_asset_cache.find(name.data()); it != gm::script_asset_cache.end())
+		if (gm::gml_script_function_cache.find(name.data()) != gm::gml_script_function_cache.end())
 		{
-			const auto cscript = big::g_pointers->m_rorr.m_script_data(it->second - 100'000);
-			if (cscript && cscript->m_funcs && cscript->m_funcs->m_script_function)
-			{
-				return true;
-			}
+			return true;
 		}
-		else
+
+		if (gm::gml_object_function_cache.find(name.data()) != gm::gml_object_function_cache.end())
 		{
-			const auto& asset_get_index = gm::get_code_function("asset_get_index");
-			RValue script_function_name{name.data()};
-			RValue script_function_index;
-
-			asset_get_index.function_ptr(&script_function_index, nullptr, nullptr, 1, &script_function_name);
-
-			if (script_function_index.type == RValueType::REAL)
-			{
-				gm::script_asset_cache[name.data()] = script_function_index.asInt32();
-
-				const auto cscript = big::g_pointers->m_rorr.m_script_data(script_function_index.asInt32() - 100'000);
-				if (cscript && cscript->m_funcs && cscript->m_funcs->m_script_function)
-				{
-					return true;
-				}
-			}
+			return true;
 		}
 
 		return false;
@@ -189,7 +210,7 @@ namespace gm
 		return EXCEPTION_CONTINUE_SEARCH;
 	}
 
-	inline void safe_code_call(gm::TRoutine func, RValue* res, CInstance* self, CInstance* other, RValue* args, size_t arg_count)
+	inline void safe_builtin_function_call(gm::TRoutine func, RValue* res, CInstance* self, CInstance* other, RValue* args, size_t arg_count)
 	{
 		__try
 		{
@@ -200,7 +221,7 @@ namespace gm
 		}
 	}
 
-	inline void safe_script_call(PFUNC_YYGMLScript func, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args)
+	inline void safe_script_function_call(PFUNC_YYGMLScript func, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args)
 	{
 		__try
 		{
@@ -211,72 +232,56 @@ namespace gm
 		}
 	}
 
+	inline void safe_object_function_call(PFUNC_YYGML func, CInstance* self, CInstance* other)
+	{
+		__try
+		{
+			func(self, other);
+		}
+		__except (triple_exception_handler(GetExceptionInformation()), EXCEPTION_EXECUTE_HANDLER)
+		{
+		}
+	}
+
 	inline RValue call(std::string_view name, CInstance* self, CInstance* other, RValue* args = nullptr, size_t arg_count = 0)
 	{
 		g_last_call = name.data();
 
-		const auto& func_info = get_code_function(name);
+		const auto& func_info = gm::gml_builtin_get_function(name);
 
 		RValue res{};
 
 		if (func_info.function_ptr)
 		{
-			safe_code_call(func_info.function_ptr, &res, self, other, args, arg_count);
+			safe_builtin_function_call(func_info.function_ptr, &res, self, other, args, arg_count);
 
 			g_last_call = nullptr;
 			return res;
 		}
-		// Script Execute
-		else
+		else if (const auto script_func_ptr_it = gm::gml_script_function_cache.find(name.data());
+		         script_func_ptr_it != gm::gml_script_function_cache.end())
 		{
-			if (const auto it = gm::script_asset_cache.find(name.data()); it != gm::script_asset_cache.end())
+			auto arranged_args = (RValue**)alloca(sizeof(RValue*) * arg_count);
+			for (size_t i = 0; i < arg_count; i++)
 			{
-				const auto cscript = big::g_pointers->m_rorr.m_script_data(it->second - 100'000);
-				if (cscript)
-				{
-					auto arranged_args = (RValue**)alloca(sizeof(RValue*) * arg_count);
-					for (size_t i = 0; i < arg_count; i++)
-					{
-						arranged_args[i] = &args[i];
-					}
-
-					safe_script_call(cscript->m_funcs->m_script_function, self, other, &res, arg_count, arranged_args);
-				}
-
-				g_last_call = nullptr;
-				return res;
+				arranged_args[i] = &args[i];
 			}
-			else
-			{
-				const auto& asset_get_index = gm::get_code_function("asset_get_index");
-				RValue script_function_name{name.data()};
-				RValue script_function_index;
 
-				asset_get_index.function_ptr(&script_function_index, nullptr, nullptr, 1, &script_function_name);
+			safe_script_function_call((PFUNC_YYGMLScript)script_func_ptr_it->second, self, other, &res, arg_count, arranged_args);
 
-				if (script_function_index.type == RValueType::REAL)
-				{
-					gm::script_asset_cache[name.data()] = script_function_index.asInt32();
+			g_last_call = nullptr;
+			return res;
+		}
+		else if (const auto object_func_ptr_it = gm::gml_object_function_cache.find(name.data());
+		         object_func_ptr_it != gm::gml_object_function_cache.end())
+		{
+			safe_object_function_call((PFUNC_YYGML)object_func_ptr_it->second, self, other);
 
-					const auto cscript = big::g_pointers->m_rorr.m_script_data(script_function_index.asInt32() - 100'000);
-					if (cscript)
-					{
-						auto arranged_args = (RValue**)alloca(sizeof(RValue*) * arg_count);
-						for (size_t i = 0; i < arg_count; i++)
-						{
-							arranged_args[i] = &args[i];
-						}
-
-						safe_script_call(cscript->m_funcs->m_script_function, self, other, &res, arg_count, arranged_args);
-					}
-
-					g_last_call = nullptr;
-					return res;
-				}
-			}
+			g_last_call = nullptr;
+			return res;
 		}
 
-		LOG(WARNING) << name << " function not found!";
+		LOG(ERROR) << name << " function not found!";
 
 		g_last_call = nullptr;
 		return {};
