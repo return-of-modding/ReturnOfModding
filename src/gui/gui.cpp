@@ -14,6 +14,8 @@
 #include <rorr/gm/RValue.hpp>
 #include <rorr/gm/Variable_BuiltIn.hpp>
 #include <rorr/gm/YYObjectBase.hpp>
+#include <lua/lua_memory_alloc.hpp>
+#include <lua/lua_manager_extension.hpp>
 
 namespace big
 {
@@ -258,6 +260,13 @@ namespace big
 					ImGui::EndMenu();
 				}
 
+				if (ImGui::BeginMenu("Debug"))
+				{
+					ImGui::Text("Lua TLSF: %.2f MB free (%.2f%%)", (g_tlsf_pool_size - g_lua_tlsf_used_size) / (1024.0 * 1024.0), 100.0 * (g_tlsf_pool_size - g_lua_tlsf_used_size) / g_tlsf_pool_size);
+
+					ImGui::EndMenu();
+				}
+
 				ImGui::EndMainMenuBar();
 			}
 
@@ -334,6 +343,8 @@ namespace big
 				ImGui::End();
 			}
 		}
+
+		big::lua_manager_extension::process_callback_cache();
 
 		pop_theme_colors();
 	}
