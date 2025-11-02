@@ -6,6 +6,7 @@
 #include <string/string.hpp>
 
 #include "lua/lua_memory_alloc.hpp"
+#include "version.hpp"
 
 namespace gm
 {
@@ -29,6 +30,7 @@ namespace gm
 
 		// Purposely leak it, we are not unloading this module in any case.
 		auto lua_manager_instance = new big::lua_manager(L,
+														 big::version::VERSION_NUMBER,
 		                                                 big::g_file_manager.get_project_folder("config"),
 		                                                 big::g_file_manager.get_project_folder("plugins_data"),
 		                                                 big::g_file_manager.get_project_folder("plugins"),
@@ -51,8 +53,18 @@ namespace gm
 	static void rom_in_game_ui()
 	{
 		sol::state_view(big::g_lua_manager->lua_state()).script(R"rom_in_game_ui(
+gm.post_code_execute("gml_Object_oStartMenu_Draw_0", function(self, other)
+    if self.menu_transition < 1.0 then
+        self:draw_set_font_w(gm.constants.fntNormal)
+        self:draw_set_color(65280.0) -- https://manual.gamemaker.io/lts/en/GameMaker_Language/GML_Reference/Drawing/Colour_And_Alpha/Colour_And_Alpha.htm
+        self:draw_set_alpha(0.5 * (1 - self.menu_transition))
+        version_text = "Return of Modding v" .. _ROM.version
+        self:draw_text_w(gm.variable_global_get("___view_l_x") + 6, gm.variable_global_get("___view_l_y") + 25, version_text)
+        self:draw_set_alpha(1.0)
+    end
+end)
+
 gm.post_script_hook(gm.constants.translate_load_active_language, function(self, other, result, args)
-	print("translate_load_active_language")
     gm.translate_load_file_internal(gm.variable_global_get("_language_map"), gm.json_parse(gm._rom_internal_json_lang()), "")
 end)
 

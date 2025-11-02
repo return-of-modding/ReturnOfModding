@@ -85,7 +85,7 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		std::srand(std::chrono::system_clock::now().time_since_epoch().count());
 
 		LOG(INFO) << rom::g_project_name;
-		LOGF(INFO, "Build (GIT SHA1): {}", version::GIT_SHA1);
+		LOGF(INFO, "Build v{} (Commit {})", version::VERSION_NUMBER, version::GIT_SHA1);
 
 #ifdef FINAL
 		LOG(INFO) << "This is a final build";
