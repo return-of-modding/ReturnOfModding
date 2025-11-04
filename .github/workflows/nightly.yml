@@ -144,6 +144,44 @@ jobs:
           echo "build_sha=$(cat sha256.checksum)" >> $GITHUB_OUTPUT
           cat sha256.checksum
 
+      - name: Generate and Append Changelog
+        id: changelog
+        run: |
+            set -eux
+
+            version_number="${{ needs.build_nightly.outputs.version_number }}"
+
+            # Get latest nightly release info
+            release_info=$(gh api repos/${{ github.repository }}/releases/tags/nightly --jq '{created_at: .created_at, target_commitish: .target_commitish}' || echo "{}")
+
+            if [ "$release_info" != "{}" ]; then
+                last_sha=$(echo "$release_info" | jq -r '.target_commitish')
+                last_date=$(echo "$release_info" | jq -r '.created_at')
+            else
+                echo "No previous nightly found, using initial commit."
+                last_sha=$(git rev-list --max-parents=0 HEAD)
+                last_date="(initial release)"
+            fi
+
+            echo "Last nightly commit: $last_sha"
+            echo "Last nightly date: $last_date"
+
+            # Generate changelog section with version number
+            changelog_section="## Version ${version_number} — built $(date -u +"%Y-%m-%d")\n\n"
+            changelog_section+="Changes since $last_date:\n\n"
+            changelog_section+=$(git log --pretty=format:"- %s (%h)" $last_sha..HEAD)
+
+            echo -e "$changelog_section\n" >> CHANGELOG.md
+
+            # Commit and push changelog update
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add CHANGELOG.md
+            git commit -m "Update CHANGELOG for version ${version_number}"
+            git push
+        env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Nightly Release
         uses: softprops/action-gh-release@v1
         with:

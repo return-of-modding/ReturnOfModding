@@ -18,6 +18,10 @@ readme = "../README.md"
 outdir = "./build"
 
 [[build.copy]]
+source = "../CHANGELOG.md"
+target = "CHANGELOG.md"
+
+[[build.copy]]
 source = "../version.dll"
 target = "./ReturnOfModdingPack/version.dll"
 
