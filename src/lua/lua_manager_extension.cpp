@@ -118,9 +118,12 @@ namespace big::lua_manager_extension
 					return {};
 				}
 
-				static ankerl::unordered_dense::map<std::string, std::vector<sol::object>> required_module_cache;
+				static ankerl::unordered_dense::map<size_t, ankerl::unordered_dense::map<std::string, std::vector<sol::object>>> hot_reload_generation_count_to_required_module_cache;
 
-				if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
+				const auto current_gen = g_lua_manager->m_hot_reloading_generation_count;
+
+				if (!hot_reload_generation_count_to_required_module_cache[current_gen].contains(full_path) ||
+					g_lua_manager->is_hot_reloading())
 				{
 					sol::state_view state = this_env.env.value().lua_state();
 					auto fresh_result     = get_loadfile_function(state)(full_path);
@@ -155,7 +158,7 @@ namespace big::lua_manager_extension
 						results.push_back(obj);
 					}
 
-					required_module_cache[full_path] = results;
+					hot_reload_generation_count_to_required_module_cache[current_gen][full_path] = results;
 
 					bool found_the_other_module = false;
 					for (const auto& mod : g_lua_manager->m_modules)
@@ -174,16 +177,19 @@ namespace big::lua_manager_extension
 					}
 				}
 
-				return required_module_cache[full_path];
+				return hot_reload_generation_count_to_required_module_cache[current_gen][full_path];
 			}
 			else if (required_module_path.extension() == ".dll")
 			{
 				const std::string full_path = (char*)required_module_path.u8string().c_str();
 				const auto path_stem        = required_module_path.stem();
 
-				static ankerl::unordered_dense::map<std::string, std::vector<sol::object>> required_module_cache;
+				static ankerl::unordered_dense::map<size_t, ankerl::unordered_dense::map<std::string, std::vector<sol::object>>> hot_reload_generation_count_to_required_module_cache;
 
-				if (!required_module_cache.contains(full_path) || g_lua_manager->is_hot_reloading())
+				const auto current_gen = g_lua_manager->m_hot_reloading_generation_count;
+
+				if (!hot_reload_generation_count_to_required_module_cache[current_gen].contains(full_path)
+				    || g_lua_manager->is_hot_reloading())
 				{
 					sol::state_view state = this_env.env.value().lua_state();
 
@@ -234,10 +240,10 @@ namespace big::lua_manager_extension
 						results.push_back(obj);
 					}
 
-					required_module_cache[full_path] = results;
+					hot_reload_generation_count_to_required_module_cache[current_gen][full_path] = results;
 				}
 
-				return required_module_cache[full_path];
+				return hot_reload_generation_count_to_required_module_cache[current_gen][full_path];
 			}
 
 			return {};
