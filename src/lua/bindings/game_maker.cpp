@@ -526,6 +526,146 @@ namespace lua::game_maker
 		return {.function_ptr = 0};
 	}
 
+	struct jit_hook_cache_entry_t
+	{
+		std::string m_hook_name;
+		uintptr_t m_original_func_ptr;
+
+		// If true then it is jit_hook_create_script, otherwise jit_hook_create_object.
+		bool m_create_script;
+
+		// refer to jit_hook_create_script / jit_hook_create_object before last parameter.
+		bool m_bool_parameter;
+	};
+
+	struct jit_hook_cache_t
+	{
+		size_t m_lua_folder_hash{};
+		std::vector<jit_hook_cache_entry_t> m_entries;
+	};
+
+	jit_hook_cache_t g_jit_hook_cache{};
+
+	void jit_hook_create_script(const std::string& hook_name, uintptr_t original_func_ptr, bool is_builtin, bool save_to_cache)
+	{
+		std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
+		uintptr_t JIT;
+
+		if (is_builtin)
+		{
+			// clang-format off
+			JIT = runtime_func->make_jit_func(
+					"void",
+					{"RValue*", "CInstance*", "CInstance*", "int", "RValue*"},
+					asmjit::Arch::kHost,
+					&builtin_script_callback,
+					original_func_ptr);
+			// clang-format on
+		}
+		else
+		{
+			// clang-format off
+			JIT = runtime_func->make_jit_func(
+					"RValue*",
+					{"CInstance*", "CInstance*", "RValue*", "int", "RValue**"},
+					asmjit::Arch::kHost,
+					&script_callback,
+					original_func_ptr);
+			// clang-format on
+		}
+
+		hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
+
+		hooks_original_func_ptr_to_info[original_func_ptr]->create_and_enable_hook(hook_name, original_func_ptr, JIT);
+
+		if (save_to_cache)
+		{
+			g_jit_hook_cache.m_entries.push_back(jit_hook_cache_entry_t{.m_hook_name = hook_name, .m_original_func_ptr = original_func_ptr, .m_create_script = true, .m_bool_parameter = is_builtin});
+		}
+	}
+
+	void jit_hook_create_object(const std::string& hook_name, uintptr_t original_func_ptr, bool is_object_hook, bool save_to_cache)
+	{
+		std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
+		uintptr_t JIT;
+
+		if (is_object_hook)
+		{
+			// clang-format off
+				JIT = runtime_func->make_jit_func(
+					"void",
+					{"CInstance*", "CInstance*"},
+					asmjit::Arch::kHost,
+					&object_function_callback,
+					original_func_ptr);
+			// clang-format on
+		}
+		else
+		{
+			// clang-format off
+				JIT = runtime_func->make_jit_func(
+					"RValue*",
+					{"CInstance*", "CInstance*", "RValue*", "int", "RValue**"},
+					asmjit::Arch::kHost,
+					&script_callback,
+					original_func_ptr);
+			// clang-format on
+		}
+
+		hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
+
+		hooks_original_func_ptr_to_info[original_func_ptr]->create_and_enable_hook(hook_name, original_func_ptr, JIT);
+
+		if (save_to_cache)
+		{
+			g_jit_hook_cache.m_entries.push_back(jit_hook_cache_entry_t {
+				.m_hook_name = hook_name, .m_original_func_ptr = original_func_ptr, .m_create_script = false, .m_bool_parameter = is_object_hook
+			});
+		}
+	}
+
+	static std::filesystem::path jit_hook_cache_get_file_path()
+	{
+		return big::g_file_manager.get_project_file("./cache/jit_hook_cache.bin").get_path();
+	}
+
+	static bool jit_hook_cache_save()
+	{
+		// Make a copy because main thread could modify entries.
+		jit_hook_cache_t cache = g_jit_hook_cache;
+
+		std::ofstream out(jit_hook_cache_get_file_path(), std::ios::binary);
+		if (!out)
+		{
+			return false;
+		}
+
+		// Write folder hash
+		out.write(reinterpret_cast<const char*>(&cache.m_lua_folder_hash), sizeof(cache.m_lua_folder_hash));
+
+		// Write entry count
+		const size_t count = cache.m_entries.size();
+		out.write(reinterpret_cast<const char*>(&count), sizeof(count));
+
+		// Write entries
+		for (const auto& entry : cache.m_entries)
+		{
+			// write string
+			const size_t str_len = entry.m_hook_name.size();
+			out.write(reinterpret_cast<const char*>(&str_len), sizeof(str_len));
+			out.write(entry.m_hook_name.data(), str_len);
+
+			// write pointer
+			out.write(reinterpret_cast<const char*>(&entry.m_original_func_ptr), sizeof(entry.m_original_func_ptr));
+
+			// write bools
+			out.write(reinterpret_cast<const char*>(&entry.m_create_script), sizeof(entry.m_create_script));
+			out.write(reinterpret_cast<const char*>(&entry.m_bool_parameter), sizeof(entry.m_bool_parameter));
+		}
+
+		return true;
+	}
+
 	static make_central_script_result make_central_script_hook(const double script_function_index_double, sol::this_environment& env, bool is_pre_hook)
 	{
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
@@ -541,68 +681,45 @@ namespace lua::game_maker
 			return {};
 		}
 
-		if (!func_info.is_builtin)
+		std::stringstream hook_name;
+		hook_name << mdl->guid() << " | " << script_index_to_name[function_index] << " | "
+		          << mdl->m_data_ext.m_all_callbacks.size();
+
+		LOG(INFO) << "hook_name: " << hook_name.str();
+
+		const auto is_builtin = func_info.is_builtin;
+		const auto original_func_ptr = func_info.function_ptr;
+
+		if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
 		{
-			std::stringstream hook_name;
-			hook_name << mdl->guid() << " | " << script_index_to_name[function_index] << " | "
-			          << mdl->m_data_ext.m_all_callbacks.size();
-
-			LOG(INFO) << "hook_name: " << hook_name.str();
-
-			const auto original_func_ptr = func_info.function_ptr;
-
-			if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
-			{
-				std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
-
-				// clang-format off
-				const auto JIT = runtime_func->make_jit_func(
-					"RValue*",
-					{"CInstance*", "CInstance*", "RValue*", "int", "RValue**"},
-					asmjit::Arch::kHost,
-					&script_callback,
-					original_func_ptr);
-				// clang-format on
-
-				hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
-
-				hooks_original_func_ptr_to_info[original_func_ptr]->create_and_enable_hook(hook_name.str(), original_func_ptr, JIT);
-			}
-
-			return {mdl, (void*)original_func_ptr, true};
-		}
-		else
-		{
-			std::stringstream hook_name;
-			hook_name << mdl->guid() << " | " << script_index_to_name[function_index] << " | "
-			          << mdl->m_data_ext.m_all_callbacks.size();
-
-			LOG(INFO) << "hook_name: " << hook_name.str();
-
-			const auto original_func_ptr = func_info.function_ptr;
-
-			if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
-			{
-				std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
-
-				// clang-format off
-				const auto JIT = runtime_func->make_jit_func(
-					"void",
-					{"RValue*", "CInstance*", "CInstance*", "int", "RValue*"},
-					asmjit::Arch::kHost,
-					&builtin_script_callback,
-					original_func_ptr);
-				// clang-format on
-
-				hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
-
-				hooks_original_func_ptr_to_info[original_func_ptr]->create_and_enable_hook(hook_name.str(), original_func_ptr, JIT);
-			}
-
-			return {mdl, (void*)original_func_ptr, false};
+			jit_hook_create_script(hook_name.str(), original_func_ptr, is_builtin, true);
 		}
 
-		return {};
+		return {mdl, (void*)original_func_ptr, !func_info.is_builtin};
+	}
+
+	static void jit_hook_cache_save_worker_init()
+	{
+		std::thread(
+		[]()
+		{
+			size_t last_saved_count = g_jit_hook_cache.m_entries.size();
+
+			while (true)
+			{
+				size_t current_count = g_jit_hook_cache.m_entries.size();
+
+				if (current_count != last_saved_count)
+				{
+					if (jit_hook_cache_save())
+					{
+						last_saved_count = current_count;
+					}
+				}
+
+				std::this_thread::sleep_for(std::chrono::seconds(5));
+			}
+		}).detach();
 	}
 
 	static make_central_script_result make_central_object_function_hook(const std::string& function_name, sol::this_environment& env, bool is_pre_hook)
@@ -628,37 +745,121 @@ namespace lua::game_maker
 
 		if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
 		{
-			std::unique_ptr<qstd::runtime_func> runtime_func = std::make_unique<qstd::runtime_func>();
-			uintptr_t JIT;
-			if (function_name.starts_with("gml_Object"))
-			{
-				// clang-format off
-				JIT = runtime_func->make_jit_func(
-					"void",
-					{"CInstance*", "CInstance*"},
-					asmjit::Arch::kHost,
-					&object_function_callback,
-					original_func_ptr);
-				// clang-format on
-			}
-			else
-			{
-				// clang-format off
-				JIT = runtime_func->make_jit_func(
-					"RValue*",
-					{"CInstance*", "CInstance*", "RValue*", "int", "RValue**"},
-					asmjit::Arch::kHost,
-					&script_callback,
-					original_func_ptr);
-				// clang-format on
-			}
-
-			hooks_original_func_ptr_to_info.emplace(original_func_ptr, std::move(runtime_func));
-
-			hooks_original_func_ptr_to_info[original_func_ptr]->create_and_enable_hook(hook_name.str(), original_func_ptr, JIT);
+			jit_hook_create_object(hook_name.str(), original_func_ptr, function_name.starts_with("gml_Object"), true);
 		}
 
 		return {mdl, (void*)original_func_ptr, true};
+	}
+
+	static bool jit_hook_cache_load()
+	{
+		auto& cache = g_jit_hook_cache;
+
+		std::ifstream in(jit_hook_cache_get_file_path(), std::ios::binary);
+		if (!in)
+		{
+			return false;
+		}
+
+		// Read folder hash
+		in.read(reinterpret_cast<char*>(&cache.m_lua_folder_hash), sizeof(cache.m_lua_folder_hash));
+		if (!in)
+		{
+			return false;
+		}
+
+		// Read entry count
+		size_t count = 0;
+		in.read(reinterpret_cast<char*>(&count), sizeof(count));
+		if (!in)
+		{
+			return false;
+		}
+
+		cache.m_entries.clear();
+		cache.m_entries.reserve(count);
+
+		for (size_t i = 0; i < count; ++i)
+		{
+			jit_hook_cache_entry_t entry;
+
+			// read string
+			size_t str_len = 0;
+			in.read(reinterpret_cast<char*>(&str_len), sizeof(str_len));
+			if (!in)
+			{
+				return false;
+			}
+
+			entry.m_hook_name.resize(str_len);
+			in.read(entry.m_hook_name.data(), str_len);
+			if (!in)
+			{
+				return false;
+			}
+
+			// read pointer
+			in.read(reinterpret_cast<char*>(&entry.m_original_func_ptr), sizeof(entry.m_original_func_ptr));
+			if (!in)
+			{
+				return false;
+			}
+
+			// read bools
+			in.read(reinterpret_cast<char*>(&entry.m_create_script), sizeof(entry.m_create_script));
+			in.read(reinterpret_cast<char*>(&entry.m_bool_parameter), sizeof(entry.m_bool_parameter));
+			if (!in)
+			{
+				return false;
+			}
+
+			cache.m_entries.push_back(std::move(entry));
+		}
+
+		return true;
+	}
+
+	// TODO: Move this to ReturnOfModdingBase and provide a hash based on mod guid + mod version number
+	size_t compute_lua_hash(const std::filesystem::path& root)
+	{
+		std::vector<size_t> file_hashes;
+		auto hash_combine = [](size_t& seed, size_t value)
+		{
+			seed ^= value + 0x9e'37'79'b9'7f'4a'7c'15ULL + (seed << 6) + (seed >> 2);
+		};
+
+		for (const auto& entry : std::filesystem::recursive_directory_iterator(root, std::filesystem::directory_options::skip_permission_denied | std::filesystem::directory_options::follow_directory_symlink))
+		{
+			if (entry.path().filename() == L"manifest.json")
+			{
+				std::wstring rel_path = std::filesystem::relative(entry.path(), root).wstring();
+
+				// Hash file content instead of modification time
+				std::ifstream file(entry.path(), std::ios::binary);
+				if (file)
+				{
+					std::vector<char> buffer(std::istreambuf_iterator<char>(file), {});
+					size_t content_hash = std::hash<std::string_view>{}(std::string_view(buffer.data(), buffer.size()));
+
+					// Per-file hash
+					size_t h = std::hash<std::wstring>{}(rel_path);
+					hash_combine(h, content_hash);
+					file_hashes.push_back(h);
+				}
+			}
+		}
+
+		// Order-independent hashing
+		std::sort(file_hashes.begin(), file_hashes.end());
+
+		// Final combine
+		size_t final_hash = 0;
+		for (auto h : file_hashes)
+		{
+			hash_combine(final_hash, h);
+		}
+
+		return final_hash;
 	}
 
 	// Lua API: Function
@@ -2568,5 +2769,45 @@ namespace lua::game_maker
 			                     return luaL_error(L, "Can't define new game maker functions this way");
 		                     });
 		state["gm"][sol::metatable_key] = meta_gm;
+
+		// Speed up mod loading time by only suspending threads once than suspending / resuming between every hooks
+		// TODO: This only affect rom game maker jit hooks, ideally the same would be done for ReturnOfModdingBase ones too.
+		{
+			const auto lua_folder_hash = compute_lua_hash(big::g_lua_manager->m_plugins_folder.get_path());
+
+			if (jit_hook_cache_load())
+			{
+				LOG(INFO) << "Current hash: " << lua_folder_hash << ", Cache hash: " << g_jit_hook_cache.m_lua_folder_hash;
+				if (g_jit_hook_cache.m_lua_folder_hash == lua_folder_hash && g_jit_hook_cache.m_entries.size())
+				{
+					big::threads::suspend_all_but_one();
+
+					for (const auto& entry : g_jit_hook_cache.m_entries)
+					{
+						if (entry.m_create_script)
+						{
+							jit_hook_create_script(entry.m_hook_name, entry.m_original_func_ptr, entry.m_bool_parameter, false);
+						}
+						else
+						{
+							jit_hook_create_object(entry.m_hook_name, entry.m_original_func_ptr, entry.m_bool_parameter, false);
+						}
+					}
+
+					big::threads::resume_all();
+
+					LOG(INFO) << "Created " << g_jit_hook_cache.m_entries.size() << " hooks ahead of time.";
+				}
+				else
+				{
+					LOG(INFO) << "Cache didn't match current plugins folder, clearing.";
+					g_jit_hook_cache = {};
+				}
+			}
+
+			g_jit_hook_cache.m_lua_folder_hash = lua_folder_hash;
+
+			jit_hook_cache_save_worker_init();
+		}
 	}
 } // namespace lua::game_maker
