@@ -529,7 +529,9 @@ namespace lua::game_maker
 	struct jit_hook_cache_entry_t
 	{
 		std::string m_hook_name;
-		uintptr_t m_original_func_ptr;
+
+		// base address + offset based pointer.
+		uintptr_t m_original_func_offset_ptr;
 
 		// If true then it is jit_hook_create_script, otherwise jit_hook_create_object.
 		bool m_create_script;
@@ -545,6 +547,8 @@ namespace lua::game_maker
 	};
 
 	jit_hook_cache_t g_jit_hook_cache{};
+
+	uintptr_t g_rorr_base_address{};
 
 	void jit_hook_create_script(const std::string& hook_name, uintptr_t original_func_ptr, bool is_builtin, bool save_to_cache)
 	{
@@ -580,7 +584,13 @@ namespace lua::game_maker
 
 		if (save_to_cache)
 		{
-			g_jit_hook_cache.m_entries.push_back(jit_hook_cache_entry_t{.m_hook_name = hook_name, .m_original_func_ptr = original_func_ptr, .m_create_script = true, .m_bool_parameter = is_builtin});
+			g_jit_hook_cache.m_entries.push_back(
+				jit_hook_cache_entry_t{
+					.m_hook_name = hook_name,
+					.m_original_func_offset_ptr = original_func_ptr - g_rorr_base_address,
+					.m_create_script = true, .m_bool_parameter = is_builtin
+				}
+			);
 		}
 	}
 
@@ -619,7 +629,9 @@ namespace lua::game_maker
 		if (save_to_cache)
 		{
 			g_jit_hook_cache.m_entries.push_back(jit_hook_cache_entry_t {
-				.m_hook_name = hook_name, .m_original_func_ptr = original_func_ptr, .m_create_script = false, .m_bool_parameter = is_object_hook
+				.m_hook_name = hook_name,
+				.m_original_func_offset_ptr = original_func_ptr - g_rorr_base_address,
+				.m_create_script = false, .m_bool_parameter = is_object_hook
 			});
 		}
 	}
@@ -656,7 +668,7 @@ namespace lua::game_maker
 			out.write(entry.m_hook_name.data(), str_len);
 
 			// write pointer
-			out.write(reinterpret_cast<const char*>(&entry.m_original_func_ptr), sizeof(entry.m_original_func_ptr));
+			out.write(reinterpret_cast<const char*>(&entry.m_original_func_offset_ptr), sizeof(entry.m_original_func_offset_ptr));
 
 			// write bools
 			out.write(reinterpret_cast<const char*>(&entry.m_create_script), sizeof(entry.m_create_script));
@@ -799,7 +811,7 @@ namespace lua::game_maker
 			}
 
 			// read pointer
-			in.read(reinterpret_cast<char*>(&entry.m_original_func_ptr), sizeof(entry.m_original_func_ptr));
+			in.read(reinterpret_cast<char*>(&entry.m_original_func_offset_ptr), sizeof(entry.m_original_func_offset_ptr));
 			if (!in)
 			{
 				return false;
@@ -825,7 +837,7 @@ namespace lua::game_maker
 		std::vector<size_t> file_hashes;
 		auto hash_combine = [](size_t& seed, size_t value)
 		{
-			seed ^= value + 0x9e'37'79'b9'7f'4a'7c'15ULL + (seed << 6) + (seed >> 2);
+			seed ^= value + 0x9e'37'79'b8'7f'4a'7c'15ULL + (seed << 6) + (seed >> 2);
 		};
 
 		for (const auto& entry : std::filesystem::recursive_directory_iterator(root, std::filesystem::directory_options::skip_permission_denied | std::filesystem::directory_options::follow_directory_symlink))
@@ -2775,6 +2787,8 @@ namespace lua::game_maker
 		{
 			const auto lua_folder_hash = compute_lua_hash(big::g_lua_manager->m_plugins_folder.get_path());
 
+			g_rorr_base_address = (uintptr_t)GetModuleHandleA(0);
+
 			if (jit_hook_cache_load())
 			{
 				LOG(INFO) << "Current hash: " << lua_folder_hash << ", Cache hash: " << g_jit_hook_cache.m_lua_folder_hash;
@@ -2786,11 +2800,14 @@ namespace lua::game_maker
 					{
 						if (entry.m_create_script)
 						{
-							jit_hook_create_script(entry.m_hook_name, entry.m_original_func_ptr, entry.m_bool_parameter, false);
+							jit_hook_create_script(entry.m_hook_name, g_rorr_base_address + entry.m_original_func_offset_ptr, entry.m_bool_parameter, false);
 						}
 						else
 						{
-							jit_hook_create_object(entry.m_hook_name, entry.m_original_func_ptr, entry.m_bool_parameter, false);
+							jit_hook_create_object(entry.m_hook_name,
+							                       g_rorr_base_address + entry.m_original_func_offset_ptr,
+							                       entry.m_bool_parameter,
+							                       false);
 						}
 					}
 
