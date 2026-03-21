@@ -1258,9 +1258,12 @@ namespace lua::game_maker
 		for (int i = 0; i < shader_amount; i++)
 		{
 			YYShader* shader = (*big::g_pointers->m_rorr.m_shader_pool)[i];
-			if (name == shader->name)
+			if (shader)
 			{
-				return i;
+				if (name == shader->name)
+				{
+					return i;
+				}
 			}
 		}
 		return -1;
