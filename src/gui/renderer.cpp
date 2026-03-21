@@ -636,7 +636,6 @@ namespace big
 			init_once = false;
 
 			LOG(INFO) << "Renderer is safe to init.";
-			Logger::FlushQueue();
 
 			// Purposely leak it, we are not unloading this module in any case.
 			auto renderer_instance = new big::renderer();

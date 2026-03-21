@@ -106,8 +106,6 @@ BOOL APIENTRY DllMain(HMODULE hmod, DWORD reason, PVOID)
 		auto byte_patch_manager_instance = new byte_patch_manager();
 		LOG(INFO) << "Byte Patch Manager initialized.";
 
-		Logger::FlushQueue();
-
 		rorr::init_hooks();
 
 		// Purposely leak it, we are not unloading this module in any case.
