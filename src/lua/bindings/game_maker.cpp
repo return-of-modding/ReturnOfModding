@@ -12,6 +12,7 @@
 #include "rorr/gm/YYGMLFuncs.hpp"
 
 #include <ankerl/unordered_dense.h>
+#include <cstddef>
 
 #pragma warning(push, 0)
 #include <asmjit/asmjit.h>
@@ -322,9 +323,9 @@ static sol::object RValue_to_lua(const RValue& res, sol::this_state this_state_)
 	case _INT64: return sol::make_object<double>(this_state_, res.asReal());
 	case ARRAY:
 		YYObjectPinMap::pin(res.ref_array->pObjThing);
-		
+
 		return sol::make_object<RefDynamicArrayOfRValueLuaWrapper>(this_state_, {.ptr = res.ref_array});
-	case REF: 
+	case REF:
 		if ((res.i64 & cinstance_mask) == cinstance_mask && res.i32 != -4 /* Global Instance */)
 		{
 			return sol::make_object<CInstance*>(this_state_, gm::CInstance_id_to_CInstance[res.i32]);
@@ -713,24 +714,24 @@ namespace lua::game_maker
 	static void jit_hook_cache_save_worker_init()
 	{
 		std::thread(
-		[]()
-		{
-			size_t last_saved_count = g_jit_hook_cache.m_entries.size();
+		    []()
+		    {
+			    size_t last_saved_count = g_jit_hook_cache.m_entries.size();
 
-			while (true)
-			{
-				size_t current_count = g_jit_hook_cache.m_entries.size();
+			    while (true)
+			    {
+				    size_t current_count = g_jit_hook_cache.m_entries.size();
 
-				if (current_count != last_saved_count)
-				{
-					if (jit_hook_cache_save())
-					{
-						last_saved_count = current_count;
-					}
-				}
+				    if (current_count != last_saved_count)
+				    {
+					    if (jit_hook_cache_save())
+					    {
+						    last_saved_count = current_count;
+					    }
+				    }
 
-				std::this_thread::sleep_for(std::chrono::seconds(5));
-			}
+				    std::this_thread::sleep_for(std::chrono::seconds(5));
+			    }
 		}).detach();
 	}
 
@@ -934,7 +935,7 @@ namespace lua::game_maker
 		{
 			const auto id = big::lua_function_data_ext::g_last_id++;
 
-			const auto hook_type = big::GMHookType::POST_CODE;	
+			const auto hook_type = big::GMHookType::POST_CODE;
 
 			res.m_this_lua_module->m_data_ext.m_all_callbacks.push_back({.m_cb = cb, .m_id = id, .m_enabled = true, .m_original_function_ptr = res.m_original_func_ptr, .m_type = hook_type});
 
@@ -1293,17 +1294,17 @@ namespace lua::game_maker
 		{
 			return;
 		}
-		int native_shader_handle = -1;
-		YYNativeShader* native_shader = new YYNativeShader(shader->HLSL11.vertexShader, shader->HLSL11.pixelShader, native_shader_handle);
+		int result = -1;
+		YYNativeShader* native_shader = new YYNativeShader(shader->HLSL11.vertexShader, shader->HLSL11.pixelShader, result);
 
 
-		if (native_shader_handle < 0)
+		if (result < 0)
 		{
-			if (native_shader_handle == -1)
+			if (result == -1)
 			{
 				LOG(ERROR) << "Failed to replace shader. Vertex shader not compatible with this device";
 			}
-			else if (native_shader_handle == -2)
+			else if (result == -2)
 			{
 				LOG(ERROR) << "Failed to replace shader. Pixel shader not compatible with this device";
 			}
@@ -1315,14 +1316,16 @@ namespace lua::game_maker
 			delete shader;
 			return;
 		}
+		auto& shader_pool        = *big::g_pointers->m_rorr.m_shader_pool;
+		auto& native_shader_pool = *big::g_pointers->m_rorr.m_native_shader_pool;
 
-		shader->native_shader_handle = id;
+		shader->native_shader_handle = shader_pool[id]->native_shader_handle;
 
-		delete (*big::g_pointers->m_rorr.m_shader_pool)[id];
-		delete (*big::g_pointers->m_rorr.m_native_shader_pool)[id];
+		delete shader_pool[id];
+		delete native_shader_pool[shader->native_shader_handle];
 
-		(*big::g_pointers->m_rorr.m_shader_pool)[id]        = shader;
-		(*big::g_pointers->m_rorr.m_native_shader_pool)[id] = native_shader;
+		shader_pool[id]                                  = shader;
+		native_shader_pool[shader->native_shader_handle] = native_shader;
 
 		shader->gm_BaseTexture = gm::call("shader_get_sampler_index", std::to_array<RValue, 2>({id, "gm_BaseTexture"}));
 		shader->gm_Matrices    = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_Matrices"}));
@@ -1331,6 +1334,13 @@ namespace lua::game_maker
 		shader->gm_Lights_Colour = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_Lights_Colour"}));
 		shader->gm_AmbientColour = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_AmbientColour"}));
 		shader->gm_LightingEnabled = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_LightingEnabled"}));
+		shader->gm_VS_FogEnabled = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_VS_FogEnabled"}));
+		shader->gm_PS_FogEnabled = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_PS_FogEnabled"}));
+		shader->gm_FogStart      = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_FogStart"}));
+		shader->gm_RcpFogRange   = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_RcpFogRange"}));
+		shader->gm_FogColour     = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_FogColour"}));
+		shader->gm_AlphaTestEnabled = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_AlphaTestEnabled"}));
+		shader->gm_AlphaRefValue = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_AlphaRefValue"}));
 	}
 
 	// Lua API: Function
@@ -1383,8 +1393,14 @@ namespace lua::game_maker
 			return;
 		}
 
-		const auto& native_shader = (*big::g_pointers->m_rorr.m_native_shader_pool)[id];
-		const auto& shader        = (*big::g_pointers->m_rorr.m_shader_pool)[id];
+		const auto& shader = (*big::g_pointers->m_rorr.m_shader_pool)[id];
+		if (shader == nullptr)
+		{
+			LOG(ERROR) << "Failed to dump shader. Disabled shader id.";
+			return;
+		}
+
+		const auto& native_shader = (*big::g_pointers->m_rorr.m_native_shader_pool)[shader->native_shader_handle];
 
 		for (int i = 0; i < native_shader->constBufVarCount; i++)
 		{
@@ -1395,7 +1411,12 @@ namespace lua::game_maker
 		LOG(INFO) << "gm_BaseTexture: " << shader->gm_BaseTexture << "\n gm_Matrices: " << shader->gm_Matrices
 		          << "\n gm_Lights_Direction: " << shader->gm_Lights_Direction << "\n gm_Lights_PosRange: " << shader->gm_Lights_PosRange
 		          << "\n gm_Lights_Colour: " << shader->gm_Lights_Colour << "\n gm_AmbientColour: " << shader->gm_AmbientColour
-		          << "\n gm_LightingEnabled: " << shader->gm_LightingEnabled;
+		          << "\n gm_LightingEnabled: " << shader->gm_LightingEnabled << "\n gm_VS_FogEnabled: " << shader->gm_VS_FogEnabled
+		          << "\n gm_PS_FogEnabled: " << shader->gm_PS_FogEnabled << "\n gm_FogStart: " << shader->gm_FogStart
+		          << "\n gm_RcpFogRange: " << shader->gm_RcpFogRange << "\n gm_FogColour: " << shader->gm_FogColour
+		          << "\n gm_AlphaTestEnabled: " << shader->gm_AlphaTestEnabled << "\n gm_AlphaRefValue: " << shader->gm_AlphaRefValue;
+
+		LOG(INFO) << "inputLayoutCount" << native_shader->inputLayoutCount;
 
 		Microsoft::WRL::ComPtr<ID3DBlob> disassembly;
 		HRESULT hr = D3DDisassemble(native_shader->vertexHeader->shader_data,
@@ -1430,7 +1451,7 @@ namespace lua::game_maker
 	{
 		if (!cinstance_self)
 		{
-			cinstance_self = (uintptr_t)alloca(sizeof(CInstance));
+			cinstance_self                                           = (uintptr_t)alloca(sizeof(CInstance));
 			*(uint32_t*)(cinstance_self + offsetof(CInstance, type)) = 0;
 		}
 
@@ -1778,8 +1799,8 @@ namespace lua::game_maker
 			    },
 				sol::meta_function::garbage_collect, sol::destructor(
 			        [](YYObjectBaseLuaWrapper& inst)
-			    {
-				    YYObjectPinMap::unpin(inst.ptr);
+			        {
+				        YYObjectPinMap::unpin(inst.ptr);
 			    })
 			);
 
@@ -1863,10 +1884,10 @@ namespace lua::game_maker
 			// Returns: RValue: The freshly made RValue of type PTR.
 			// Creates an RValue of type PTR from a number that will be used as a pointer.
 			rvalue_table.set_function("from_ptr",
-				[](double v) -> RValue
-				{
-					return RValue((void*)(uintptr_t)v);
-				});
+			                          [](double v) -> RValue
+			                          {
+				                          return RValue((void*)(uintptr_t)v);
+			                          });
 		}
 
 		// Lua API: Table
@@ -2020,10 +2041,10 @@ namespace lua::game_maker
 		// Class representing a game maker object instance.
 		//
 		// You can use most if not all of the builtin game maker variables (For example `someCInstance.x`) [listed here](https://manual.gamemaker.io/monthly/en/GameMaker_Language/GML_Reference/Asset_Management/Instances/Instance_Variables/Instance_Variables.htm).
-		// 
+		//
 		// As an alternative of using the `gm.call("function name", ...)` or gm.function_name(...)` syntax, you can also call game maker functions directly on the `CInstance` object.
-		// For example `someCInstance:instance_destroy()`. 
-		// Object instance methods also work, like Step, Draw, Alarm, KeyPress etc. 
+		// For example `someCInstance:instance_destroy()`.
+		// Object instance methods also work, like Step, Draw, Alarm, KeyPress etc.
 		// Note that `other` will always be null when using that syntax.
 		//
 		// To know the specific instance variables of a given object defined by the game, you can use `local variable_names = someCInstance:variable_instance_get_names()`
@@ -2049,8 +2070,8 @@ namespace lua::game_maker
 
 					    const auto yyobject = self.as<CInstance*>();
 
-						if (yyobject->type == YYObjectBaseType::CINSTANCE)
-						{
+					    if (yyobject->type == YYObjectBaseType::CINSTANCE)
+					    {
 						    const char* key_str = key.as<const char*>();
 
 						    const auto var_get_args = std::to_array<RValue, 2>({self.as<CInstance&>().id, key_str});
@@ -2075,12 +2096,12 @@ namespace lua::game_maker
 							    };
 							    return type[key_str];
 						    }
-						}
-						else 
-						{
+					    }
+					    else
+					    {
 						    const auto res = gm::call("struct_get", std::to_array<RValue, 2>({(YYObjectBase*)yyobject, key.as<const char*>()}));
 						    return RValue_to_lua(res, this_state_);
-						}
+					    }
 				    }
 			    },
 			    sol::meta_function::new_index,
@@ -2100,14 +2121,14 @@ namespace lua::game_maker
 
 					    const auto yyobject = self.as<CInstance*>();
 
-						if (yyobject->type == YYObjectBaseType::CINSTANCE)
-						{
+					    if (yyobject->type == YYObjectBaseType::CINSTANCE)
+					    {
 						    gm::call("variable_instance_set", std::to_array<RValue, 3>({yyobject->id, key.as<const char*>(), parse_sol_object(value)}));
 					    }
-						else
-						{
+					    else
+					    {
 						    gm::call("struct_set", std::to_array<RValue, 3>({(YYObjectBase*)yyobject, key.as<const char*>(), parse_sol_object(value)}));
-						}
+					    }
 				    }
 			    });
 
@@ -2340,22 +2361,22 @@ namespace lua::game_maker
 
 				    auto scriptref_index = self->m_call_script->m_script_name;
 				    if (big::string::starts_with("gml_Script_", scriptref_index))
-					{
-						scriptref_index += 11;
-					}
+				    {
+					    scriptref_index += 11;
+				    }
 
 				    self->m_self = args[0].yy_object_base;
 
-					const int arg_count = (int)args.size() - 2;
+				    const int arg_count = (int)args.size() - 2;
 				    RValue res;
 				    if (arg_count > 0)
-					{
+				    {
 					    res = gm::call(scriptref_index, (CInstance*)args[0].yy_object_base, (CInstance*)args[1].yy_object_base, &args[2], arg_count);
-					}
-					else
-					{
+				    }
+				    else
+				    {
 					    res = gm::call(scriptref_index, (CInstance*)args[0].yy_object_base, (CInstance*)args[1].yy_object_base, nullptr, 0);
-					}
+				    }
 
 				    return RValue_to_lua(res, this_state_);
 			    });
@@ -2367,7 +2388,7 @@ namespace lua::game_maker
 		{
 			sol::usertype<RefDynamicArrayOfRValueLuaWrapper> type = state.new_usertype<RefDynamicArrayOfRValueLuaWrapper>(
 			    "RefDynamicArrayOfRValue",
-				sol::meta_function::index,
+			    sol::meta_function::index,
 			    [](sol::this_state this_state_, RefDynamicArrayOfRValueLuaWrapper& self, sol::stack_object position_) -> sol::reference
 			    {
 				    if (position_.get_type() != sol::type::number)
@@ -2397,8 +2418,8 @@ namespace lua::game_maker
 			);
 
 			type["type"] = sol::property([](){
-				return YYObjectBaseType::ARRAY;	
-			});
+				    return YYObjectBaseType::ARRAY;
+			    });
 
 			sol::protected_function ipairs_func = type[sol::meta_function::ipairs];
 			type[sol::meta_function::pairs]     = ipairs_func;
@@ -2603,7 +2624,7 @@ namespace lua::game_maker
 		ns["pre_script_hook"]  = pre_script_hook;
 		ns["post_script_hook"] = post_script_hook;
 
-		ns["hook_enable"] = hook_enable;
+		ns["hook_enable"]  = hook_enable;
 		ns["hook_disable"] = hook_disable;
 
 		ns["call"] = sol::overload(lua_gm_call, lua_gm_call_global);

@@ -170,10 +170,10 @@ namespace big
         // ShaderCreate
         {
             "ShC",
-            "E8 ? ? ? ? 85 C0 79 ? 83 F8 FF",
+            "E8 ? ? ? ? 84 C0 75 ? 48 83 BB ? ? ? ? ? 75",
             [](memory::handle ptr)
             {
-				g_pointers->m_rorr.m_shader_create = ptr.sub(0x37).as<gm::ShaderCreate_t>();
+				g_pointers->m_rorr.m_shader_create = ptr.add(1).rip().as<gm::ShaderCreate_t>();
             }
         },
         // in FindShaderByName

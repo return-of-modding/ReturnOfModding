@@ -121,7 +121,6 @@ struct YYShader
 	YYShaderLanguage type = YYShaderLanguage::HLSL_11;
 	YYShaderPair GLSLES, GLSL, HLSL9, HLSL11;
 	YYShaderPair mysteryPairs[3] = {};
-	int mysteryPadding[4]        = {};
 
 	char *error_str       = nullptr;
 	bool is_pixel_error   = false;
@@ -137,6 +136,13 @@ struct YYShader
 	int gm_Lights_Colour     = 0;
 	int gm_AmbientColour     = 0;
 	int gm_LightingEnabled   = 0;
+	int gm_VS_FogEnabled     = 0;
+	int gm_PS_FogEnabled     = 0;
+	int gm_FogStart          = 0;
+	int gm_RcpFogRange       = 0;
+	int gm_FogColour         = 0;
+	int gm_AlphaTestEnabled  = 0;
+	int gm_AlphaRefValue     = 0;
 
 	YYShader() = default;
 	YYShader(std::string name, int id, const std::vector<char> &vertexShaderRaw, const std::vector<char> &pixelShaderRaw);
@@ -311,7 +317,7 @@ namespace gm
 {
 	using ShaderCreate_t         = bool (*)(YYShader *shader);
 	using GenShaderDataHeader_t  = YYShaderDataHeader *(*)(char *raw_data);
-	using NativeShaderGenCBuf_t  = YYShaderDataHeader *(*)(YYNativeShader *native);
+	using NativeShaderGenCBuf_t  = YYShaderDataHeader *(*)(YYNativeShader * native);
 	using NativeShaderCreate_t   = int (*)(YYNativeShader *native);
 	using FreeShaderDataHeader_t = void (*)(YYShaderDataHeader **header);
 } // namespace gm
