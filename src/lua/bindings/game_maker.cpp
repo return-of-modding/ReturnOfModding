@@ -1271,19 +1271,6 @@ namespace lua::game_maker
 
 	// Lua API: Function
 	// Table: gm
-	// Name: shader_replace
-	// Param: file_path: string: the path to the shader source code (must be HLSL).
-	// Param: name: string: the shader name.
-	// Param: id: int: the id of the shader to replace.
-	static void lua_shader_replace(std::string file_path, std::string name, int id)
-	{
-		// TODO: Clean up previous shader memory.
-
-		lua_shader_add(file_path, name);
-	}
-
-	// Lua API: Function
-	// Table: gm
 	// Name: shader_add
 	// Param: file_path: string: the path to the shader source code (must be HLSL). Check https://github.com/GameMakerDiscord/gists/blob/master/HLSL_passthrough for example.
 	// Param: name: string: the shader name.
@@ -1324,6 +1311,19 @@ namespace lua::game_maker
 		big::g_pointers->m_rorr.m_shader_create(shader);
 
 		return shader->id;
+	}
+
+	// Lua API: Function
+	// Table: gm
+	// Name: shader_replace
+	// Param: file_path: string: the path to the shader source code (must be HLSL).
+	// Param: name: string: the shader name.
+	// Param: id: int: the id of the shader to replace.
+	static void lua_shader_replace(std::string file_path, std::string name, int id)
+	{
+		// TODO: Clean up previous shader memory.
+
+		lua_shader_add(file_path, name);
 	}
 
 	// Lua API: Function
