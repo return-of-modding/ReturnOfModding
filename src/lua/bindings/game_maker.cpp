@@ -1277,60 +1277,9 @@ namespace lua::game_maker
 	// Param: id: int: the id of the shader to replace.
 	static void lua_shader_replace(std::string file_path, std::string name, int id)
 	{
-		if (id < 0 || id >= *big::g_pointers->m_rorr.m_shader_amount)
-		{
-			LOG(ERROR) << "Failed to replace shader. InValid shader id.";
-			return;
-		}
-		int existing_shader_id = lua_find_shader_by_name(name);
-		if (existing_shader_id != -1 && existing_shader_id != id)
-		{
-			LOG(ERROR) << "Failed to replace shader. The shader name already exists.";
-			return;
-		}
-		YYShader* shader = shader_compiler(file_path, name, id);
-		if (shader == nullptr)
-		{
-			return;
-		}
-		int native_shader_handle = -1;
-		YYNativeShader* native_shader = new YYNativeShader(shader->HLSL11.vertexShader, shader->HLSL11.pixelShader, native_shader_handle);
+		// TODO: Clean up previous shader memory.
 
-
-		if (native_shader_handle < 0)
-		{
-			if (native_shader_handle == -1)
-			{
-				LOG(ERROR) << "Failed to replace shader. Vertex shader not compatible with this device";
-			}
-			else if (native_shader_handle == -2)
-			{
-				LOG(ERROR) << "Failed to replace shader. Pixel shader not compatible with this device";
-			}
-			else
-			{
-				LOG(ERROR) << "Failed to replace shader. Unknow error.";
-			}
-			delete native_shader;
-			delete shader;
-			return;
-		}
-
-		shader->native_shader_handle = id;
-
-		delete (*big::g_pointers->m_rorr.m_shader_pool)[id];
-		delete (*big::g_pointers->m_rorr.m_native_shader_pool)[id];
-
-		(*big::g_pointers->m_rorr.m_shader_pool)[id]        = shader;
-		(*big::g_pointers->m_rorr.m_native_shader_pool)[id] = native_shader;
-
-		shader->gm_BaseTexture = gm::call("shader_get_sampler_index", std::to_array<RValue, 2>({id, "gm_BaseTexture"}));
-		shader->gm_Matrices    = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_Matrices"}));
-		shader->gm_Lights_Direction = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_Lights_Direction"}));
-		shader->gm_Lights_PosRange = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_Lights_PosRange"}));
-		shader->gm_Lights_Colour = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_Lights_Colour"}));
-		shader->gm_AmbientColour = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_AmbientColour"}));
-		shader->gm_LightingEnabled = gm::call("shader_get_uniform", std::to_array<RValue, 2>({id, "gm_LightingEnabled"}));
+		lua_shader_add(file_path, name);
 	}
 
 	// Lua API: Function
@@ -1345,25 +1294,35 @@ namespace lua::game_maker
 	// ```
 	static int lua_shader_add(std::string file_path, std::string name)
 	{
-		int existing_shader_id = lua_find_shader_by_name(name);
-		if (existing_shader_id != -1)
-		{
-			LOG(WARNING) << "The shader name already exists. Try replacing instead of adding.";
-			lua_shader_replace(file_path, name, existing_shader_id);
-			return existing_shader_id;
-		}
-		YYShader* shader = shader_compiler(file_path, name, *big::g_pointers->m_rorr.m_shader_amount);
+		auto shader_id = lua_find_shader_by_name(name);
+		const bool shader_already_exist = shader_id != -1;
 
+		if (!shader_already_exist)
+		{
+			shader_id = *big::g_pointers->m_rorr.m_shader_amount;
+		}
+		else
+		{
+			LOG(INFO) << "Replacing shader: " << name << " - " << shader_id;
+		}
+
+		YYShader* shader = shader_compiler(file_path, name, shader_id);
 		if (shader == nullptr)
 		{
 			return -1;
 		}
-		(*big::g_pointers->m_rorr.m_shader_amount)++;
-		*big::g_pointers->m_rorr.m_shader_pool =
-		    (YYShader**)big::g_pointers->m_rorr.m_memorymanager_realloc(*big::g_pointers->m_rorr.m_shader_pool,
-		                                                                8 * (*big::g_pointers->m_rorr.m_shader_amount));
+
+		if (!shader_already_exist)
+		{
+			(*big::g_pointers->m_rorr.m_shader_amount)++;
+			*big::g_pointers->m_rorr.m_shader_pool =
+			    (YYShader**)big::g_pointers->m_rorr.m_memorymanager_realloc(*big::g_pointers->m_rorr.m_shader_pool,
+			                                                                8 * (*big::g_pointers->m_rorr.m_shader_amount));
+		}
+		
 		(*big::g_pointers->m_rorr.m_shader_pool)[shader->id] = shader;
 		big::g_pointers->m_rorr.m_shader_create(shader);
+
 		return shader->id;
 	}
 
