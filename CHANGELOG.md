@@ -1,3 +1,7 @@
+## [1.1.19] - 2026-03-26
+
+- fix(ci): another try at fixing changelog gen
+
 ## [1.1.18] - 2026-03-25
 - fix(shader): fix `shader_replace` crash. continued
 - fix(shader): fix `shader_replace` crash.
@@ -689,10 +693,3 @@
 - debug code for adding a survivor entry to the character selection
 - Add project files.
 - Add .gitattributes.
-## [1.1.19] - 2026-03-26
-
-- CHANGELOG
-- fix(ci): another try at fixing changelog gen
-- Release v1.1.19
-
-

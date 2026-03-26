@@ -113,17 +113,16 @@ jobs:
 
           # Update CHANGELOG.md
           $entry = ("## [{0}] - {1}`n`n{2}`n`n" -f $version, $date, $commits)
+
           if (Test-Path CHANGELOG.md) {
-            $existing = Get-Content CHANGELOG.md -Raw
+              $existing = Get-Content CHANGELOG.md -Raw
           } else {
-            $existing = "# Changelog`n`n"
+              $existing = ""
           }
 
-          $newContent = $existing -replace "(?s)(# Changelog.*?\n)", "`$1`n$entry"
-          if ($newContent -eq $existing) {
-            $newContent = "$existing`n$entry"
-          }
-
+          # Prepend new entry at the top
+          $newContent = $entry + $existing
+          
           Set-Content CHANGELOG.md $newContent
 
           # Commit changes
