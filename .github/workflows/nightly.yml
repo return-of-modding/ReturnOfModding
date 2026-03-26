@@ -18,6 +18,8 @@ jobs:
       version_number: ${{ steps.set_version.outputs.version_number }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - name: Setup MSVC environment
         uses: ilammy/msvc-dev-cmd@v1
@@ -67,6 +69,69 @@ jobs:
           sed -i 's/VERSION_NUMBER = "[^"]*"/VERSION_NUMBER = "'"$version_number"'"/' version.hpp
           cd ..
 
+      - name: Set up Git user
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Prepare release files
+        run: |
+          $version = $env:VERSION_NUMBER
+          $date = Get-Date -Format "yyyy-MM-dd"
+
+          # Read previous release hash
+          if (Test-Path last_release_hash.txt) {
+            $last_hash = (Get-Content last_release_hash.txt -Raw).Trim()
+          } else {
+            $last_hash = ""
+          }
+
+          # Current commit hash
+          $current_hash = "${{ github.sha }}"
+
+          # Get commits since last release
+          if ($last_hash -ne "") {
+            $commits = git log "$last_hash..$current_hash" --pretty=format:"- %s" --no-merges | Out-String
+          } else {
+            $commits = git log --pretty=format:"- %s" --no-merges | Out-String
+          }
+
+          $commits = $commits.Trim()
+          if ([string]::IsNullOrWhiteSpace($commits)) {
+            $commits = "- No changes since last release."
+          }
+
+          # Save current hash for next release
+          Set-Content last_release_hash.txt $current_hash
+          echo "HASH=$current_hash" >> $env:GITHUB_ENV
+
+          # Export release notes
+          echo "RELEASE_NOTES<<EOF" >> $env:GITHUB_ENV
+          echo "$commits" >> $env:GITHUB_ENV
+          echo "EOF" >> $env:GITHUB_ENV
+
+          # Update CHANGELOG.md
+          $entry = ("## [{0}] - {1}`n`n{2}`n`n" -f $version, $date, $commits)
+          if (Test-Path CHANGELOG.md) {
+            $existing = Get-Content CHANGELOG.md -Raw
+          } else {
+            $existing = "# Changelog`n`n"
+          }
+
+          $newContent = $existing -replace "(?s)(# Changelog.*?\n)", "`$1`n$entry"
+          if ($newContent -eq $existing) {
+            $newContent = "$existing`n$entry"
+          }
+
+          Set-Content CHANGELOG.md $newContent
+
+          # Commit changes
+          git add CHANGELOG.md last_release_hash.txt
+          git commit -m "Release v$version"
+          git push
+        env:
+          VERSION_NUMBER: ${{ steps.set_version.outputs.version_number }}
+
       - name: Build 64bit release DLL
         run: |
           cmake --build ./build --config RelWithDebInfo --target ReturnOfModding --
@@ -103,45 +168,6 @@ jobs:
           sha256sum version.dll > sha256.checksum
           echo "build_sha=$(cat sha256.checksum)" >> $GITHUB_OUTPUT
           cat sha256.checksum
-
-      - name: Generate and Append Changelog
-        id: changelog
-        run: |
-            set -eux
-
-            version_number="${{ needs.build_nightly.outputs.version_number }}"
-
-            # Try to fetch the latest nightly release info safely
-            if gh api repos/${{ github.repository }}/releases/tags/nightly >/tmp/release.json 2>/dev/null; then
-              echo "Found previous nightly release."
-              last_sha=$(jq -r '.target_commitish' /tmp/release.json)
-              last_date=$(jq -r '.created_at' /tmp/release.json)
-            else
-              echo "No previous nightly found — using first commit as base."
-              last_sha=$(git rev-list --max-parents=0 HEAD)
-              last_date="(initial release)"
-            fi
-
-            echo "Last nightly commit: $last_sha"
-            echo "Last nightly date: $last_date"
-
-            # Generate changelog section
-            changelog_section="## Version ${version_number} — built $(date -u +"%Y-%m-%d")\n\n"
-            changelog_section+="Changes since ${last_date}:\n\n"
-
-            # Add commit messages between last nightly and now
-            changelog_section+=$(git log --pretty=format:"- %s (%h)" ${last_sha}..HEAD || echo "- (no commits found)")
-
-            echo -e "$changelog_section\n" >> CHANGELOG.md
-
-            # Commit and push changelog update
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add CHANGELOG.md
-            git commit -m "Update CHANGELOG for version ${version_number}" || echo "No changes to commit."
-            git push
-        env:
-            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Delete Existing Release
         id: delete_release
@@ -190,25 +216,29 @@ jobs:
           name: Nightly [${{ needs.build_nightly.outputs.short_sha }}]
           tag_name: nightly
           body: |
-            **This release has been built by Github Actions**
-            [Link to build](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            **Nightly Build Release**
+            This release has been automatically generated by GitHub Actions.
 
-            Version: `${{ needs.build_nightly.outputs.version_number }}`
+            [View the workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-            Build SHA256:
+            **Version:** `${{ needs.build_nightly.outputs.version_number }}`
+
+            **Changelog / Release Notes:**
+            ```
+            ${{ env.RELEASE_NOTES }}
+            ```
+
+            **Build SHA256:**
             ```
             ${{ steps.build_sha.outputs.build_sha }}
             ```
-            To verify the build SHA256 during the action, click the build link, go-to "Create Release", open the Echo build sha256 step and read the sha256.
+            To verify the SHA256, download the build artifact and compare it with the above checksum.
 
-            You can download the build artifacts, generate a SHA256 checksum and compare it with the below binary.
-            Build artifacts ARE NOT automatically the same as release assets since release assets can be modified afterwards.
-
-            Full Commit Hash:
+            **Full Commit Hash:**
             ```
             ${{ needs.build_nightly.outputs.full_sha }}
             ```
-          files: |
+        files: |
             version.dll
 
       - name: Setup dotnet
