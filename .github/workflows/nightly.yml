@@ -238,7 +238,7 @@ jobs:
             ```
             ${{ needs.build_nightly.outputs.full_sha }}
             ```
-        files: |
+          files: |
             version.dll
 
       - name: Setup dotnet
