@@ -283,4 +283,107 @@ pointer = gm.get_object_function_address("gml_Object_oStartMenu_Step_2")
 pointer = gm.get_object_function_address(function_name)
 ```
 
+### `add_pre_event(instance, event_type, event_number, name, callback)`
 
+- **Parameters:**
+  - `instance` (CInstance): The instance to add callback to.
+  - `event_type` (number): The type of the GameMaker event to hook (e.g., `ev_step`, `ev_draw`).
+  - `event_number` (number): The specific number/sub-type of the event (e.g., `ev_step_normal`).
+  - `name` (string): The unique identifier of the callback.
+  - `callback` (function): The callback function with signature `function(self, other)`. It should return `true` or `false` depending on whether the original method should be called.
+
+**Example Usage:**
+```lua
+gm.add_pre_event(instance, event_type, event_number, name, callback)
+```
+```lua
+gm.add_pre_event(instance, gm.constants.ev_step, 2, "test", function(self, other)
+
+end)
+```
+
+### `add_post_event(instance, event_type, event_number, name, callback)`
+
+- **Parameters:**
+  - `instance` (CInstance): The instance to add callback to.
+  - `event_type` (number): The type of the GameMaker event to hook (e.g., `ev_step`, `ev_draw`).
+  - `event_number` (number): The specific number/sub-type of the event (e.g., `ev_step_normal`).
+  - `name` (string): The unique identifier of the callback.
+  - `callback` (function): The callback function with signature `function(self, other)`.
+
+**Example Usage:**
+```lua
+gm.add_post_event(instance, event_type, event_number, name, callback)
+```
+
+### `has_pre_event(instance, event_type, event_number, name)`
+
+- **Parameters:**
+  - `instance` (CInstance): The instance to check.
+  - `event_type` (number): The type of the GameMaker event to hook.
+  - `event_number` (number): The specific number/sub-type of the event.
+  - `name` (string): The unique identifier of the pre-callback to look for.
+- **Returns:**
+  - `boolean`: True if a pre-callback with the given name exists for this specific event and instance.
+
+**Example Usage:**
+```lua
+local exists = gm.has_pre_event(instance, event_type, event_number, name)
+```
+
+### `has_post_event(instance, event_type, event_number, name)`
+
+- **Parameters:**
+  - `instance` (CInstance): The instance to check.
+  - `event_type` (number): The type of the GameMaker event to hook.
+  - `event_number` (number): The specific number/sub-type of the event.
+  - `name` (string): The unique identifier of the post-callback to look for.
+- **Returns:**
+  - `boolean`: True if a post-callback with the given name exists for this specific event and instance.
+
+**Example Usage:**
+```lua
+local exists = gm.has_post_event(instance, event_type, event_number, name)
+```
+
+### `remove_pre_event(instance, event_type, event_number, name)`
+
+- **Parameters:**
+  - `instance` (CInstance): The instance to remove callback from.
+  - `event_type` (number): The type of the GameMaker event to hook.
+  - `event_number` (number): The specific number/sub-type of the event.
+  - `name` (string): The unique identifier of the pre-callback to remove.
+- **Returns:**
+  - `boolean`: True if the callback was successfully found and removed.
+
+**Example Usage:**
+```lua
+local success = gm.remove_pre_event(instance, event_type, event_number, name)
+```
+
+### `remove_post_event(instance, event_type, event_number, name)`
+
+- **Parameters:**
+  - `instance` (CInstance): The instance to remove callback from.
+  - `event_type` (number): The type of the GameMaker event to hook.
+  - `event_number` (number): The specific number/sub-type of the event.
+  - `name` (string): The unique identifier of the post-callback to remove.
+- **Returns:**
+  - `boolean`: True if the callback was successfully found and removed.
+
+**Example Usage:**
+```lua
+local success = gm.remove_post_event(instance, event_type, event_number, name)
+```
+
+### `get_all_events(object_index)`
+
+- **Parameters:**
+  - `object_index` (number): The object_index to check.
+- **Returns:**
+  - `table`: A list of tables, each containing `event_type` and `event_number`.
+
+**Example Usage:**
+```lua
+local events = gm.get_all_events(object_index)
+```
