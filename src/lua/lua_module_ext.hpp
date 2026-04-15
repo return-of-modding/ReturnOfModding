@@ -16,10 +16,7 @@ namespace big
 		POST_BUILTIN,
 
 		PRE_SCRIPT,
-		POST_SCRIPT,
-
-		PRE_EVENT,
-		POST_EVENT
+		POST_SCRIPT
 	};
 
 	class lua_module_ext;
