@@ -13,6 +13,8 @@
 #include "gm/YYShader.hpp"
 #include "gm/MemoryManager.hpp"
 #include "gm/YYSetScriptRef.hpp"
+#include "gm/ObjectEventPerform_hook.hpp"
+#include "gm/CObjectGM.hpp"
 
 #include <memory/handle.hpp>
 
@@ -29,6 +31,7 @@ namespace big
 		int* m_code_function_GET_the_function_function_count;
 
 		gm::Code_Execute m_code_execute;
+		gm::ObjectEventPerform m_object_event_perform;
 
 		gm::RVariableRoutine* m_builtin_variables;
 		int* m_builtin_variable_count;
@@ -81,6 +84,8 @@ namespace big
 		YYSetScriptRef_t m_YYSetScriptRef;
 
 		void* m_CreateSwapChain;
+
+		CObjectHashMap<CObjectGM>** g_ObjectHash;
 	};
 
 #pragma pack(pop)
