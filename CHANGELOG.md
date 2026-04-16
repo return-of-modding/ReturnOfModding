@@ -1,3 +1,11 @@
+## [1.1.20] - 2026-04-16
+
+- doc gen
+- fix event_hook doc
+- feat: add event hook system. (#31)
+- fix(ci): yet another fix for changelog gen.
+- Release v1.1.19
+
 ## [1.1.19] - 2026-03-26
 
 - fix(ci): another try at fixing changelog gen
@@ -693,3 +701,4 @@
 - debug code for adding a survivor entry to the character selection
 - Add project files.
 - Add .gitattributes.
+
