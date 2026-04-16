@@ -85,9 +85,10 @@ number = gm.post_script_hook(function_index, callback)
 ### `event_hook_pre_add(instance, event_type, event_number, name, callback)`
 
 Registers a callback that will be called right before the specific event is executed for this instance.
+
 **Example Usage**
 ```lua
-gm.add_pre_event(instance, gm.constants.ev_step, 2, "test", function(self, other)
+gm.event_hook_pre_add(instance, gm.constants.ev_step, 2, "test", function(self, other)
 
 end)
 ```
