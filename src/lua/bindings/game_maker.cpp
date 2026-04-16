@@ -2863,6 +2863,19 @@ namespace lua::game_maker
 		ns["event_hook_post_has"]    = event_hook_post_has;
 		ns["event_hook_get_all"]    = event_hook_get_all;
 
+		// Lua API: Function
+        // Table: gm
+        // Name: get_instance_count
+        // Returns: number: The total number of instances in the current game.
+        // **Example Usage**
+        // ```lua
+        // local count = gm.get_instance_count()
+        // ```
+		ns["get_instance_count"] = [] -> uint32_t
+		{
+			return *(big::g_pointers->m_rorr.g_InstanceCount);
+		};
+
 		ns["hook_enable"]  = hook_enable;
 		ns["hook_disable"] = hook_disable;
 
