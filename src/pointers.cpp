@@ -2,6 +2,8 @@
 
 #include "hooks/hooking.hpp"
 #include "memory/all.hpp"
+#include "rorr/gm/CObjectGM.hpp"
+#include "rorr/gm/ObjectEventPerform_hook.hpp"
 #include "rorr/rorr_pointers_layout_info.hpp"
 
 namespace big
@@ -37,6 +39,15 @@ namespace big
             [](memory::handle ptr)
             {
                 g_pointers->m_rorr.m_code_execute = ptr.add(1).rip().as<gm::Code_Execute>();
+            }
+        },
+        // Object_Event_Perform
+        {
+            "OEP",
+            "48 89 5C 24 ? 56 57 41 54 48 83 EC 20 83 79",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.m_object_event_perform = ptr.as<gm::ObjectEventPerform>();
             }
         },
 		// Builtin Variables
@@ -288,6 +299,15 @@ namespace big
             [](memory::handle ptr)
             {
 				g_pointers->m_rorr.m_CreateSwapChain = ptr.as<void*>();
+            }
+        },
+        // g_ObjectHash
+        {
+            "GOH",
+            "48 8B 0D ? ? ? ? 48 63 51 ? 48 8B 01 48 23 D3",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.g_ObjectHash = ptr.add(3).rip().as<CObjectHashMap<CObjectGM>**>();
             }
         }
         >(); // don't leave a trailing comma at the end

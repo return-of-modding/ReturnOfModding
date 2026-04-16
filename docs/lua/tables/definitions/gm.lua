@@ -30,6 +30,65 @@ function gm.pre_script_hook(function_index, callback) end
 ---@return number # Unique identifier for later disabling / enabling the hook on the fly.
 function gm.post_script_hook(function_index, callback) end
 
+-- Registers a callback that will be called right before the specific event is executed for this instance.
+--**Example Usage**
+--```lua
+--gm.add_pre_event(instance, gm.constants.ev_step, 2, "test", function(self, other)
+--
+--end)
+--```
+---@param instance CInstance The instance to add callback to.
+---@param event_type number The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
+---@param event_number number The specific number/sub-type of the event (e.g., ev_step_normal).
+---@param name string The unique identifier of the callback.
+---@param callback function callback that match signature function ( self (CInstance), other (CInstance) ) -> Return true or false depending on if you want the orig method to be called.
+function gm.event_hook_pre_add(instance, event_type, event_number, name, callback) end
+
+-- Registers a callback that will be called right after the specific event is executed for this instance.
+---@param instance CInstance The instance to add callback to.
+---@param event_type number The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
+---@param event_number number The specific number/sub-type of the event (e.g., ev_step_normal).
+---@param name string The unique identifier of the callback.
+---@param callback function callback that match signature function ( self (CInstance), other (CInstance) )
+function gm.event_hook_post_add(instance, event_type, event_number, name, callback) end
+
+-- Checks if a specific event pre-callback is registered for this instance.
+---@param instance CInstance The instance to check.
+---@param event_type number The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
+---@param event_number number The specific number/sub-type of the event (e.g., ev_step_normal).
+---@param name string The unique identifier of the pre-callback to look for.
+---@return boolean # True if a pre-callback with the given name exists for this specific event and instance.
+function gm.event_hook_pre_has(instance, event_type, event_number, name) end
+
+-- Checks if a specific event post-callback is registered for this instance.
+---@param instance CInstance The instance to check.
+---@param event_type number The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
+---@param event_number number The specific number/sub-type of the event (e.g., ev_step_normal).
+---@param name string The unique identifier of the post-callback to look for.
+---@return boolean # True if a post-callback with the given name exists for this specific event and instance.
+function gm.event_hook_post_has(instance, event_type, event_number, name) end
+
+-- Removes a specific event pre-callback registered for this instance.
+---@param instance CInstance The instance to remove callback from.
+---@param event_type number The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
+---@param event_number number The specific number/sub-type of the event (e.g., ev_step_normal).
+---@param name string The unique identifier of the pre-callback to remove.
+---@return boolean # True if the callback was successfully found and removed.
+function gm.event_hook_pre_remove(instance, event_type, event_number, name) end
+
+-- Removes a specific event post-callback registered for this instance.
+---@param instance CInstance The instance to remove callback from.
+---@param event_type number The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
+---@param event_number number The specific number/sub-type of the event (e.g., ev_step_normal).
+---@param name string The unique identifier of the post-callback to remove.
+---@return boolean # True if the callback was successfully found and removed.
+function gm.event_hook_post_remove(instance, event_type, event_number, name) end
+
+-- Retrieves all registered events for a specific object_index.
+---@param object_index number The object_index to check.
+---@return table # A list of tables, each containing 'event_type' and 'event_number' table keys.
+function gm.event_hook_get_all(object_index) end
+
 ---@param identifier GMHookHandle The identifier returned by the `hook` family functions.
 function gm.hook_enable(identifier) end
 

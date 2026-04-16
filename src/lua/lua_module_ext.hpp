@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lua/lua_module.hpp"
+#include <cstdint>
 
 namespace big
 {
@@ -59,6 +60,10 @@ namespace big
 
 		ankerl::unordered_dense::map<void*, std::vector<lua_function_cached_data_ext>> m_pre_script_execute_callbacks;
 		ankerl::unordered_dense::map<void*, std::vector<lua_function_cached_data_ext>> m_post_script_execute_callbacks;
+
+		using event_callback_map_t = ankerl::unordered_dense::map<int, ankerl::unordered_dense::map<uint64_t, ankerl::unordered_dense::map<std::string, sol::protected_function>>>;
+		event_callback_map_t m_pre_event_execute_callbacks;
+		event_callback_map_t m_post_event_execute_callbacks;
 
 		std::vector<big::lua_function_data_ext> m_all_callbacks;
 	};

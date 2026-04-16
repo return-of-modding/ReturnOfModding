@@ -5,6 +5,8 @@
 #include "string/string.hpp"
 
 #include <lua/lua_manager.hpp>
+#include <sol/forward.hpp>
+#include <utility>
 
 namespace big::lua_manager_extension
 {
@@ -426,6 +428,70 @@ namespace big::lua_manager_extension
 			{
 				cb.m_cb(self, other, result, std::span(args, arg_count));
 			}
+		}
+	}
+
+	namespace
+	{
+		using event_map_member_ptr_t = big::lua_module_data_ext::event_callback_map_t big::lua_module_data_ext::*;
+	}
+
+	uint64_t gen_event_id(uint32_t event_type, uint32_t event_number)
+	{
+		return (static_cast<uint64_t>(event_type) << 32) | event_number;
+	}
+	std::pair<uint32_t, uint32_t> parse_event_id(uint64_t event_id)
+	{
+		return {static_cast<uint32_t>(event_id >> 32), static_cast<uint32_t>(event_id)};
+	}
+
+	std::vector<sol::protected_function> get_callbacks(event_map_member_ptr_t map_ptr, CInstance* self, uint32_t event_type, uint32_t event_number)
+	{
+		std::vector<sol::protected_function> callbacks_to_run;
+
+		std::lock_guard guard(g_lua_manager->m_module_lock);
+		for (const auto& module : g_lua_manager->m_modules)
+		{
+			auto mod        = (lua_module_ext*)module.get();
+			const auto& map = (mod->m_data_ext).*map_ptr;
+			uint64_t event_id = gen_event_id(event_type, event_number);
+			if (auto it = map.find(self->id); it != map.end())
+			{
+				const auto& inner_map = it->second;
+				if (auto inner_it = inner_map.find(event_id); inner_it != inner_map.end())
+				{
+					for (const auto& [name, cb] : inner_it->second)
+					{
+						callbacks_to_run.push_back(cb);
+					}
+				}
+			}
+		}
+
+		return callbacks_to_run;
+	}
+
+	bool pre_event_execute(CInstance* self, CInstance* other, uint32_t event_type, uint32_t event_number)
+	{
+		bool call_orig_if_true = true;
+		std::vector<sol::protected_function> callback_list = get_callbacks(&big::lua_module_data_ext::m_pre_event_execute_callbacks, self, event_type, event_number);
+		for (const auto& cb : callback_list)
+		{
+			const auto result = cb(self, other);
+			if (call_orig_if_true && result.valid() && result.get_type() == sol::type::boolean && result.get<bool>() == false)
+			{
+				call_orig_if_true = false;
+			}
+		}
+		return call_orig_if_true;
+	}
+
+	void post_event_execute(CInstance* self, CInstance* other, uint32_t event_type, uint32_t event_number)
+	{
+		std::vector<sol::protected_function> callback_list = get_callbacks(&big::lua_module_data_ext::m_post_event_execute_callbacks, self, event_type, event_number);
+		for (const auto& cb : callback_list)
+		{
+			cb(self, other);
 		}
 	}
 

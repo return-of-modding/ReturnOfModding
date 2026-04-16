@@ -22,5 +22,10 @@ namespace big::lua_manager_extension
 	bool pre_script_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args);
 	void post_script_execute(void* original_func_ptr, CInstance* self, CInstance* other, RValue* result, int arg_count, RValue** args);
 
+	uint64_t gen_event_id(uint32_t event_type, uint32_t event_number);
+	std::pair<uint32_t, uint32_t> parse_event_id(uint64_t event_id);
+	bool pre_event_execute(CInstance* self, CInstance* other, uint32_t event_type, uint32_t event_number);
+	void post_event_execute(CInstance* self, CInstance* other, uint32_t event_type, uint32_t event_number);
+	
 	void process_callback_cache();
 } // namespace big::lua_manager_extension

@@ -2,6 +2,8 @@
 
 #include "CInstance.hpp"
 #include "hooks/hooking.hpp"
+#include "lua/lua_manager.hpp"
+#include "lua/lua_module_ext.hpp"
 
 namespace gm
 {
@@ -38,6 +40,15 @@ namespace gm
 		              });
 
 		CInstance_id_to_CInstance.erase(this_->id);
+		if (big::g_lua_manager)
+		{
+			for (const auto& module_ : big::g_lua_manager->m_modules)
+			{
+				auto mod = (big::lua_module_ext*)module_.get();
+				mod->m_data_ext.m_pre_event_execute_callbacks.erase(this_->id);
+				mod->m_data_ext.m_post_event_execute_callbacks.erase(this_->id);
+			}
+		}
 
 		auto* res = big::g_hooking->get_original<hook_CInstance_dctor>()(this_);
 
