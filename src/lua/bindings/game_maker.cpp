@@ -1042,59 +1042,99 @@ namespace lua::game_maker
 		using event_map_member_ptr_t = big::lua_module_data_ext::event_callback_map_t big::lua_module_data_ext::*;
 	}
 
+	static bool construct_guid_name_for_event_hook_callback(const std::string& guid, const std::string& name, std::string& result)
+	{
+		for (const auto& mod : big::g_lua_manager->m_modules)
+		{
+			if (guid == mod->guid())
+			{
+				result = guid + ":" + name;
+				return true;
+			}
+		}
+
+		LOG(ERROR) << "Could not find a module with guid " << guid << " for event hook";
+		return false;
+	}
+
 	// Lua API: Function
 	// Table: gm
-	// Name: add_pre_event
+	// Name: event_hook_pre_add
 	// Param: instance: CInstance: The instance to add callback to.
 	// Param: event_type: number: The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
 	// Param: event_number: number: The specific number/sub-type of the event (e.g., ev_step_normal).
+	// Param: guid: string: The mod guid for the callback, used for identifying the callback and preventing conflicts between different mods.
 	// Param: name: string: The unique identifier of the callback.
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance) ) -> Return true or false depending on if you want the orig method to be called.
 	// Registers a callback that will be called right before the specific event is executed for this instance.
-	static void add_pre_event(CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::protected_function cb, sol::this_environment env)
+	// **Example Usage**
+	// ```lua
+	// gm.add_pre_event(instance, gm.constants.ev_step, 2, _PLUGIN.guid, "test", function(self, other)
+	// 
+	// end)
+	// ```
+	static void event_hook_pre_add(CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& guid, const std::string& name, sol::protected_function cb, sol::this_environment env)
 	{
-		// may need a check here.
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (!mdl)
 		{
 			return;
 		}
+
 		uint64_t event_id = big::lua_manager_extension::gen_event_id(event_type, event_number);
 		auto& map         = mdl->m_data_ext.m_pre_event_execute_callbacks[instance->id][event_id];
-		if (auto it = map.find(name) != map.end())
+
+		std::string callback_name;
+		if (construct_guid_name_for_event_hook_callback(guid, name, callback_name))
 		{
-			LOG(WARNING) << "Overwriting existing pre_event_execute callback: " << name;
+			if (map.contains(callback_name))
+			{
+				LOG(INFO) << "Overwriting existing pre_event_execute callback: " << callback_name;
+			}
+			map[callback_name] = cb;
 		}
-		map[name] = cb;
 	}
 
 	// Lua API: Function
 	// Table: gm
-	// Name: add_post_event
+	// Name: event_hook_post_add
 	// Param: instance: CInstance: The instance to add callback to.
 	// Param: event_type: number: The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
 	// Param: event_number: number: The specific number/sub-type of the event (e.g., ev_step_normal).
+	// Param: guid: string: The mod guid for the callback, used for identifying the callback and preventing conflicts between different mods.
 	// Param: name: string: The unique identifier of the callback.
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance) )
 	// Registers a callback that will be called right after the specific event is executed for this instance.
-	static void add_post_event(CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::protected_function cb, sol::this_environment env)
+	static void event_hook_post_add(CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& guid, const std::string& name, sol::protected_function cb, sol::this_environment env)
 	{
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (!mdl)
 		{
 			return;
 		}
+
 		uint64_t event_id = big::lua_manager_extension::gen_event_id(event_type, event_number);
 		auto& map         = mdl->m_data_ext.m_post_event_execute_callbacks[instance->id][event_id];
-		if (map.contains(name))
+
+		std::string callback_name;
+		if (construct_guid_name_for_event_hook_callback(guid, name, callback_name))
 		{
-			LOG(WARNING) << "Overwriting existing post_event_execute callback: " << name;
+			if (map.contains(callback_name))
+			{
+				LOG(INFO) << "Overwriting existing post_event_execute callback: " << callback_name;
+			}
+			map[callback_name] = cb;
 		}
-		map[name] = cb;
 	}
 
-	static bool event_exist_internal(sol::this_environment& env, event_map_member_ptr_t map_ptr, CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name)
+	static bool event_exist_internal(sol::this_environment& env, event_map_member_ptr_t map_ptr, CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& guid, const std::string& name)
 	{
+		std::string callback_name;
+		if (!construct_guid_name_for_event_hook_callback(guid, name, callback_name))
+		{
+			return false;
+		}
+
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (!mdl)
 		{
@@ -1115,39 +1155,47 @@ namespace lua::game_maker
 			return false;
 		}
 
-		return it_event->second.contains(name);
+		return it_event->second.contains(callback_name);
 	}
 
 	// Lua API: Function
 	// Table: gm
-	// Name: has_pre_event
+	// Name: event_hook_pre_has
 	// Param: instance: CInstance: The instance to check.
 	// Param: event_type: number: The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
 	// Param: event_number: number: The specific number/sub-type of the event (e.g., ev_step_normal).
+	// Param: guid: string: The mod guid for the callback, used for identifying the callback and preventing conflicts between different mods.
 	// Param: name: string: The unique identifier of the pre-callback to look for.
 	// Returns: boolean: True if a pre-callback with the given name exists for this specific event and instance.
 	// Checks if a specific event pre-callback is registered for this instance.
-	static bool has_pre_event(CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::this_environment env)
+	static bool event_hook_pre_has(CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& guid, const std::string& name, sol::this_environment env)
 	{
-		return event_exist_internal(env, &big::lua_module_data_ext::m_pre_event_execute_callbacks, instance, event_type, event_number, name);
+		return event_exist_internal(env, &big::lua_module_data_ext::m_pre_event_execute_callbacks, instance, event_type, event_number, guid, name);
 	}
 
 	// Lua API: Function
 	// Table: gm
-	// Name: has_post_event
+	// Name: event_hook_post_has
 	// Param: instance: CInstance: The instance to check.
 	// Param: event_type: number: The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
 	// Param: event_number: number: The specific number/sub-type of the event (e.g., ev_step_normal).
+	// Param: guid: string: The mod guid for the callback, used for identifying the callback and preventing conflicts between different mods.
 	// Param: name: string: The unique identifier of the post-callback to look for.
 	// Returns: boolean: True if a post-callback with the given name exists for this specific event and instance.
 	// Checks if a specific event post-callback is registered for this instance.
-	static bool has_post_event(CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::this_environment env)
+	static bool event_hook_post_has(CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& guid, const std::string& name, sol::this_environment env)
 	{
-		return event_exist_internal(env, &big::lua_module_data_ext::m_post_event_execute_callbacks, instance, event_type, event_number, name);
+		return event_exist_internal(env, &big::lua_module_data_ext::m_post_event_execute_callbacks, instance, event_type, event_number, guid, name);
 	}
 
-	static bool remove_event_internal(sol::this_environment& env, event_map_member_ptr_t map_ptr, CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name)
+	static bool remove_event_internal(sol::this_environment& env, event_map_member_ptr_t map_ptr, CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& guid, const std::string& name)
 	{
+		std::string callback_name;
+		if (!construct_guid_name_for_event_hook_callback(guid, name, callback_name))
+		{
+			return false;
+		}
+
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (!mdl)
 		{
@@ -1170,7 +1218,7 @@ namespace lua::game_maker
 		}
 
 		auto& name_map = it_event->second;
-		if (auto it_name = name_map.find(name); it_name != name_map.end())
+		if (auto it_name = name_map.find(callback_name); it_name != name_map.end())
 		{
 			name_map.erase(it_name);
 			return true;
@@ -1181,39 +1229,41 @@ namespace lua::game_maker
 
 	// Lua API: Function
 	// Table: gm
-	// Name: remove_pre_event
+	// Name: event_hook_pre_remove
 	// Param: instance: CInstance: The instance to remove callback from.
 	// Param: event_type: number: The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
 	// Param: event_number: number: The specific number/sub-type of the event (e.g., ev_step_normal).
+	// Param: guid: string: The mod guid for the callback, used for identifying the callback and preventing conflicts between different mods.
 	// Param: name: string: The unique identifier of the pre-callback to remove.
 	// Returns: boolean: True if the callback was successfully found and removed.
 	// Removes a specific event pre-callback registered for this instance.
-	static bool remove_pre_event(CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::this_environment env)
+	static bool event_hook_pre_remove(CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& guid, const std::string& name, sol::this_environment env)
 	{
-		return remove_event_internal(env, &big::lua_module_data_ext::m_pre_event_execute_callbacks, instance, event_type, event_number, name);
+		return remove_event_internal(env, &big::lua_module_data_ext::m_pre_event_execute_callbacks, instance, event_type, event_number, guid, name);
 	}
 
 	// Lua API: Function
 	// Table: gm
-	// Name: remove_post_event
+	// Name: event_hook_post_remove
 	// Param: instance: CInstance: The instance to remove callback from.
 	// Param: event_type: number: The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
 	// Param: event_number: number: The specific number/sub-type of the event (e.g., ev_step_normal).
+	// Param: guid: string: The mod guid for the callback, used for identifying the callback and preventing conflicts between different mods.
 	// Param: name: string: The unique identifier of the post-callback to remove.
 	// Returns: boolean: True if the callback was successfully found and removed.
 	// Removes a specific event post-callback registered for this instance.
-	static bool remove_post_event(CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::this_environment env)
+	static bool event_hook_post_remove(CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& guid, const std::string& name, sol::this_environment env)
 	{
-		return remove_event_internal(env, &big::lua_module_data_ext::m_post_event_execute_callbacks, instance, event_type, event_number, name);
+		return remove_event_internal(env, &big::lua_module_data_ext::m_post_event_execute_callbacks, instance, event_type, event_number, guid, name);
 	}
 
 	// Lua API: Function
 	// Table: gm
-	// Name: get_all_events
+	// Name: event_hook_get_all
 	// Param: object_index: number: The object_index to check.
-	// Returns: table: A list of tables, each coutaining 'event_type' and 'event_number'
+	// Returns: table: A list of tables, each containing 'event_type' and 'event_number' table keys.
 	// Retrieves all registered events for a specific object_index.
-	static sol::object get_all_events(int object_index, sol::this_state this_state)
+	static sol::object event_hook_get_all(int object_index, sol::this_state this_state)
 	{
 		sol::state_view lua(this_state);
 		CObjectGM* object = (*big::g_pointers->m_rorr.g_ObjectHash)->find_object(object_index);
@@ -2845,13 +2895,13 @@ namespace lua::game_maker
 		ns["pre_script_hook"]  = pre_script_hook;
 		ns["post_script_hook"] = post_script_hook;
 
-		ns["add_pre_event"]     = add_pre_event;
-		ns["add_post_event"]    = add_post_event;
-		ns["remove_pre_event"]  = remove_pre_event;
-		ns["remove_post_event"] = remove_post_event;
-		ns["has_pre_event"]     = has_pre_event;
-		ns["has_post_event"]    = has_post_event;
-		ns["get_all_events"]    = get_all_events;
+		ns["event_hook_pre_add"]     = event_hook_pre_add;
+		ns["event_hook_post_add"]    = event_hook_post_add;
+		ns["event_hook_pre_remove"]  = event_hook_pre_remove;
+		ns["event_hook_post_remove"] = event_hook_post_remove;
+		ns["event_hook_pre_has"]     = event_hook_pre_has;
+		ns["event_hook_post_has"]    = event_hook_post_has;
+		ns["event_hook_get_all"]    = event_hook_get_all;
 
 		ns["hook_enable"]  = hook_enable;
 		ns["hook_disable"] = hook_disable;
