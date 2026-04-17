@@ -16,7 +16,7 @@ Table containing helpers for interacting with the game maker engine.
 
 - Type: `constants_type_sorted[type_name][i] = constant_name`
 
-## Functions (24)
+## Functions (25)
 
 ### `pre_code_execute(function_name, callback)`
 
@@ -88,17 +88,17 @@ Registers a callback that will be called right before the specific event is exec
 
 **Example Usage**
 ```lua
-gm.event_hook_pre_add(instance, gm.constants.ev_step, 2, "test", function(self, other)
+gm.event_hook_pre_add(instance, gm.constants.ev_step, 2, "test", function(self, other, object_index)
 
 end)
 ```
 
 - **Parameters:**
-  - `instance` (CInstance): The instance to add callback to.
+  - `instance` (CInstance|number): The instance or its id to add callback to.
   - `event_type` (number): The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
   - `event_number` (number): The specific number/sub-type of the event (e.g., ev_step_normal).
   - `name` (string): The unique identifier of the callback.
-  - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance) ) -> Return true or false depending on if you want the orig method to be called.
+  - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance), object_index (number)) -> Return true or false depending on if you want the orig method to be called. Note: object_index represents the specific class defining the event being executed (could be a parent or a different object).
 
 **Example Usage:**
 ```lua
@@ -110,11 +110,11 @@ gm.event_hook_pre_add(instance, event_type, event_number, name, callback)
 Registers a callback that will be called right after the specific event is executed for this instance.
 
 - **Parameters:**
-  - `instance` (CInstance): The instance to add callback to.
+  - `instance` (CInstance|number): The instance or its id to add callback to.
   - `event_type` (number): The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
   - `event_number` (number): The specific number/sub-type of the event (e.g., ev_step_normal).
   - `name` (string): The unique identifier of the callback.
-  - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance) )
+  - `callback` (function): callback that match signature function ( self (CInstance), other (CInstance), object_index (number)) Note: object_index represents the specific class defining the event being executed (could be a parent or a different object).
 
 **Example Usage:**
 ```lua
@@ -126,7 +126,7 @@ gm.event_hook_post_add(instance, event_type, event_number, name, callback)
 Checks if a specific event pre-callback is registered for this instance.
 
 - **Parameters:**
-  - `instance` (CInstance): The instance to check.
+  - `instance` (CInstance|number): The instance or its id to check.
   - `event_type` (number): The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
   - `event_number` (number): The specific number/sub-type of the event (e.g., ev_step_normal).
   - `name` (string): The unique identifier of the pre-callback to look for.
@@ -144,7 +144,7 @@ boolean = gm.event_hook_pre_has(instance, event_type, event_number, name)
 Checks if a specific event post-callback is registered for this instance.
 
 - **Parameters:**
-  - `instance` (CInstance): The instance to check.
+  - `instance` (CInstance|number): The instance or its id to check.
   - `event_type` (number): The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
   - `event_number` (number): The specific number/sub-type of the event (e.g., ev_step_normal).
   - `name` (string): The unique identifier of the post-callback to look for.
@@ -162,7 +162,7 @@ boolean = gm.event_hook_post_has(instance, event_type, event_number, name)
 Removes a specific event pre-callback registered for this instance.
 
 - **Parameters:**
-  - `instance` (CInstance): The instance to remove callback from.
+  - `instance` (CInstance|number): The instance or its id to remove callback from.
   - `event_type` (number): The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
   - `event_number` (number): The specific number/sub-type of the event (e.g., ev_step_normal).
   - `name` (string): The unique identifier of the pre-callback to remove.
@@ -180,7 +180,7 @@ boolean = gm.event_hook_pre_remove(instance, event_type, event_number, name)
 Removes a specific event post-callback registered for this instance.
 
 - **Parameters:**
-  - `instance` (CInstance): The instance to remove callback from.
+  - `instance` (CInstance|number): The instance or its id to remove callback from.
   - `event_type` (number): The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
   - `event_number` (number): The specific number/sub-type of the event (e.g., ev_step_normal).
   - `name` (string): The unique identifier of the post-callback to remove.
@@ -341,6 +341,25 @@ gm.shader_dump(1)
 **Example Usage:**
 ```lua
 gm.shader_dump(id)
+```
+
+### `get_instance_count()`
+
+**Example Usage**
+```lua
+local count = gm.get_instance_count()
+gm.event_hook_pre_add(count + 1, gm.constants.ev_step, 2, "test", function(self, other, object_index)
+		log.info(self.id)
+end)
+gm.instance_create(x, y, object_index)
+```
+
+- **Returns:**
+  - `number`: The total number of instances in the current game.
+
+**Example Usage:**
+```lua
+number = gm.get_instance_count()
 ```
 
 ### `get_script_ref(function_index)`
