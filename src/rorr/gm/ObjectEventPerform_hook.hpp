@@ -12,14 +12,14 @@ namespace gm
 	{
 		if (big::g_lua_manager)
 		{
-			const auto call_orig_if_true = big::lua_manager_extension::pre_event_execute(self, other, event_type, event_number);
+			const auto call_orig_if_true = big::lua_manager_extension::pre_event_execute(self, other, object_index, event_type, event_number);
 
 			if (call_orig_if_true)
 			{
 				big::g_hooking->get_original<hook_ObjectEventPerform>()(self, other, object_index, event_type, event_number, is_forced);
 			}
 
-			big::lua_manager_extension::post_event_execute(self, other, event_type, event_number);
+			big::lua_manager_extension::post_event_execute(self, other, object_index, event_type, event_number);
 		}
 		else
 		{

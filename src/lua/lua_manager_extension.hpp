@@ -24,8 +24,8 @@ namespace big::lua_manager_extension
 
 	uint64_t gen_event_id(uint32_t event_type, uint32_t event_number);
 	std::pair<uint32_t, uint32_t> parse_event_id(uint64_t event_id);
-	bool pre_event_execute(CInstance* self, CInstance* other, uint32_t event_type, uint32_t event_number);
-	void post_event_execute(CInstance* self, CInstance* other, uint32_t event_type, uint32_t event_number);
+	bool pre_event_execute(CInstance* self, CInstance* other, int object_index, uint32_t event_type, uint32_t event_number);
+	void post_event_execute(CInstance* self, CInstance* other, int object_index, uint32_t event_type, uint32_t event_number);
 	
 	void process_callback_cache();
 } // namespace big::lua_manager_extension

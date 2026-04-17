@@ -1049,12 +1049,12 @@ namespace lua::game_maker
 	// Param: event_type: number: The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
 	// Param: event_number: number: The specific number/sub-type of the event (e.g., ev_step_normal).
 	// Param: name: string: The unique identifier of the callback.
-	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance) ) -> Return true or false depending on if you want the orig method to be called.
+	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), object_index (number)) -> Return true or false depending on if you want the orig method to be called. Note: object_index represents the specific class defining the event being executed (could be a parent or a different object).
 	// Registers a callback that will be called right before the specific event is executed for this instance.
 	// 
 	// **Example Usage**
 	// ```lua
-	// gm.event_hook_pre_add(instance, gm.constants.ev_step, 2, "test", function(self, other)
+	// gm.event_hook_pre_add(instance, gm.constants.ev_step, 2, "test", function(self, other, object_index)
 	// 
 	// end)
 	// ```
@@ -1083,7 +1083,7 @@ namespace lua::game_maker
 	// Param: event_type: number: The type of the GameMaker event to hook (e.g., ev_step, ev_draw).
 	// Param: event_number: number: The specific number/sub-type of the event (e.g., ev_step_normal).
 	// Param: name: string: The unique identifier of the callback.
-	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance) )
+	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), object_index (number)) Note: object_index represents the specific class defining the event being executed (could be a parent or a different object).
 	// Registers a callback that will be called right after the specific event is executed for this instance.
 	static void event_hook_post_add(int id, uint32_t event_type, uint32_t event_number, const std::string& name, sol::protected_function cb, sol::this_environment env)
 	{
@@ -2894,6 +2894,10 @@ namespace lua::game_maker
         // **Example Usage**
         // ```lua
         // local count = gm.get_instance_count()
+		// gm.event_hook_pre_add(count + 1, gm.constants.ev_step, 2, "test", function(self, other, object_index)
+		// 		log.info(self.id)
+		// end)
+		// gm.instance_create(x, y, object_index)
         // ```
 		ns["get_instance_count"] = [] -> uint32_t
 		{
