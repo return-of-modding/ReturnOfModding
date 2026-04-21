@@ -1,3 +1,8 @@
+## [1.1.21] - 2026-04-21
+
+- feat: add get_instance_count and expand event hook parameters (#32)
+- Release v1.1.20
+
 ## [1.1.20] - 2026-04-16
 
 - doc gen
@@ -701,4 +706,5 @@
 - debug code for adding a survivor entry to the character selection
 - Add project files.
 - Add .gitattributes.
+
 
