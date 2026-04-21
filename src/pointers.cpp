@@ -309,6 +309,15 @@ namespace big
             {
 				g_pointers->m_rorr.g_ObjectHash = ptr.add(3).rip().as<CObjectHashMap<CObjectGM>**>();
             }
+        },
+        // g_InstanceCount
+        {
+            "GIC",
+            "8B 1D ? ? ? ? FF C3",
+            [](memory::handle ptr)
+            {
+				g_pointers->m_rorr.g_InstanceCount = ptr.add(2).rip().as<uint32_t*>();
+            }
         }
         >(); // don't leave a trailing comma at the end
 		// clang-format on

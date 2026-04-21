@@ -471,13 +471,13 @@ namespace big::lua_manager_extension
 		return callbacks_to_run;
 	}
 
-	bool pre_event_execute(CInstance* self, CInstance* other, uint32_t event_type, uint32_t event_number)
+	bool pre_event_execute(CInstance* self, CInstance* other, int object_index, uint32_t event_type, uint32_t event_number)
 	{
 		bool call_orig_if_true = true;
 		std::vector<sol::protected_function> callback_list = get_callbacks(&big::lua_module_data_ext::m_pre_event_execute_callbacks, self, event_type, event_number);
 		for (const auto& cb : callback_list)
 		{
-			const auto result = cb(self, other);
+			const auto result = cb(self, other, object_index);
 			if (call_orig_if_true && result.valid() && result.get_type() == sol::type::boolean && result.get<bool>() == false)
 			{
 				call_orig_if_true = false;
@@ -486,12 +486,12 @@ namespace big::lua_manager_extension
 		return call_orig_if_true;
 	}
 
-	void post_event_execute(CInstance* self, CInstance* other, uint32_t event_type, uint32_t event_number)
+	void post_event_execute(CInstance* self, CInstance* other, int object_index, uint32_t event_type, uint32_t event_number)
 	{
 		std::vector<sol::protected_function> callback_list = get_callbacks(&big::lua_module_data_ext::m_post_event_execute_callbacks, self, event_type, event_number);
 		for (const auto& cb : callback_list)
 		{
-			cb(self, other);
+			cb(self, other, object_index);
 		}
 	}
 

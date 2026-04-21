@@ -86,6 +86,7 @@ namespace big
 		void* m_CreateSwapChain;
 
 		CObjectHashMap<CObjectGM>** g_ObjectHash;
+		uint32_t* g_InstanceCount;
 	};
 
 #pragma pack(pop)
