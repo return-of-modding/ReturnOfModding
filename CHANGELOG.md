@@ -1,3 +1,8 @@
+## [1.1.22] - 2026-04-27
+
+- m stuff
+- Release v1.1.21
+
 ## [1.1.21] - 2026-04-21
 
 - feat: add get_instance_count and expand event hook parameters (#32)
@@ -706,5 +711,6 @@
 - debug code for adding a survivor entry to the character selection
 - Add project files.
 - Add .gitattributes.
+
 
 
