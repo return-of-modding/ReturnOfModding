@@ -102,7 +102,7 @@ namespace big::lua_manager_extension
 					const auto required_module_path_dll = required_module_path.replace_extension(".dll");
 					if (std::filesystem::exists(required_module_path_dll))
 					{
-						return {};
+						required_module_path = required_module_path_dll;
 					}
 				}
 			}
@@ -190,7 +190,74 @@ namespace big::lua_manager_extension
 			}
 			else if (required_module_path.extension() == ".dll")
 			{
-				return {};
+				if (required_module_guid != "studkid-Archipelago")
+				{
+					return {};
+				}
+
+				const std::string full_path = (char*)required_module_path.u8string().c_str();
+				const auto path_stem        = required_module_path.stem();
+
+				static ankerl::unordered_dense::map<size_t, ankerl::unordered_dense::map<std::string, std::vector<sol::object>>> hot_reload_generation_count_to_required_module_cache;
+
+				const auto current_gen = g_lua_manager->m_hot_reloading_generation_count;
+
+				if (!hot_reload_generation_count_to_required_module_cache[current_gen].contains(full_path)
+				    || g_lua_manager->is_hot_reloading())
+				{
+					sol::state_view state = this_env.env.value().lua_state();
+
+					sol::protected_function_result fresh_result;
+					std::string path_stem_str = (char*)path_stem.u8string().c_str();
+					const auto lua_igmark     = path_stem_str.find_first_of('-');
+					if (lua_igmark != std::string::npos)
+					{
+						auto func_name = std::string("luaopen_").append(path_stem_str.substr(lua_igmark + 1));
+
+						fresh_result = get_loadlib_function(state)(full_path, func_name);
+					}
+					else
+					{
+						auto func_name = std::string("luaopen_").append(path_stem_str);
+
+						fresh_result = get_loadlib_function(state)(full_path, func_name);
+					}
+
+					if (!fresh_result.valid() || fresh_result.get_type() != sol::type::function /*LuaJIT*/)
+					{
+						const auto error_msg =
+						    !fresh_result.valid() ? fresh_result.get<sol::error>().what() : fresh_result.get<const char*>(1) /*LuaJIT*/;
+
+						LOG(ERROR) << "Failed require: " << error_msg;
+						Logger::FlushQueue();
+						return {};
+					}
+
+					auto res = fresh_result.get<sol::protected_function>();
+
+					this_env.env.value().set_on(res);
+
+					sol::protected_function_result ress = res(args);
+
+					std::vector<sol::object> results;
+					if (!res.valid() || !ress.valid())
+					{
+						LOG(ERROR) << "Failed require";
+						Logger::FlushQueue();
+						return {};
+					}
+					int returncount = ress.return_count();
+					for (int i = 0; i < returncount; i++)
+					{
+						// pass offset to get the object that was returned
+						sol::object obj = ress.get<sol::object>(i);
+						results.push_back(obj);
+					}
+
+					hot_reload_generation_count_to_required_module_cache[current_gen][full_path] = results;
+				}
+
+				return hot_reload_generation_count_to_required_module_cache[current_gen][full_path];
 			}
 
 			return {};
