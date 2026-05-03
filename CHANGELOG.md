@@ -1,3 +1,8 @@
+## [1.1.24] - 2026-05-03
+
+- fix(lua): fix some of its io apis not supporting unicode
+- Release v1.1.23
+
 ## [1.1.23] - 2026-05-01
 
 - m stuff 2
@@ -716,6 +721,7 @@
 - debug code for adding a survivor entry to the character selection
 - Add project files.
 - Add .gitattributes.
+
 
 
 
