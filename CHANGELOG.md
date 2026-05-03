@@ -1,3 +1,8 @@
+## [1.1.25] - 2026-05-03
+
+- fix(lua): fix dangling lua state trying to get cleaned up whenever `m_data_ext = {}` is called
+- Release v1.1.24
+
 ## [1.1.24] - 2026-05-03
 
 - fix(lua): fix some of its io apis not supporting unicode
@@ -721,6 +726,7 @@
 - debug code for adding a survivor entry to the character selection
 - Add project files.
 - Add .gitattributes.
+
 
 
 
