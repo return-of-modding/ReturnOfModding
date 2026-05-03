@@ -128,6 +128,8 @@ namespace big
 
 	void gui::dx_on_tick()
 	{
+		big::lua_manager_extension::process_callback_cache();
+
 		g_lua_manager->process_file_watcher_queue();
 
 		push_theme_colors();
@@ -343,8 +345,6 @@ namespace big
 				ImGui::End();
 			}
 		}
-
-		big::lua_manager_extension::process_callback_cache();
 
 		pop_theme_colors();
 	}

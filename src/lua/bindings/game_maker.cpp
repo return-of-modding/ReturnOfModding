@@ -880,6 +880,29 @@ namespace lua::game_maker
 		return final_hash;
 	}
 
+	// local co = coroutine.create(foo)
+	// coroutine.resume(co)
+	// -- foo() runs on coroutine thread,
+	// creates `function() end`
+	// -- C++ stores sol::protected_function with co's lua_State*
+	// -- co goes out of scope, GC collects the coroutine thread
+	// -- The lua_State stored inside sol::protected_function is now dangling
+	sol::protected_function make_main_thread_cb(sol::protected_function& cb)
+	{
+		lua_State* main_L = big::g_lua_manager->lua_state();
+
+		if (cb.lua_state() == main_L)
+		{
+			return cb; // already safe
+		}
+
+		cb.push();
+		lua_xmove(cb.lua_state(), main_L, 1);
+		sol::protected_function main_cb(main_L, -1);
+		lua_pop(main_L, 1);
+		return main_cb;
+	}
+
 	// Lua API: Function
 	// Table: gm
 	// Name: pre_code_execute
@@ -887,8 +910,10 @@ namespace lua::game_maker
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance) ) for **fast** overload and ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) ) for **non fast** overload.
 	// Returns: number: Unique identifier for later disabling / enabling the hook on the fly.
 	// Registers a callback that will be called right before any object function is called. Note: for script functions, use pre_script_hook / post_script_hook
-	static big::GMHookHandle pre_code_execute_fast(const std::string& function_name, sol::protected_function cb, sol::this_environment env)
+	static big::GMHookHandle pre_code_execute_fast(const std::string& function_name, sol::protected_function cb_, sol::this_environment env)
 	{
+		auto cb = make_main_thread_cb(cb_);
+
 		const auto res = make_central_object_function_hook(function_name, env, true);
 		if (res.m_this_lua_module && res.m_original_func_ptr)
 		{
@@ -915,8 +940,10 @@ namespace lua::game_maker
 	    "because of its slowness. You can still use it for debugging / development as it can be "
 	    "still useful for observing what the game code is doing.";
 
-	static void pre_code_execute(sol::protected_function cb, sol::this_environment env)
+	static void pre_code_execute(sol::protected_function cb_, sol::this_environment env)
 	{
+		auto cb = make_main_thread_cb(cb_);
+
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (mdl)
 		{
@@ -933,8 +960,10 @@ namespace lua::game_maker
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance) ) for **fast** overload and ( self (CInstance), other (CInstance), code (CCode), result (RValue), flags (number) ) for **non fast** overload.
 	// Returns: number: Unique identifier for later disabling / enabling the hook on the fly.
 	// Registers a callback that will be called right after any object function is called. Note: for script functions, use pre_script_hook / post_script_hook
-	static big::GMHookHandle post_code_execute_fast(const std::string& function_name, sol::protected_function cb, sol::this_environment env)
+	static big::GMHookHandle post_code_execute_fast(const std::string& function_name, sol::protected_function cb_, sol::this_environment env)
 	{
+		auto cb = make_main_thread_cb(cb_);
+
 		const auto res = make_central_object_function_hook(function_name, env, true);
 		if (res.m_this_lua_module && res.m_original_func_ptr)
 		{
@@ -954,8 +983,10 @@ namespace lua::game_maker
 		return {};
 	}
 
-	static void post_code_execute(sol::protected_function cb, sol::this_environment env)
+	static void post_code_execute(sol::protected_function cb_, sol::this_environment env)
 	{
+		auto cb = make_main_thread_cb(cb_);
+
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (mdl)
 		{
@@ -972,8 +1003,10 @@ namespace lua::game_maker
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), args (RValue array) ) -> Return true or false depending on if you want the orig method to be called.
 	// Returns: number: Unique identifier for later disabling / enabling the hook on the fly.
 	// Registers a callback that will be called right before any script function is called. Note: for object functions, use pre_code_execute / post_code_execute
-	static big::GMHookHandle pre_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
+	static big::GMHookHandle pre_script_hook(const double script_function_index_double, sol::protected_function cb_, sol::this_environment env)
 	{
+		auto cb = make_main_thread_cb(cb_);
+
 		const auto res = make_central_script_hook(script_function_index_double, env, true);
 		if (res.m_this_lua_module && res.m_original_func_ptr)
 		{
@@ -1008,8 +1041,10 @@ namespace lua::game_maker
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), result (RValue), args (RValue array) )
 	// Returns: number: Unique identifier for later disabling / enabling the hook on the fly.
 	// Registers a callback that will be called right after any script function is called. Note: for object functions, use pre_code_execute / post_code_execute
-	static big::GMHookHandle post_script_hook(const double script_function_index_double, sol::protected_function cb, sol::this_environment env)
+	static big::GMHookHandle post_script_hook(const double script_function_index_double, sol::protected_function cb_, sol::this_environment env)
 	{
+		auto cb = make_main_thread_cb(cb_);
+
 		const auto res = make_central_script_hook(script_function_index_double, env, false);
 		if (res.m_this_lua_module && res.m_original_func_ptr)
 		{
@@ -1058,8 +1093,10 @@ namespace lua::game_maker
 	// 
 	// end)
 	// ```
-	static void event_hook_pre_add(int id, uint32_t event_type, uint32_t event_number, const std::string& name, sol::protected_function cb, sol::this_environment env)
+	static void event_hook_pre_add(int id, uint32_t event_type, uint32_t event_number, const std::string& name, sol::protected_function cb_, sol::this_environment env)
 	{
+		auto cb = make_main_thread_cb(cb_);
+
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (!mdl)
 		{
@@ -1085,8 +1122,10 @@ namespace lua::game_maker
 	// Param: name: string: The unique identifier of the callback.
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), object_index (number)) Note: object_index represents the specific class defining the event being executed (could be a parent or a different object).
 	// Registers a callback that will be called right after the specific event is executed for this instance.
-	static void event_hook_post_add(int id, uint32_t event_type, uint32_t event_number, const std::string& name, sol::protected_function cb, sol::this_environment env)
+	static void event_hook_post_add(int id, uint32_t event_type, uint32_t event_number, const std::string& name, sol::protected_function cb_, sol::this_environment env)
 	{
+		auto cb = make_main_thread_cb(cb_);
+
 		auto mdl = (big::lua_module_ext*)big::lua_module::this_from(env);
 		if (!mdl)
 		{
