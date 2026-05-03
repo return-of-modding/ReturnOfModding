@@ -3,6 +3,8 @@
 #include "bindings/game_maker.hpp"
 #include "bindings/gui_ext.hpp"
 #include "string/string.hpp"
+#include "hooks/hooking.hpp"
+#include "string/string_conversions.hpp"
 
 #include <lua/lua_manager.hpp>
 #include <sol/forward.hpp>
@@ -264,6 +266,21 @@ namespace big::lua_manager_extension
 		};
 	}
 
+	static FILE* __cdecl hook_fopen(const char* _FileName, const char* _Mode)
+	{
+		const auto wide_path = big::string_conversions::utf8_to_utf16(_FileName);
+		const auto wide_mode = big::string_conversions::utf8_to_utf16(_Mode);
+
+		return _wfopen(wide_path.c_str(), wide_mode.c_str());
+	}
+
+	static HMODULE hook_LoadLibraryExA(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+	{
+		const auto wide_path = big::string_conversions::utf8_to_utf16(lpLibFileName);
+
+		return LoadLibraryExW(wide_path.c_str(), hFile, dwFlags);
+	}
+
 	void init_lua_base(sol::state_view& state)
 	{
 		// clang-format off
@@ -281,6 +298,13 @@ namespace big::lua_manager_extension
 			sol::lib::utf8
 		);
 		// clang-format on
+
+		// Lua doesn't support unicode characters on most of its i/o apis,
+		// Fixing some of it through the usage of LoadLibraryExA and fopen
+		{
+			big::hooking::detour_hook_helper::add_now<hook_LoadLibraryExA>("hook_LoadLibraryExA", LoadLibraryExA);
+			big::hooking::detour_hook_helper::add_now<hook_fopen>("hook_fopen", fopen);
+		}
 
 		// https://blog.rubenwardy.com/2020/07/26/sol3-script-sandbox/
 		// https://www.lua.org/manual/5.4/manual.html#pdf-require
