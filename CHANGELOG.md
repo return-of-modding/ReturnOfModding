@@ -1,3 +1,9 @@
+## [1.1.26] - 2026-05-05
+
+- chore: format file
+- fix(lua): fix the internal detour from gm hooks not enabling on new hook callback addition if it was disabled previously.
+- Release v1.1.25
+
 ## [1.1.25] - 2026-05-03
 
 - fix(lua): fix dangling lua state trying to get cleaned up whenever `m_data_ext = {}` is called
@@ -726,6 +732,7 @@
 - debug code for adding a survivor entry to the character selection
 - Add project files.
 - Add .gitattributes.
+
 
 
 
