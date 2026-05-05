@@ -280,7 +280,8 @@ namespace qstd
 
 #define BIND_USERTYPE(lua_variable, type_name, field_name) lua_variable[#field_name] = &type_name::field_name;
 
-struct RefDynamicArrayOfRValueLuaWrapper {
+struct RefDynamicArrayOfRValueLuaWrapper
+{
 	RefDynamicArrayOfRValue* ptr;
 
 	using value_type = RValue;
@@ -590,13 +591,15 @@ namespace lua::game_maker
 
 		if (save_to_cache)
 		{
-			g_jit_hook_cache.m_entries.push_back(
+			// clang-format off
+			 g_jit_hook_cache.m_entries.push_back(
 				jit_hook_cache_entry_t{
 					.m_hook_name = hook_name,
 					.m_original_func_offset_ptr = original_func_ptr - g_rorr_base_address,
 					.m_create_script = true, .m_bool_parameter = is_builtin
 				}
 			);
+			// clang-format on
 		}
 	}
 
@@ -634,11 +637,13 @@ namespace lua::game_maker
 
 		if (save_to_cache)
 		{
+			// clang-format off
 			g_jit_hook_cache.m_entries.push_back(jit_hook_cache_entry_t {
 				.m_hook_name = hook_name,
 				.m_original_func_offset_ptr = original_func_ptr - g_rorr_base_address,
 				.m_create_script = false, .m_bool_parameter = is_object_hook
 			});
+			// clang-format on
 		}
 	}
 
@@ -705,7 +710,7 @@ namespace lua::game_maker
 
 		LOG(INFO) << "hook_name: " << hook_name.str();
 
-		const auto is_builtin = func_info.is_builtin;
+		const auto is_builtin        = func_info.is_builtin;
 		const auto original_func_ptr = func_info.function_ptr;
 
 		if (!hooks_original_func_ptr_to_info.contains(original_func_ptr))
@@ -737,7 +742,8 @@ namespace lua::game_maker
 
 				    std::this_thread::sleep_for(std::chrono::seconds(5));
 			    }
-		}).detach();
+		    })
+		    .detach();
 	}
 
 	static make_central_script_result make_central_object_function_hook(const std::string& function_name, sol::this_environment& env, bool is_pre_hook)
@@ -756,8 +762,7 @@ namespace lua::game_maker
 		}
 
 		std::stringstream hook_name;
-		hook_name << mdl->guid() << " | " << function_name << " | "
-		          << mdl->m_data_ext.m_all_callbacks.size();
+		hook_name << mdl->guid() << " | " << function_name << " | " << mdl->m_data_ext.m_all_callbacks.size();
 
 		LOG(INFO) << "hook_name: " << hook_name.str();
 
@@ -917,7 +922,7 @@ namespace lua::game_maker
 		const auto res = make_central_object_function_hook(function_name, env, true);
 		if (res.m_this_lua_module && res.m_original_func_ptr)
 		{
-			const auto id = big::lua_function_data_ext::g_last_id++;
+			const auto id        = big::lua_function_data_ext::g_last_id++;
 			const auto hook_type = big::GMHookType::PRE_CODE;
 
 			res.m_this_lua_module->m_data_ext.m_all_callbacks.push_back({.m_cb = cb, .m_id = id, .m_enabled = true, .m_original_function_ptr = res.m_original_func_ptr, .m_type = hook_type});
@@ -928,10 +933,14 @@ namespace lua::game_maker
 
 			res.m_this_lua_module->m_data_ext.m_need_to_rebuild_callback_cache = true;
 
+			// clang-format off
 			return {
-			    .m_original_func_ptr = res.m_original_func_ptr, .m_module = res.m_this_lua_module, .m_type = hook_type,
+			    .m_original_func_ptr = res.m_original_func_ptr,
+				.m_module = res.m_this_lua_module,
+				.m_type = hook_type,
 				.m_lua_function_id = id
 			};
+			// clang-format on
 		}
 
 		return {};
@@ -969,8 +978,7 @@ namespace lua::game_maker
 		const auto res = make_central_object_function_hook(function_name, env, true);
 		if (res.m_this_lua_module && res.m_original_func_ptr)
 		{
-			const auto id = big::lua_function_data_ext::g_last_id++;
-
+			const auto id        = big::lua_function_data_ext::g_last_id++;
 			const auto hook_type = big::GMHookType::POST_CODE;
 
 			res.m_this_lua_module->m_data_ext.m_all_callbacks.push_back({.m_cb = cb, .m_id = id, .m_enabled = true, .m_original_function_ptr = res.m_original_func_ptr, .m_type = hook_type});
@@ -981,7 +989,14 @@ namespace lua::game_maker
 
 			res.m_this_lua_module->m_data_ext.m_need_to_rebuild_callback_cache = true;
 
-			return {.m_original_func_ptr = res.m_original_func_ptr, .m_module = res.m_this_lua_module, .m_type = hook_type, .m_lua_function_id = id};
+			// clang-format off
+			return {
+			    .m_original_func_ptr = res.m_original_func_ptr,
+				.m_module = res.m_this_lua_module,
+				.m_type = hook_type,
+				.m_lua_function_id = id
+			};
+			// clang-format on
 		}
 
 		return {};
@@ -1034,7 +1049,14 @@ namespace lua::game_maker
 
 			res.m_this_lua_module->m_data_ext.m_need_to_rebuild_callback_cache = true;
 
-			return {.m_original_func_ptr = res.m_original_func_ptr, .m_module = res.m_this_lua_module, .m_type = hook_type, .m_lua_function_id = id};
+			// clang-format off
+			return {
+			    .m_original_func_ptr = res.m_original_func_ptr,
+				.m_module = res.m_this_lua_module,
+				.m_type = hook_type,
+				.m_lua_function_id = id
+			};
+			// clang-format on
 		}
 
 		return {};
@@ -1074,7 +1096,14 @@ namespace lua::game_maker
 
 			res.m_this_lua_module->m_data_ext.m_need_to_rebuild_callback_cache = true;
 
-			return {.m_original_func_ptr = res.m_original_func_ptr, .m_module = res.m_this_lua_module, .m_type = hook_type, .m_lua_function_id = id};
+			// clang-format off
+			return {
+			    .m_original_func_ptr = res.m_original_func_ptr,
+				.m_module = res.m_this_lua_module,
+				.m_type = hook_type,
+				.m_lua_function_id = id
+			};
+			// clang-format on
 		}
 
 		return {};
@@ -1094,11 +1123,11 @@ namespace lua::game_maker
 	// Param: name: string: The unique identifier of the callback.
 	// Param: callback: function: callback that match signature function ( self (CInstance), other (CInstance), object_index (number)) -> Return true or false depending on if you want the orig method to be called. Note: object_index represents the specific class defining the event being executed (could be a parent or a different object).
 	// Registers a callback that will be called right before the specific event is executed for this instance.
-	// 
+	//
 	// **Example Usage**
 	// ```lua
 	// gm.event_hook_pre_add(instance, gm.constants.ev_step, 2, "test", function(self, other, object_index)
-	// 
+	//
 	// end)
 	// ```
 	static void event_hook_pre_add(int id, uint32_t event_type, uint32_t event_number, const std::string& name, sol::protected_function cb_, sol::this_environment env)
@@ -1287,9 +1316,9 @@ namespace lua::game_maker
 		for (auto it = events_map->cbegin(); it != events_map->cend(); ++it)
 		{
 			auto [event_type, event_number] = big::lua_manager_extension::parse_event_id(it->k);
-			sol::table t = lua.create_table(0, 2);
-			t["event_type"]   = event_type;
-			t["event_number"] = event_number;
+			sol::table t                    = lua.create_table(0, 2);
+			t["event_type"]                 = event_type;
+			t["event_number"]               = event_number;
 			events.push_back(std::move(t));
 		}
 		return sol::make_object(this_state, sol::as_table(events));
@@ -1414,7 +1443,7 @@ namespace lua::game_maker
 		RValue out_res;
 		big::g_pointers->m_rorr.m_struct_create(&out_res);
 		YYObjectPinMap::pin(out_res.yy_object_base);
-		return {.ptr=out_res.yy_object_base};
+		return {.ptr = out_res.yy_object_base};
 	}
 
 	// based on https://github.com/YAL-GameMaker/shader_replace_unsafe/blob/main/shader_replace_unsafe/shader_add.cpp
@@ -2060,12 +2089,12 @@ namespace lua::game_maker
 					    gm::call("struct_set", std::to_array<RValue, 3>({yyobject->ptr, key.as<const char*>(), parse_sol_object(value)}));
 				    }
 			    },
-				sol::meta_function::garbage_collect, sol::destructor(
+			    sol::meta_function::garbage_collect,
+			    sol::destructor(
 			        [](YYObjectBaseLuaWrapper& inst)
 			        {
 				        YYObjectPinMap::unpin(inst.ptr);
-			    })
-			);
+			        }));
 
 			type["type"] = sol::property(
 			    [](YYObjectBaseLuaWrapper& inst, sol::this_state this_state_)
@@ -2076,7 +2105,9 @@ namespace lua::game_maker
 			type["cinstance"] = sol::property(
 			    [](YYObjectBaseLuaWrapper& inst, sol::this_state this_state_)
 			    {
-				    return inst.ptr->type == YYObjectBaseType::CINSTANCE ? sol::make_object(this_state_, (CInstance*)&inst.ptr) : sol::lua_nil;
+				    return inst.ptr->type == YYObjectBaseType::CINSTANCE ?
+				               sol::make_object(this_state_, (CInstance*)&inst.ptr) :
+				               sol::lua_nil;
 			    });
 
 			type["script_name"] = sol::property(
@@ -2677,10 +2708,11 @@ namespace lua::game_maker
 			        [](RefDynamicArrayOfRValueLuaWrapper& inst)
 			        {
 				        YYObjectPinMap::unpin(inst.ptr->pObjThing);
-			        })
-			);
+			        }));
 
-			type["type"] = sol::property([](){
+			type["type"] = sol::property(
+			    []()
+			    {
 				    return YYObjectBaseType::ARRAY;
 			    });
 
@@ -2859,21 +2891,21 @@ namespace lua::game_maker
 
 				return i;
 			};
-			
-			constants["ev_create"] = 0;
-			constants["ev_destroy"] = 1;
-			constants["ev_alarm"] = 2;
-			constants["ev_step"] = 3;
-			constants["ev_collision"] = 4;
-			constants["ev_keyboard"] = 5;
-			constants["ev_mouse"] = 6;
-			constants["ev_other"] = 7;
-			constants["ev_async"] = 7; // when event_number >= 60
-			constants["ev_draw"] = 8;
-			constants["ev_key_press"] = 9;
+
+			constants["ev_create"]      = 0;
+			constants["ev_destroy"]     = 1;
+			constants["ev_alarm"]       = 2;
+			constants["ev_step"]        = 3;
+			constants["ev_collision"]   = 4;
+			constants["ev_keyboard"]    = 5;
+			constants["ev_mouse"]       = 6;
+			constants["ev_other"]       = 7;
+			constants["ev_async"]       = 7; // when event_number >= 60
+			constants["ev_draw"]        = 8;
+			constants["ev_key_press"]   = 9;
 			constants["ev_key_release"] = 10;
-			constants["ev_cleanup"] = 12;
-			constants["ev_pre_create"] = 14;
+			constants["ev_cleanup"]     = 12;
+			constants["ev_pre_create"]  = 14;
 
 			asset_loop_over("object");
 			asset_loop_over("sprite");
@@ -2891,9 +2923,7 @@ namespace lua::game_maker
 		}
 
 		{
-			sol::usertype<big::GMHookHandle> type = state.new_usertype<big::GMHookHandle>(
-			    "GMHookHandle"
-			);
+			sol::usertype<big::GMHookHandle> type = state.new_usertype<big::GMHookHandle>("GMHookHandle");
 		}
 
 		ns["pre_code_execute"]  = sol::overload(pre_code_execute, pre_code_execute_fast);
@@ -2902,50 +2932,50 @@ namespace lua::game_maker
 		ns["pre_script_hook"]  = pre_script_hook;
 		ns["post_script_hook"] = post_script_hook;
 
-		ns["event_hook_pre_add"] = sol::overload(event_hook_pre_add,
-		                                         [](CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::protected_function cb, sol::this_environment env)
-		                                         {
-			                                         return event_hook_pre_add(instance->id, event_type, event_number, name, cb, env);
-		                                         });
-		ns["event_hook_post_add"] = sol::overload(event_hook_post_add,
-		                                          [](CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::protected_function cb, sol::this_environment env)
-		                                          {
-			                                          return event_hook_post_add(instance->id, event_type, event_number, name, cb, env);
-		                                          });
-		ns["event_hook_pre_remove"] = sol::overload(event_hook_pre_remove,
-		                                            [](CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::this_environment env)
-		                                            {
-			                                            return event_hook_pre_remove(instance->id, event_type, event_number, name, env);
-		                                            });
+		ns["event_hook_pre_add"]     = sol::overload(event_hook_pre_add,
+                                                 [](CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::protected_function cb, sol::this_environment env)
+                                                 {
+                                                     return event_hook_pre_add(instance->id, event_type, event_number, name, cb, env);
+                                                 });
+		ns["event_hook_post_add"]    = sol::overload(event_hook_post_add,
+                                                  [](CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::protected_function cb, sol::this_environment env)
+                                                  {
+                                                      return event_hook_post_add(instance->id, event_type, event_number, name, cb, env);
+                                                  });
+		ns["event_hook_pre_remove"]  = sol::overload(event_hook_pre_remove,
+                                                    [](CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::this_environment env)
+                                                    {
+                                                        return event_hook_pre_remove(instance->id, event_type, event_number, name, env);
+                                                    });
 		ns["event_hook_post_remove"] = sol::overload(event_hook_post_remove,
 		                                             [](CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::this_environment env)
 		                                             {
 			                                             return event_hook_post_remove(instance->id, event_type, event_number, name, env);
 		                                             });
-		ns["event_hook_pre_has"] = sol::overload(event_hook_pre_has,
-		                                         [](CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::this_environment env)
-		                                         {
-			                                         return event_hook_pre_has(instance->id, event_type, event_number, name, env);
-		                                         });
-		ns["event_hook_post_has"] = sol::overload(event_hook_post_has,
-		                                          [](CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::this_environment env)
-		                                          {
-			                                          return event_hook_post_has(instance->id, event_type, event_number, name, env);
-		                                          });
-		ns["event_hook_get_all"]    = event_hook_get_all;
+		ns["event_hook_pre_has"]     = sol::overload(event_hook_pre_has,
+                                                 [](CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::this_environment env)
+                                                 {
+                                                     return event_hook_pre_has(instance->id, event_type, event_number, name, env);
+                                                 });
+		ns["event_hook_post_has"]    = sol::overload(event_hook_post_has,
+                                                  [](CInstance* instance, uint32_t event_type, uint32_t event_number, const std::string& name, sol::this_environment env)
+                                                  {
+                                                      return event_hook_post_has(instance->id, event_type, event_number, name, env);
+                                                  });
+		ns["event_hook_get_all"]     = event_hook_get_all;
 
 		// Lua API: Function
-        // Table: gm
-        // Name: get_instance_count
-        // Returns: number: The total number of instances in the current game.
-        // **Example Usage**
-        // ```lua
-        // local count = gm.get_instance_count()
+		// Table: gm
+		// Name: get_instance_count
+		// Returns: number: The total number of instances in the current game.
+		// **Example Usage**
+		// ```lua
+		// local count = gm.get_instance_count()
 		// gm.event_hook_pre_add(count + 1, gm.constants.ev_step, 2, "test", function(self, other, object_index)
 		// 		log.info(self.id)
 		// end)
 		// gm.instance_create(x, y, object_index)
-        // ```
+		// ```
 		ns["get_instance_count"] = [] -> uint32_t
 		{
 			return *(big::g_pointers->m_rorr.g_InstanceCount);
@@ -3151,7 +3181,10 @@ namespace lua::game_maker
 					{
 						if (entry.m_create_script)
 						{
-							jit_hook_create_script(entry.m_hook_name, g_rorr_base_address + entry.m_original_func_offset_ptr, entry.m_bool_parameter, false);
+							jit_hook_create_script(entry.m_hook_name,
+							                       g_rorr_base_address + entry.m_original_func_offset_ptr,
+							                       entry.m_bool_parameter,
+							                       false);
 						}
 						else
 						{
