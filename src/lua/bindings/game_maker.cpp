@@ -922,7 +922,9 @@ namespace lua::game_maker
 
 			res.m_this_lua_module->m_data_ext.m_all_callbacks.push_back({.m_cb = cb, .m_id = id, .m_enabled = true, .m_original_function_ptr = res.m_original_func_ptr, .m_type = hook_type});
 
-			hooks_original_func_ptr_to_info[(uintptr_t)res.m_original_func_ptr]->m_active_callback_count++;
+			auto& runtime_detour = hooks_original_func_ptr_to_info[(uintptr_t)res.m_original_func_ptr];
+			runtime_detour->m_active_callback_count++;
+			runtime_detour->m_detour->enable();
 
 			res.m_this_lua_module->m_data_ext.m_need_to_rebuild_callback_cache = true;
 
@@ -973,7 +975,9 @@ namespace lua::game_maker
 
 			res.m_this_lua_module->m_data_ext.m_all_callbacks.push_back({.m_cb = cb, .m_id = id, .m_enabled = true, .m_original_function_ptr = res.m_original_func_ptr, .m_type = hook_type});
 
-			hooks_original_func_ptr_to_info[(uintptr_t)res.m_original_func_ptr]->m_active_callback_count++;
+			auto& runtime_detour = hooks_original_func_ptr_to_info[(uintptr_t)res.m_original_func_ptr];
+			runtime_detour->m_active_callback_count++;
+			runtime_detour->m_detour->enable();
 
 			res.m_this_lua_module->m_data_ext.m_need_to_rebuild_callback_cache = true;
 
@@ -1024,7 +1028,9 @@ namespace lua::game_maker
 
 			res.m_this_lua_module->m_data_ext.m_all_callbacks.push_back({.m_cb = cb, .m_id = id, .m_enabled = true, .m_original_function_ptr = res.m_original_func_ptr, .m_type = hook_type});
 
-			hooks_original_func_ptr_to_info[(uintptr_t)res.m_original_func_ptr]->m_active_callback_count++;
+			auto& runtime_detour = hooks_original_func_ptr_to_info[(uintptr_t)res.m_original_func_ptr];
+			runtime_detour->m_active_callback_count++;
+			runtime_detour->m_detour->enable();
 
 			res.m_this_lua_module->m_data_ext.m_need_to_rebuild_callback_cache = true;
 
@@ -1062,7 +1068,9 @@ namespace lua::game_maker
 
 			res.m_this_lua_module->m_data_ext.m_all_callbacks.push_back({.m_cb = cb, .m_id = id, .m_enabled = true, .m_original_function_ptr = res.m_original_func_ptr, .m_type = hook_type});
 
-			hooks_original_func_ptr_to_info[(uintptr_t)res.m_original_func_ptr]->m_active_callback_count++;
+			auto& runtime_detour = hooks_original_func_ptr_to_info[(uintptr_t)res.m_original_func_ptr];
+			runtime_detour->m_active_callback_count++;
+			runtime_detour->m_detour->enable();
 
 			res.m_this_lua_module->m_data_ext.m_need_to_rebuild_callback_cache = true;
 
