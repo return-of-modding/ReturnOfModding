@@ -250,6 +250,9 @@ namespace qstd
 #ifndef FINAL
 			LOG(INFO) << "JIT Stub: " << log.data();
 #endif
+			LOG(INFO) << "Jit Stub: Address"
+			          << m_jit_function_buffer
+			                 .data();
 
 			return (uintptr_t)m_jit_function_buffer.data();
 		}
