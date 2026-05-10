@@ -1,3 +1,10 @@
+## [1.1.27] - 2026-05-10
+
+- chore(doc): gen
+- feat(lua): get_table_pointer
+- jit stub addresses are printed
+- Release v1.1.26
+
 ## [1.1.26] - 2026-05-05
 
 - chore: format file
@@ -732,6 +739,7 @@
 - debug code for adding a survivor entry to the character selection
 - Add project files.
 - Add .gitattributes.
+
 
 
 
