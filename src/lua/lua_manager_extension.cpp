@@ -486,7 +486,6 @@ namespace big::lua_manager_extension
 	{
 		std::vector<sol::protected_function> callbacks_to_run;
 
-		std::lock_guard guard(g_lua_manager->m_module_lock);
 		for (const auto& module : g_lua_manager->m_modules)
 		{
 			auto mod        = (lua_module_ext*)module.get();
@@ -510,6 +509,8 @@ namespace big::lua_manager_extension
 
 	bool pre_event_execute(CInstance* self, CInstance* other, int object_index, uint32_t event_type, uint32_t event_number)
 	{
+		std::lock_guard guard(g_lua_manager->m_module_lock);
+
 		bool call_orig_if_true = true;
 		std::vector<sol::protected_function> callback_list = get_callbacks(&big::lua_module_data_ext::m_pre_event_execute_callbacks, self, event_type, event_number);
 		for (const auto& cb : callback_list)
@@ -525,6 +526,8 @@ namespace big::lua_manager_extension
 
 	void post_event_execute(CInstance* self, CInstance* other, int object_index, uint32_t event_type, uint32_t event_number)
 	{
+		std::lock_guard guard(g_lua_manager->m_module_lock);
+
 		std::vector<sol::protected_function> callback_list = get_callbacks(&big::lua_module_data_ext::m_post_event_execute_callbacks, self, event_type, event_number);
 		for (const auto& cb : callback_list)
 		{

@@ -40,8 +40,10 @@ namespace gm
 		              });
 
 		CInstance_id_to_CInstance.erase(this_->id);
+
 		if (big::g_lua_manager)
 		{
+			std::lock_guard guard(big::g_lua_manager->m_module_lock);
 			for (const auto& module_ : big::g_lua_manager->m_modules)
 			{
 				auto mod = (big::lua_module_ext*)module_.get();
