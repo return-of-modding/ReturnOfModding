@@ -1,3 +1,8 @@
+## [1.1.28] - 2026-05-12
+
+- fix(lua): fix pre and post event execute not locking g lua manager modules properly
+- Release v1.1.27
+
 ## [1.1.27] - 2026-05-10
 
 - chore(doc): gen
@@ -739,6 +744,7 @@
 - debug code for adding a survivor entry to the character selection
 - Add project files.
 - Add .gitattributes.
+
 
 
 
