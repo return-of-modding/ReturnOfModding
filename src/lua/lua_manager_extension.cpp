@@ -484,15 +484,16 @@ namespace big::lua_manager_extension
 
 	std::vector<sol::protected_function> get_callbacks(event_map_member_ptr_t map_ptr, CInstance* self, uint32_t event_type, uint32_t event_number)
 	{
+		std::lock_guard guard(g_lua_manager->m_module_lock);
 		std::vector<sol::protected_function> callbacks_to_run;
 
 		for (const auto& module : g_lua_manager->m_modules)
 		{
 			auto mod        = (lua_module_ext*)module.get();
 			const auto& map = (mod->m_data_ext).*map_ptr;
-			uint64_t event_id = gen_event_id(event_type, event_number);
 			if (auto it = map.find(self->id); it != map.end())
 			{
+				uint64_t event_id = gen_event_id(event_type, event_number);
 				const auto& inner_map = it->second;
 				if (auto inner_it = inner_map.find(event_id); inner_it != inner_map.end())
 				{
@@ -509,8 +510,6 @@ namespace big::lua_manager_extension
 
 	bool pre_event_execute(CInstance* self, CInstance* other, int object_index, uint32_t event_type, uint32_t event_number)
 	{
-		std::lock_guard guard(g_lua_manager->m_module_lock);
-
 		bool call_orig_if_true = true;
 		std::vector<sol::protected_function> callback_list = get_callbacks(&big::lua_module_data_ext::m_pre_event_execute_callbacks, self, event_type, event_number);
 		for (const auto& cb : callback_list)
@@ -526,12 +525,20 @@ namespace big::lua_manager_extension
 
 	void post_event_execute(CInstance* self, CInstance* other, int object_index, uint32_t event_type, uint32_t event_number)
 	{
-		std::lock_guard guard(g_lua_manager->m_module_lock);
-
 		std::vector<sol::protected_function> callback_list = get_callbacks(&big::lua_module_data_ext::m_post_event_execute_callbacks, self, event_type, event_number);
 		for (const auto& cb : callback_list)
 		{
 			cb(self, other, object_index);
+		}
+		if (event_type == 12)
+		{
+			std::lock_guard guard(big::g_lua_manager->m_module_lock);
+			for (const auto& module : big::g_lua_manager->m_modules)
+			{
+				auto mod = (big::lua_module_ext*)module.get();
+				mod->m_data_ext.m_pre_event_execute_callbacks.erase(self->id);
+				mod->m_data_ext.m_post_event_execute_callbacks.erase(self->id);
+			}
 		}
 	}
 
