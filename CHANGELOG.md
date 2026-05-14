@@ -1,3 +1,8 @@
+## [1.1.29] - 2026-05-14
+
+- fix(lua): move event deletion from CInstance's destructor to event cleanup. (#33)
+- Release v1.1.28
+
 ## [1.1.28] - 2026-05-12
 
 - fix(lua): fix pre and post event execute not locking g lua manager modules properly
@@ -744,6 +749,7 @@
 - debug code for adding a survivor entry to the character selection
 - Add project files.
 - Add .gitattributes.
+
 
 
 
