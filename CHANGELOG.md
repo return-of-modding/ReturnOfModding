@@ -1,3 +1,8 @@
+## [1.1.30] - 2026-05-19
+
+- fix(hook): fix jit addresses not printed correctly
+- Release v1.1.29
+
 ## [1.1.29] - 2026-05-14
 
 - fix(lua): move event deletion from CInstance's destructor to event cleanup. (#33)
@@ -749,6 +754,7 @@
 - debug code for adding a survivor entry to the character selection
 - Add project files.
 - Add .gitattributes.
+
 
 
 
