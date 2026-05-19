@@ -1,5 +1,10 @@
 ## [1.1.30] - 2026-05-19
 
+- rom bump: fix compilation error
+- Release v1.1.30
+
+## [1.1.30] - 2026-05-19
+
 - fix(hook): fix jit addresses not printed correctly
 - Release v1.1.29
 
@@ -754,6 +759,7 @@
 - debug code for adding a survivor entry to the character selection
 - Add project files.
 - Add .gitattributes.
+
 
 
 
